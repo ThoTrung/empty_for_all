@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="res_config_settings_view_form_booking_calendar" model="ir.ui.view">
+            <field name="name">res.config.settings.view.form.inherit.booking_calendar</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="spa.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//block[@id='spa_setting']" position="inside">
+                    <setting string="Nhắc nhân viên trước (giờ) khi có lịch đặt dịch vụ sắp tới">
+                        <div class="text-muted content-group mt16">
+                            <field name="booking_reminder_hours_before" class="text-right" style="width: 6rem;"/>
+                        </div>
+                    </setting>
+                    <setting string="Lịch đặt: giờ bắt đầu hiển thị">
+                        <div class="text-muted content-group mt16">
+                            <field name="spa_calendar_min_time" class="text-right" style="width: 8rem;"/>
+                        </div>
+                    </setting>
+                    <setting string="Lịch đặt: giờ kết thúc hiển thị">
+                        <div class="text-muted content-group mt16">
+                            <field name="spa_calendar_max_time" class="text-right" style="width: 8rem;"/>
+                        </div>
+                    </setting>
+                    <setting string="Lịch đặt: độ cao mỗi giờ (px)">
+                        <div class="text-muted content-group mt16">
+                            <field name="spa_calendar_pixels_per_hour" class="text-right" style="width: 6rem;"/>
+                        </div>
+                    </setting>
+                    <setting string="Màu lịch đặt lịch: Đặt lịch (0–55)">
+                        <div class="text-muted content-group mt16">
+                            <field name="booking_calendar_color_draft" class="text-right" style="width: 5rem;" placeholder="1"/>
+                        </div>
+                    </setting>
+                    <setting string="Màu lịch đặt lịch: Đã xác nhận (0–55)">
+                        <div class="text-muted content-group mt16">
+                            <field name="booking_calendar_color_confirmed" class="text-right" style="width: 5rem;" placeholder="2"/>
+                        </div>
+                    </setting>
+                    <setting string="Màu lịch đặt lịch: Đang phục vụ (0–55)">
+                        <div class="text-muted content-group mt16">
+                            <field name="booking_calendar_color_doing" class="text-right" style="width: 5rem;" placeholder="3"/>
+                        </div>
+                    </setting>
+                    <setting string="Màu lịch đặt lịch: Đã hoàn thành (0–55)">
+                        <div class="text-muted content-group mt16">
+                            <field name="booking_calendar_color_done" class="text-right" style="width: 5rem;" placeholder="4"/>
+                        </div>
+                    </setting>
+                    <setting string="Màu lịch đặt lịch: Đã hủy (0–55)">
+                        <div class="text-muted content-group mt16">
+                            <field name="booking_calendar_color_cancel" class="text-right" style="width: 5rem;" placeholder="0"/>
+                        </div>
+                    </setting>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

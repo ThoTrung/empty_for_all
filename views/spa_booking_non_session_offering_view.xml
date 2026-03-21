@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_spa_booking_non_session_offering_tree" model="ir.ui.view">
+            <field name="name">spa.booking.non_session_offering.tree</field>
+            <field name="model">spa.booking.non_session_offering</field>
+            <field name="arch" type="xml">
+                <tree string="Loại hoạt động không trừ buổi">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="code" optional="show"/>
+                    <field name="duration_minutes"/>
+                    <field name="product_id" optional="hide"/>
+                    <field name="active"/>
+                </tree>
+            </field>
+        </record>
+        <record id="view_spa_booking_non_session_offering_form" model="ir.ui.view">
+            <field name="name">spa.booking.non_session_offering.form</field>
+            <field name="model">spa.booking.non_session_offering</field>
+            <field name="arch" type="xml">
+                <form string="Loại hoạt động">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="code" readonly="1"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                            <field name="duration_minutes"/>
+                            <field name="product_id"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        <record id="action_spa_booking_non_session_offering" model="ir.actions.act_window">
+            <field name="name">Loại hoạt động không trừ buổi</field>
+            <field name="res_model">spa.booking.non_session_offering</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+    </data>
+</odoo>

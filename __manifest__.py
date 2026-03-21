@@ -1,0 +1,40 @@
+# -*- coding: utf-8 -*-
+{
+    "name": "Booking Calendar",
+    "version": "17.0.1.0.0",
+    "category": "Services",
+    "summary": "Đặt lịch dịch vụ & lịch (tách từ Spa)",
+    "author": "Trung Tho",
+    "license": "LGPL-3",
+    'sequence': -100,
+    "depends": [
+        "spa",
+        "mail",
+        "web",
+    ],
+    "data": [
+        "security/ir.model.access.xml",
+        "data/spa_booking_non_session_offering_data.xml",
+        "data/booking_cron.xml",
+        "views/spa_booking_non_session_offering_view.xml",
+        "views/spa_service_booking_view.xml",
+        "views/spa_treatment_session_booking_views.xml",
+        "wizards/recurring_booking_wizard_views.xml",
+        "views/res_config_settings_views.xml",
+        "views/menu.xml",
+    ],
+    "assets": {
+        "web.assets_backend": [
+            "booking_calendar/static/src/css/spa_booking_calendar.css",
+            "booking_calendar/static/src/xml/spa_calendar_height_selector.xml",
+            "booking_calendar/static/src/js/spa_calendar_height_selector.js",
+            "booking_calendar/static/src/xml/spa_booking_calendar_popover.xml",
+            "booking_calendar/static/src/js/spa_booking_calendar_popover.js",
+            "booking_calendar/static/src/js/spa_booking_calendar_renderer.js",
+            "booking_calendar/static/src/js/spa_booking_calendar_view.js",
+        ],
+    },
+    "installable": True,
+    "application": False,
+    "auto_install": False,
+}

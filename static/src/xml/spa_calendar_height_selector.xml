@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- Slot layout-buttons cho lịch đặt Spa: hiển thị dropdown chiều cao ngay trên màn hình lịch -->
+    <t t-name="spa.CalendarController.controlButtons">
+        <SpaCalendarHeightSelector
+            model="model"
+            resModel="props.resModel"
+            onChanged.bind="reloadCalendarConfig"
+        />
+    </t>
+    <t t-name="spa.SpaCalendarHeightSelector">
+        <div class="d-flex align-items-center flex-wrap gap-2 ms-2">
+            <span class="d-flex align-items-center gap-1">
+                <label class="form-label mb-0 text-nowrap small">Từ</label>
+                <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    style="width: 5.5rem;"
+                    t-att-value="currentMinTime"
+                    t-on-blur="onMinTimeChange"
+                    t-att-disabled="state.saving"
+                    placeholder="05:00:00"
+                />
+            </span>
+            <span class="d-flex align-items-center gap-1">
+                <label class="form-label mb-0 text-nowrap small">Đến</label>
+                <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    style="width: 5.5rem;"
+                    t-att-value="currentMaxTime"
+                    t-on-blur="onMaxTimeChange"
+                    t-att-disabled="state.saving"
+                    placeholder="22:00:00"
+                />
+            </span>
+            <span class="d-flex align-items-center gap-1">
+                <label class="form-label mb-0 text-nowrap small">Chiều cao/giờ:</label>
+                <select
+                    class="form-select form-select-sm"
+                    style="width: auto; min-width: 7rem;"
+                    t-att-value="currentPixelsPerHour"
+                    t-on-change="onHeightChange"
+                    t-att-disabled="state.saving"
+                >
+                    <t t-foreach="options" t-as="opt" t-key="opt.value">
+                        <option t-att-value="opt.value" t-esc="opt.label"/>
+                    </t>
+                </select>
+            </span>
+        </div>
+    </t>
+</templates>

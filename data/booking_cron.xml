@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="ir_cron_spa_booking_reminder" model="ir.cron">
+            <field name="name">Spa: Nhắc nhân viên lịch đặt dịch vụ sắp tới</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_booking_reminders()</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+        </record>
+    </data>
+</odoo>

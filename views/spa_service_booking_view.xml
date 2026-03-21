@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_spa_service_booking_search" model="ir.ui.view">
+            <field name="name">spa.service.booking.search</field>
+            <field name="model">spa.service.booking</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                    <field name="booking_kind"/>
+                    <field name="partner_id"/>
+                    <field name="product_id"/>
+                    <field name="staff_ids"/>
+                    <field name="bed_id"/>
+                    <filter string="Đã xác nhận" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Đang phục vụ" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                    <filter string="Đã hủy" name="cancel" domain="[('state', '=', 'cancel')]"/>
+                    <separator/>
+                    <filter string="Lịch của tôi" name="my_bookings" domain="[('staff_ids', 'in', [uid])]"/>
+                    <separator/>
+                    <filter string="Ngày bắt đầu" name="start_date" date="start_datetime"/>
+                    <group expand="0" string="Nhóm theo">
+                        <filter string="Nhân viên" name="group_staff" context="{'group_by': 'staff_ids'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+        <record id="view_spa_service_booking_calendar" model="ir.ui.view">
+            <field name="name">spa.service.booking.calendar</field>
+            <field name="model">spa.service.booking</field>
+            <field name="arch" type="xml">
+                <calendar date_start="start_datetime"
+                          date_stop="end_datetime"
+                          string="Lịch đặt dịch vụ"
+                          color="state_calendar_color"
+                          event_limit="15"
+                          quick_create="false"
+                          create_name_field="calendar_event_title"
+                          event_open_popup="1">
+                    <field name="name"/>
+                    <field name="state" string="Trạng thái lịch" filters="1" expand="1"/>
+                    <field name="booking_kind" string="Loại thẻ (booking_type)" filters="1"/>
+                    <field name="partner_id" string="Mã KH - Tên KH"/>
+                    <field name="non_session_offering_id" string="Loại hoạt động" invisible="booking_kind != 'non_session'"/>
+                    <field name="card_id" string="Thẻ" invisible="booking_kind != 'card'"/>
+                    <field name="card_total_sessions" string="Tổng số buổi" invisible="booking_kind != 'card'"/>
+                    <field name="card_available_for_booking" string="Còn cho đặt lịch" invisible="booking_kind != 'card'"/>
+                    <field name="staff_ids" string="Nhân viên phụ trách"/>
+                    <field name="bed_id" string="Giường / Máy"/>
+                    <field name="staff_ids" invisible="1"/>
+                    <field name="staff_level_filter" filters="1" invisible="1"/>
+                    <field name="state_calendar_color" invisible="1"/>
+                    <field name="bed_calendar_color" invisible="1"/>
+                    <field name="duration" invisible="1"/>
+                </calendar>
+            </field>
+        </record>
+        <record id="view_spa_service_booking_tree" model="ir.ui.view">
+            <field name="name">spa.service.booking.tree</field>
+            <field name="model">spa.service.booking</field>
+            <field name="arch" type="xml">
+                <tree decoration-muted="state == 'cancel'"
+                      decoration-success="state == 'done'"
+                      decoration-info="state == 'confirmed'">
+                    <field name="name"/>
+                    <field name="booking_kind" optional="show"/>
+                    <field name="partner_id"/>
+                    <field name="product_id"/>
+                    <field name="start_datetime"/>
+                    <field name="end_datetime"/>
+                    <field name="staff_ids" widget="many2many_tags"/>
+                    <field name="bed_id"/>
+                    <field name="state" widget="badge"/>
+                    <field name="reminder_sent" optional="hide"/>
+                </tree>
+            </field>
+        </record>
+        <record id="view_spa_service_booking_form" model="ir.ui.view">
+            <field name="name">spa.service.booking.form</field>
+            <field name="model">spa.service.booking</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <field name="state" widget="statusbar"/>
+                        <button name="action_enable_recurring"
+                                string="Đặt theo tuần"
+                                type="object"
+                                class="oe_highlight"
+                                invisible="is_locked or is_recurring_child or recurring_is_active or booking_kind != 'card'"/>
+                        <button name="action_cancel_recurring"
+                                string="Hủy đặt lịch theo tuần"
+                                type="object"
+                                class="btn-danger"
+                                invisible="is_locked or is_recurring_child or not recurring_is_active or booking_kind != 'card'"/>
+                        <button name="action_confirm" string="Xác nhận" type="object"
+                                invisible="is_locked or state != 'draft'" class="btn btn-warning"/>
+                        <button name="action_doing" string="Phục vụ" type="object" class="btn btn-success"
+                                invisible="is_locked or state not in ('draft', 'confirmed')"/>
+                        <button name="action_done" string="Hoàn thành" type="object" class="btn btn-info"
+                                invisible="is_locked or state not in ('confirmed', 'doing')"/>
+                        <button name="action_cancel" string="Hủy" type="object" class="btn btn-danger"
+                                invisible="is_locked or state not in ('draft', 'confirmed')"/>
+                        <button name="action_draft" string="Đặt lại Đã xác nhận" type="object"
+                                invisible="is_locked or state != 'cancel'"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1" class="oe_inline"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="partner_id" context="{'form_view_ref': 'spa.view_partner_form_spa'}" required="1" readonly="is_locked"/>
+                                <field name="booking_kind" readonly="is_locked"/>
+                                <field name="card_id" domain="[('partner_id', '=', partner_id), ('available_for_booking', '&gt;', 0), ('state', '=', 'active')]" invisible="booking_kind != 'card'" required="booking_kind == 'card'" readonly="is_locked"/>
+                                <field name="non_session_offering_id" options="{'no_create': True}" invisible="booking_kind != 'non_session'" required="booking_kind == 'non_session'" readonly="is_locked"/>
+                                <field name="card_total_sessions" optional="show" readonly="1" invisible="booking_kind != 'card'"/>
+                                <field name="card_available_for_booking" optional="show" readonly="1" invisible="booking_kind != 'card'"/>
+                                <field name="product_id" invisible="1"/>
+                                <field name="start_datetime" required="1" readonly="is_locked"/>
+                                <field name="duration" required="1" readonly="is_locked"/>
+                                <field name="end_datetime" readonly="1"/>
+                                <field name="staff_ids"
+                                       widget="many2many_tags"
+                                       domain="[('share', '=', False), ('spa_shift_start_hour', '!=', False), ('spa_shift_duration_hours', '>', 0)]"
+                                       readonly="is_locked"/>
+                                <field name="suggested_staff_html" readonly="1"/>
+                                <field name="bed_id" readonly="is_locked"/>
+                                <field name="recurring_parent_id" invisible="not is_recurring_child" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="session_id" options="{'open': True}"/>
+                                <field name="reminder_sent" readonly="1"/>
+                                <field name="note" readonly="is_locked"/>
+                                <field name="is_locked" invisible="1"/>
+                                <field name="is_composite_booking" invisible="1"/>
+                                <field name="is_recurring_child" invisible="1"/>
+                                <field name="recurring_enabled" invisible="1"/>
+                                <field name="recurring_is_active" invisible="1"/>
+
+                                <separator string="Đặt lịch theo ngày trong tuần"
+                                           class="text-danger text-medium"
+                                           invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                    <field name="recurring_mon" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                    <field name="recurring_tue" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                    <field name="recurring_wed" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                    <field name="recurring_thu" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                    <field name="recurring_fri" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                    <field name="recurring_sat" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                    <field name="recurring_sun" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                <button name="action_confirm_recurring"
+                                        string="Xác nhận đặt lịch theo tuần"
+                                        type="object"
+                                        class="btn btn-primary px-4" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                            </group>
+                        </group>
+                        <group string="Dịch vụ con (dịch vụ tổng)" invisible="not is_composite_booking">
+                            <field name="booking_line_ids" nolabel="1">
+                                <tree editable="bottom" default_order="sequence,id">
+                                    <field name="booking_id" column_invisible="1"/>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id"/>
+                                    <field name="staff_id"
+                                           domain="[('share', '=', False), ('spa_shift_start_hour', '!=', False), ('spa_shift_duration_hours', '>', 0)]"/>
+                                    <field name="start_datetime"/>
+                                    <field name="duration_minutes"/>
+                                    <field name="end_datetime"/>
+                                </tree>
+                            </field>
+                        </group>
+                        <notebook>
+                            <page string="Chatter" name="chatter">
+                                <field name="message_follower_ids" widget="mail_followers"/>
+                                <field name="activity_ids" widget="mail_activity"/>
+                                <field name="message_ids" widget="mail_thread"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        <record id="action_spa_service_booking" model="ir.actions.act_window">
+            <field name="name">Đặt lịch dịch vụ</field>
+            <field name="res_model">spa.service.booking</field>
+            <field name="view_mode">calendar,tree,form</field>
+            <field name="view_id" ref="view_spa_service_booking_calendar"/>
+            <field name="search_view_id" ref="view_spa_service_booking_search"/>
+            <field name="context">{'search_default_confirmed': 0}</field>
+        </record>
+    </data>
+</odoo>

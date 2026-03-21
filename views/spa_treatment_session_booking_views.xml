@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="spa_treatment_session_view_form_booking" model="ir.ui.view">
+            <field name="name">spa.treatment.session.form.booking_calendar</field>
+            <field name="model">spa.treatment.session</field>
+            <field name="inherit_id" ref="spa.view_spa_treatment_session_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="booking_id" readonly="1"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

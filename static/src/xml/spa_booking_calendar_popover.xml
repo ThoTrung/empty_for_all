@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- Body: thứ tự 1. Trạng thái 2. Mã KH - Tên KH 3. Thẻ 4. Tổng/còn buổi 5. NV phụ trách 6. Giường/Máy 7. Thời gian (cuối) -->
+    <t t-name="spa.SpaBookingCalendarPopover.body">
+        <ul class="list-group list-group-flush o_cw_popover_fields_secondary">
+            <Record resModel="props.model.resModel" resId="props.record.id" fields="props.model.fields" activeFields="activeFields" mode="'readonly'" values="props.record.rawRecord" t-slot-scope="slot">
+                <t t-foreach="orderedPopoverFieldIds" t-as="fieldId" t-key="fieldId">
+                    <t t-set="fieldInfo" t-value="props.model.popoverFieldNodes[fieldId]"/>
+                    <t t-if="fieldInfo and !isInvisible(fieldInfo, slot.record)">
+                        <li class="list-group-item flex-shrink-0 d-flex flex-wrap align-items-start" t-att-class="fieldInfo.attrs.class">
+                            <span class="fw-bold me-2" t-if="!fieldInfo.options or !fieldInfo.options.noLabel">
+                                <t t-if="fieldInfo.options and fieldInfo.options.icon">
+                                    <i t-attf-class="fa-fw {{fieldInfo.options.icon}} text-400" />
+                                </t>
+                                <t t-else="">
+                                    <t t-esc="fieldInfo.string" />
+                                </t>
+                            </span>
+                            <div class="flex-grow-1">
+                                <Field name="fieldInfo.name" record="slot.record" fieldInfo="fieldInfo" type="fieldInfo.widget" />
+                            </div>
+                        </li>
+                    </t>
+                </t>
+            </Record>
+        </ul>
+        <ul class="list-group list-group-flush">
+            <li t-if="date" class="list-group-item">
+                <i class="fa fa-fw fa-calendar text-400" />
+                <span class="fw-bold ms-2" t-esc="date" /> <small t-if="dateDuration and dateDuration !== 'All day'"><b t-esc="dateDuration" /></small>
+            </li>
+            <li t-if="time" class="list-group-item">
+                <i class="fa fa-fw fa-clock-o text-400" />
+                <span class="fw-bold ms-2" t-esc="time" /> <small t-if="timeDuration"><b t-esc="'(' + timeDuration + ')'" /></small>
+            </li>
+        </ul>
+    </t>
+
+    <!-- Footer: nút trạng thái (Xác nhận, Phục vụ, Hoàn thành, Hủy) + Chỉnh sửa + Xoá -->
+    <t t-name="spa.SpaBookingCalendarPopover.footer">
+        <div class="d-flex gap-1 justify-content-end flex-wrap w-100">
+            <t t-if="state === 'draft'">
+                <button type="button" class="btn btn-warning" t-on-click="onActionConfirm">Xác nhận</button>
+                <button type="button" class="btn btn-success" t-on-click="onActionDoing">Phục vụ</button>
+                <button type="button" class="btn btn-danger" t-on-click="onActionCancel">Hủy</button>
+            </t>
+            <t t-if="state === 'confirmed'">
+                <button type="button" class="btn btn-success" t-on-click="onActionDoing">Phục vụ</button>
+                <button type="button" class="btn btn-info" t-on-click="onActionDone">Hoàn thành</button>
+                <button type="button" class="btn btn-danger" t-on-click="onActionCancel">Hủy</button>
+            </t>
+            <t t-if="state === 'doing'">
+                <button type="button" class="btn btn-info" t-on-click="onActionDone">Hoàn thành</button>
+            </t>
+            <t t-if="isEventEditable">
+                <a href="#" class="btn btn-primary o_cw_popover_edit" t-on-click.prevent="onEditEvent">Chỉnh sửa</a>
+            </t>
+            <t t-if="isEventDeletable">
+                <a href="#" class="btn btn-danger o_cw_popover_delete" t-on-click.prevent="onDeleteEvent">Xoá</a>
+            </t>
+        </div>
+    </t>
+</templates>

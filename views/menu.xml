@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <menuitem name="Đặt lịch dịch vụ"
+                  id="menu_spa_service_booking"
+                  action="action_spa_service_booking"
+                  parent="spa.menu_booking_master"
+                  groups="spa.group_spa_staff"
+                  sequence="1"/>
+        <menuitem name="Loại hoạt động không trừ buổi"
+                  id="menu_spa_booking_non_session_offering"
+                  action="action_spa_booking_non_session_offering"
+                  parent="spa.menu_booking_master"
+                  groups="spa.group_spa_manager"
+                  sequence="8"/>
+    </data>
+</odoo>

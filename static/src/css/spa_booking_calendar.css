@@ -1,0 +1,125 @@
+/* Lịch đặt Spa: ô giờ và sự kiện tỷ lệ với cấu hình "độ cao mỗi giờ" (--spa-pixels-per-hour).
+   Chỉ áp dụng khi container có class .o_calendar_spa_booking (và biến CSS được set từ JS). */
+
+/* 1) Khoảng trống dưới 23h: ô grid "cal" dùng 1fr nên luôn chiếm full chiều cao còn lại.
+   Khi là lịch Spa: cho hàng chứa lịch là auto để hàng co theo nội dung (chỉ trên md+). */
+@media (min-width: 768px) {
+  .o_calendar_container.o_calendar_spa_booking_view {
+    grid-template-rows: auto auto;
+  }
+}
+/* Renderer không kéo 100% chiều cao khi là Spa */
+.o_calendar_renderer:has(.o_calendar_spa_booking) {
+  height: auto !important;
+  min-height: 0;
+  align-self: start;
+}
+.o_calendar_renderer:has(.o_calendar_spa_booking) .o_calendar_widget {
+  flex-shrink: 0;
+}
+
+/* 2) Bên trong FullCalendar: scroller và nội dung khớp chiều cao, không tạo thêm vùng trống */
+.o_calendar_spa_booking.fc {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.o_calendar_spa_booking .fc-view-harness {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.o_calendar_spa_booking .fc-scroller {
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 0;
+}
+.o_calendar_spa_booking .fc-scroller-liquid {
+  height: 100% !important;
+}
+.o_calendar_spa_booking .fc-time-grid-container {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+/* 4 ô slot mỗi giờ (15 phút) → mỗi td = pixels_per_hour/4 */
+.o_calendar_spa_booking .fc-time-grid .fc-slats td {
+  height: calc(var(--spa-pixels-per-hour, 80) / 4 * 1px);
+  min-height: calc(var(--spa-pixels-per-hour, 80) / 4 * 1px);
+  border-bottom: 0;
+}
+
+.o_calendar_spa_booking .fc-time-grid .fc-slats .fc-minor td {
+  border-top-style: dotted;
+}
+
+/* Sự kiện đặt lịch: chữ màu trắng để dễ đọc trên nền màu trạng thái */
+.o_calendar_spa_booking .fc-event:not(.o_event_dot) .fc-content,
+.o_calendar_spa_booking .fc-event:not(.o_event_dot) .fc-title,
+.o_calendar_spa_booking .fc-event:not(.o_event_dot) .o_event_title {
+  color: #fff !important;
+  font-weight: 600;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+/* Calendar core dùng nền subtle + overlay cho event nên nhìn nhạt.
+   Với lịch SPA: ép nền event dùng màu gốc (đậm), bỏ lớp mờ để màu sắc nét hơn. */
+.o_calendar_spa_booking .fc-event:not(.o_event_dot) .fc-bg {
+  background-color: var(--o-event-bg) !important;
+  opacity: 1 !important;
+}
+
+.o_calendar_spa_booking .fc-event:not(.o_event_dot) {
+  --o-bg-opacity: 1 !important;
+  --o-overlay-opacity: 0 !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Sự kiện đặt lịch: nội dung tỷ lệ với ô (min-height, padding, font) */
+.o_calendar_spa_booking .fc-time-grid-event {
+  margin-bottom: 1px;
+}
+
+.o_calendar_spa_booking .fc-time-grid-event .fc-content {
+  overflow: hidden;
+  max-height: 100%;
+  padding: 2px 4px;
+}
+
+.o_calendar_spa_booking .fc-time-grid-event .fc-time,
+.o_calendar_spa_booking .fc-time-grid-event .fc-title {
+  line-height: 1.2;
+  font-size: calc(12px + (var(--spa-pixels-per-hour, 80) - 80) * 0.08px);
+}
+
+/* Render calendar event title as 3 lines using "\n" from `calendar_event_title` */
+.o_calendar_spa_booking .o_event_title.text-truncate,
+.o_calendar_spa_booking .o_event_title {
+  white-space: pre-line !important;
+  text-overflow: clip !important;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.o_calendar_spa_booking .o_event_title {
+  line-height: 1.2;
+  font-size: calc(12px + (var(--spa-pixels-per-hour, 80) - 80) * 0.04px);
+}
+
+/* Không hiển thị time trong event (để giữ đúng Dòng 1..3 theo yêu cầu)
+   Lưu ý: không được ẩn các nhãn giờ ở cột trái; chỉ ẩn time nằm trong event. */
+.o_calendar_spa_booking .fc-time-grid-event .fc-time {
+  display: none !important;
+}
+
+/* Sự kiện ngắn (1 slot 15 phút) vẫn đủ chỗ hiển thị */
+.o_calendar_spa_booking .fc-time-grid-event.fc-short .fc-content {
+  flex-direction: row;
+}
+
+.o_calendar_spa_booking .fc-time-grid-event.fc-short .fc-time,
+.o_calendar_spa_booking .fc-time-grid-event.fc-short .fc-title {
+  display: inline-block;
+  font-size: inherit;
+}

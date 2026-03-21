@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_recurring_booking_wizard_form" model="ir.ui.view">
+        <field name="name">spa.recurring.booking.wizard.form</field>
+        <field name="model">spa.recurring.booking.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Đặt lịch theo ngày trong tuần">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="partner_id" options="{'no_create': False}"/>
+                            <field name="card_id" options="{'no_create': True}"/>
+                            <field name="start_date"/>
+                            <field name="start_time_float" widget="float_time"/>
+                        </group>
+                        <group string="Ngày trong tuần">
+                            <field name="mon"/>
+                            <field name="tue"/>
+                            <field name="wed"/>
+                            <field name="thu"/>
+                            <field name="fri"/>
+                            <field name="sat"/>
+                            <field name="sun"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_create_bookings" string="Tạo đặt lịch" type="object" class="btn-primary"/>
+                    <button string="Hủy" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_spa_recurring_booking_wizard" model="ir.actions.act_window">
+        <field name="name">Đặt lịch theo ngày trong tuần</field>
+        <field name="res_model">spa.recurring.booking.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="access_spa_service_booking_staff" model="ir.model.access">
+            <field name="name">booking_calendar.spa_service_booking_staff</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking"/>
+            <field name="group_id" ref="spa.group_spa_staff"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_spa_booking_non_session_offering_staff" model="ir.model.access">
+            <field name="name">booking_calendar.booking.non_session_offering_staff</field>
+            <field name="model_id" ref="booking_calendar.model_spa_booking_non_session_offering"/>
+            <field name="group_id" ref="spa.group_spa_staff"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+        <record id="access_spa_booking_non_session_offering_manager" model="ir.model.access">
+            <field name="name">booking_calendar.booking.non_session_offering_manager</field>
+            <field name="model_id" ref="booking_calendar.model_spa_booking_non_session_offering"/>
+            <field name="group_id" ref="spa.group_spa_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_spa_service_booking_line_staff" model="ir.model.access">
+            <field name="name">booking_calendar.spa_service_booking_line_staff</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking_line"/>
+            <field name="group_id" ref="spa.group_spa_staff"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_spa_recurring_booking_wizard_staff" model="ir.model.access">
+            <field name="name">booking_calendar.spa_recurring_booking_wizard_staff</field>
+            <field name="model_id" ref="booking_calendar.model_spa_recurring_booking_wizard"/>
+            <field name="group_id" ref="spa.group_spa_staff"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+    </data>
+</odoo>
