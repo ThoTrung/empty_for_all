@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_spa_payroll_user" model="res.groups">
+        <field name="name">Spa / Phiếu lương (đọc)</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+        <field name="implied_ids" eval="[(4, ref('hr.group_hr_user'))]"/>
+    </record>
+    <record id="group_spa_payroll_manager" model="res.groups">
+        <field name="name">Spa / Phiếu lương (quản trị)</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+        <field name="implied_ids" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_user')), (4, ref('spa.group_spa_manager'))]"/>
+    </record>
+</odoo>

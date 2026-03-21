@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="seq_spa_staff_payroll" model="ir.sequence">
+        <field name="name">Phiếu lương Spa</field>
+        <field name="code">spa.staff.payroll</field>
+        <field name="prefix">PL/%(y)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_spa_staff_overtime_request" model="ir.sequence">
+        <field name="name">Đăng ký làm thêm giờ</field>
+        <field name="code">spa.staff.overtime.request</field>
+        <field name="prefix">OT/%(y)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

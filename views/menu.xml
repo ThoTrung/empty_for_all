@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_spa_payroll_root"
+              name="Lương NV"
+              parent="spa.menu_spa_root"
+              sequence="45"
+              groups="spa_staff_payroll.group_spa_payroll_user"/>
+
+    <menuitem id="menu_spa_staff_payroll"
+              name="Phiếu lương"
+              parent="menu_spa_payroll_root"
+              action="action_spa_staff_payroll"
+              sequence="10"
+              groups="spa_staff_payroll.group_spa_payroll_manager"/>
+
+    <menuitem id="menu_spa_staff_payroll_generate"
+              name="Tạo phiếu lương theo tháng"
+              parent="menu_spa_payroll_root"
+              action="action_spa_staff_payroll_generate_wizard"
+              sequence="5"
+              groups="spa_staff_payroll.group_spa_payroll_manager"/>
+
+    <menuitem id="menu_spa_staff_overtime"
+              name="Làm thêm giờ"
+              parent="menu_spa_payroll_root"
+              action="action_spa_staff_overtime"
+              sequence="20"/>
+
+    <menuitem id="menu_spa_staff_dayoff"
+              name="Ngày nghỉ"
+              parent="menu_spa_payroll_root"
+              action="action_spa_staff_dayoff"
+              sequence="30"
+              groups="spa_staff_payroll.group_spa_payroll_manager"/>
+</odoo>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_contract_view_form_spa_payroll" model="ir.ui.view">
+        <field name="name">hr.contract.form.spa.payroll</field>
+        <field name="model">hr.contract</field>
+        <field name="inherit_id" ref="hr_contract.hr_contract_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='information']//group[@name='salary']" position="inside">
+                <label for="spa_overtime_hourly_rate"/>
+                <div class="o_row">
+                    <field name="spa_overtime_hourly_rate" class="oe_inline"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_staff_payroll_tree" model="ir.ui.view">
+        <field name="name">spa.staff.payroll.tree</field>
+        <field name="model">spa.staff.payroll</field>
+        <field name="arch" type="xml">
+            <tree string="Phiếu lương" decoration-muted="state=='cancel'">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="wage_fixed"/>
+                <field name="amount_service"/>
+                <field name="amount_overtime"/>
+                <field name="amount_total_payable"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_spa_staff_payroll_form" model="ir.ui.view">
+        <field name="name">spa.staff.payroll.form</field>
+        <field name="model">spa.staff.payroll</field>
+        <field name="arch" type="xml">
+            <form string="Phiếu lương">
+                <header>
+                    <button name="action_load_contract_values" string="Lấy từ hợp đồng" type="object" class="btn-secondary" invisible="state != 'draft'"/>
+                    <button name="action_recompute_service_lines" string="Tính lại dịch vụ" type="object" class="btn-secondary" invisible="state != 'draft'"/>
+                    <button name="action_recompute_overtime_lines" string="Tính lại làm thêm" type="object" class="btn-secondary" invisible="state != 'draft'"/>
+                    <button name="action_confirm" string="Xác nhận" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_draft" string="Mở lại" type="object" invisible="state != 'done'"/>
+                    <button name="action_cancel" string="Hủy" type="object" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="employee_id" readonly="state != 'draft'"/>
+                            <field name="contract_id" readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" groups="base.group_multi_currency"/>
+                        </group>
+                        <group>
+                            <field name="date_from" readonly="state != 'draft'"/>
+                            <field name="date_to" readonly="state != 'draft'"/>
+                            <field name="wage_fixed"/>
+                            <field name="overtime_hourly_rate"/>
+                        </group>
+                    </group>
+                    <group string="Tổng hợp">
+                        <group>
+                            <field name="amount_service" readonly="1"/>
+                            <field name="amount_overtime" readonly="1"/>
+                            <field name="amount_bonus"/>
+                        </group>
+                        <group>
+                            <field name="amount_insurance"/>
+                            <field name="amount_other_deduction"/>
+                            <field name="amount_total_payable" class="fw-bold"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Dịch vụ (buổi)" name="service_lines">
+                            <field name="service_line_ids" readonly="state != 'draft'">
+                                <tree editable="bottom" create="0" delete="0">
+                                    <field name="session_id"/>
+                                    <field name="session_date"/>
+                                    <field name="product_id"/>
+                                    <field name="booking_id" optional="show"/>
+                                    <field name="amount_total"/>
+                                    <field name="staff_count"/>
+                                    <field name="amount_share"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                            <p class="text-muted">
+                                Nguồn: <code>spa.treatment.session</code> trạng thái Hoàn thành trong kỳ;
+                                tiền buổi = trường <b>Lương nhân viên / 1 lần dịch vụ</b> trên sản phẩm (module Spa);
+                                chia đều cho các nhân viên trong buổi.
+                            </p>
+                        </page>
+                        <page string="Làm thêm giờ" name="overtime_lines">
+                            <field name="overtime_line_ids" readonly="state != 'draft'">
+                                <tree editable="bottom" create="0" delete="0">
+                                    <field name="request_id" optional="show"/>
+                                    <field name="overtime_date"/>
+                                    <field name="hours"/>
+                                    <field name="hourly_rate"/>
+                                    <field name="amount_subtotal"/>
+                                    <field name="note" optional="show"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                            <p class="text-muted">
+                                Nguồn: đăng ký làm thêm đã <b>Duyệt</b> trong kỳ; thành tiền = giờ × đơn giá trên phiếu.
+                            </p>
+                        </page>
+                        <page string="Ngày nghỉ (tham khảo)" name="dayoffs">
+                            <field name="dayoff_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="date_start"/>
+                                    <field name="date_end"/>
+                                    <field name="dayoff_type"/>
+                                </tree>
+                            </field>
+                            <field name="dayoff_count" invisible="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_spa_staff_payroll" model="ir.actions.act_window">
+        <field name="name">Phiếu lương</field>
+        <field name="res_model">spa.staff.payroll</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

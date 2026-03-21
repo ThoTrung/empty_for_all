@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_spa_staff_payroll_manager,spa.staff.payroll manager,model_spa_staff_payroll,spa_staff_payroll.group_spa_payroll_manager,1,1,1,1
+access_spa_staff_payroll_user,spa.staff.payroll user,model_spa_staff_payroll,spa_staff_payroll.group_spa_payroll_user,1,0,0,0
+access_spa_staff_payroll_service_line_manager,spa.staff.payroll.service.line manager,model_spa_staff_payroll_service_line,spa_staff_payroll.group_spa_payroll_manager,1,1,1,1
+access_spa_staff_payroll_service_line_user,spa.staff.payroll.service.line user,model_spa_staff_payroll_service_line,spa_staff_payroll.group_spa_payroll_user,1,0,0,0
+access_spa_staff_payroll_overtime_line_manager,spa.staff.payroll.overtime.line manager,model_spa_staff_payroll_overtime_line,spa_staff_payroll.group_spa_payroll_manager,1,1,1,1
+access_spa_staff_payroll_overtime_line_user,spa.staff.payroll.overtime.line user,model_spa_staff_payroll_overtime_line,spa_staff_payroll.group_spa_payroll_user,1,0,0,0
+access_spa_staff_dayoff_manager,spa.staff.dayoff manager,model_spa_staff_dayoff,spa_staff_payroll.group_spa_payroll_manager,1,1,1,1
+access_spa_staff_dayoff_user,spa.staff.dayoff user,model_spa_staff_dayoff,spa_staff_payroll.group_spa_payroll_user,1,1,1,0
+access_spa_staff_overtime_request_own,spa.staff.overtime.request own,model_spa_staff_overtime_request,base.group_user,1,1,1,0
+access_spa_staff_overtime_request_manager,spa.staff.overtime.request manager,model_spa_staff_overtime_request,spa_staff_payroll.group_spa_payroll_manager,1,1,1,1
+access_wizard_spa_staff_payroll_generate,wizard spa staff payroll generate,model_spa_staff_payroll_generate_wizard,spa_staff_payroll.group_spa_payroll_manager,1,1,1,1

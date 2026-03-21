@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_spa_overtime_employee_own" model="ir.rule">
+        <field name="name">spa.staff.overtime: nhân viên chỉ xem của mình</field>
+        <field name="model_id" ref="model_spa_staff_overtime_request"/>
+        <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="rule_spa_overtime_manager_all" model="ir.rule">
+        <field name="name">spa.staff.overtime: quản lý xem tất cả</field>
+        <field name="model_id" ref="model_spa_staff_overtime_request"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_manager'))]"/>
+    </record>
+    <record id="rule_spa_overtime_hr_all" model="ir.rule">
+        <field name="name">spa.staff.overtime: HR xem tất cả</field>
+        <field name="model_id" ref="model_spa_staff_overtime_request"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+    </record>
+</odoo>

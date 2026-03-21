@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_staff_payroll_generate_wizard" model="ir.ui.view">
+        <field name="name">spa.staff.payroll.generate.wizard.form</field>
+        <field name="model">spa.staff.payroll.generate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Tạo phiếu lương theo tháng">
+                <group>
+                    <field name="company_id"/>
+                    <field name="year"/>
+                    <field name="month"/>
+                    <field name="employee_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                </group>
+                <footer>
+                    <button name="action_generate" string="Tạo" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button string="Đóng" class="btn-secondary" special="cancel" data-hotkey="z"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_spa_staff_payroll_generate_wizard" model="ir.actions.act_window">
+        <field name="name">Tạo phiếu lương theo tháng</field>
+        <field name="res_model">spa.staff.payroll.generate.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

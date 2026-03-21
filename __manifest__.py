@@ -1,0 +1,30 @@
+# -*- coding: utf-8 -*-
+{
+    "name": "Spa Staff Payroll",
+    "version": "17.0.1.0.0",
+    "category": "Human Resources",
+    "summary": "Phiếu lương nhân viên Spa (dịch vụ theo buổi, làm thêm giờ, nghỉ)",
+    "author": "Spa / booking_calendar integration",
+    "license": "LGPL-3",
+    "depends": [
+        "spa",
+        "booking_calendar",
+        "hr",
+        "hr_contract",
+        "mail",
+    ],
+    "data": [
+        "security/spa_staff_payroll_security.xml",
+        "security/spa_staff_payroll_rules.xml",
+        "security/ir.model.access.csv",
+        "data/ir_sequence_data.xml",
+        "views/hr_contract_views.xml",
+        "views/spa_staff_dayoff_views.xml",
+        "views/spa_staff_overtime_views.xml",
+        "views/spa_staff_payroll_views.xml",
+        "wizards/spa_staff_payroll_generate_wizard_views.xml",
+        "views/menu.xml",
+    ],
+    "installable": True,
+    "application": False,
+}
