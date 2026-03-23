@@ -30,7 +30,7 @@
                         <field name="name" readonly="1"/>
                         <field name="employee_id"/>
                         <field name="overtime_date"/>
-                        <field name="hours"/>
+                        <field name="hours" default_focus="1"/>
                         <field name="note"/>
                         <field name="approved_by" readonly="1"/>
                         <field name="approved_date" readonly="1"/>

@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Cùng category "Spa" với các nhóm spa.* → hiện trong Cài đặt > Người dùng > tab Quyền (nhóm Spa) -->
     <record id="group_spa_payroll_user" model="res.groups">
-        <field name="name">Spa / Phiếu lương (đọc)</field>
-        <field name="category_id" ref="base.module_category_human_resources"/>
-        <field name="implied_ids" eval="[(4, ref('hr.group_hr_user'))]"/>
+        <field name="name">Phiếu lương Spa (đọc)</field>
+        <field name="category_id" ref="spa.module_category_spa"/>
+        <field name="comment">Xem phiếu lương, không sửa/tạo (trừ đăng ký làm thêm của chính mình).</field>
+        <field name="implied_ids" eval="[(4, ref('spa.group_spa_staff')), (4, ref('hr.group_hr_user'))]"/>
     </record>
     <record id="group_spa_payroll_manager" model="res.groups">
-        <field name="name">Spa / Phiếu lương (quản trị)</field>
-        <field name="category_id" ref="base.module_category_human_resources"/>
-        <field name="implied_ids" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_user')), (4, ref('spa.group_spa_manager'))]"/>
+        <field name="name">Phiếu lương Spa (quản trị)</field>
+        <field name="category_id" ref="spa.module_category_spa"/>
+        <field name="comment">Tạo/sửa phiếu lương, wizard tháng, ngày nghỉ, duyệt làm thêm giờ; quản lý hợp đồng (HR).</field>
+        <field name="implied_ids" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_user')), (4, ref('hr_contract.group_hr_contract_manager'))]"/>
+    </record>
+
+    <!-- Spa Manager tự có quản trị phiếu lương (không vòng lặp: payroll_manager KHÔNG imply spa_manager) -->
+    <record id="spa.group_spa_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_manager'))]"/>
     </record>
 </odoo>

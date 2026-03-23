@@ -4,7 +4,21 @@
               name="Lương NV"
               parent="spa.menu_spa_root"
               sequence="45"
-              groups="spa_staff_payroll.group_spa_payroll_user"/>
+              groups="spa.group_spa_staff,spa_staff_payroll.group_spa_payroll_user,spa_staff_payroll.group_spa_payroll_manager"/>
+
+    <!-- HR: dùng cho chuẩn bị dữ liệu trước khi chạy wizard (nhân viên + user, hợp đồng Running) -->
+    <menuitem id="menu_spa_payroll_employees"
+              name="Nhân viên (HR)"
+              parent="menu_spa_payroll_root"
+              action="hr.open_view_employee_list_my"
+              sequence="2"
+              groups="spa_staff_payroll.group_spa_payroll_user,spa_staff_payroll.group_spa_payroll_manager"/>
+    <menuitem id="menu_spa_payroll_contracts"
+              name="Hợp đồng lao động"
+              parent="menu_spa_payroll_root"
+              action="hr_contract.action_hr_contract"
+              sequence="3"
+              groups="spa_staff_payroll.group_spa_payroll_manager"/>
 
     <menuitem id="menu_spa_staff_payroll"
               name="Phiếu lương"
@@ -24,7 +38,8 @@
               name="Làm thêm giờ"
               parent="menu_spa_payroll_root"
               action="action_spa_staff_overtime"
-              sequence="20"/>
+              sequence="20"
+              groups="spa.group_spa_staff,spa_staff_payroll.group_spa_payroll_user,spa_staff_payroll.group_spa_payroll_manager"/>
 
     <menuitem id="menu_spa_staff_dayoff"
               name="Ngày nghỉ"

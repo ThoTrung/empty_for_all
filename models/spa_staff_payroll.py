@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.tools.safe_eval import safe_eval
 
 
 class SpaStaffPayroll(models.Model):
@@ -206,6 +207,36 @@ class SpaStaffPayroll(models.Model):
                     "wage_fixed": c.wage,
                     "overtime_hourly_rate": c.spa_overtime_hourly_rate,
                 })
+
+    def action_open_bookings_calendar(self):
+        """Mở Đặt lịch dịch vụ (calendar) lọc theo user nhân viên + kỳ phiếu lương."""
+        self.ensure_one()
+        if not self.user_id:
+            raise UserError(_("Nhân viên chưa gắn user — không lọc được đặt lịch."))
+        start = fields.Datetime.to_datetime(self.date_from)
+        end_exclusive = fields.Datetime.to_datetime(self.date_to) + timedelta(days=1)
+        uid = self.user_id.id
+        domain = [
+            "&",
+            ("start_datetime", ">=", start),
+            ("start_datetime", "<", end_exclusive),
+            "|",
+            ("staff_ids", "in", [uid]),
+            ("staff_id", "=", uid),
+        ]
+        action = self.env["ir.actions.actions"]._for_xml_id("booking_calendar.action_spa_service_booking")
+        if not isinstance(action, dict):
+            action = dict(action)
+        action["domain"] = domain
+        action["name"] = _("Đặt lịch (theo phiếu lương)")
+        base_ctx = action.get("context") or {}
+        if isinstance(base_ctx, str):
+            base_ctx = safe_eval(base_ctx, {"context": self.env.context})
+        merged = dict(base_ctx)
+        merged.setdefault("search_default_confirmed", 0)
+        merged["initial_date"] = fields.Date.to_string(self.date_from)
+        action["context"] = merged
+        return action
 
     def _session_datetime_domain(self):
         self.ensure_one()

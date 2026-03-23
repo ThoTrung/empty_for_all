@@ -16,12 +16,20 @@
 4. **Ngày nghỉ:** `spa.staff.dayoff` — hiển thị cắt giao kỳ (tham khảo).
 5. **Đăng ký làm thêm:** nhân viên tạo → gửi duyệt → Manager/HR duyệt.
 
-## Nhóm quyền
+## Menu Spa → Lương NV
 
-- **Spa / Phiếu lương (đọc)** — xem phiếu (read).
-- **Spa / Phiếu lương (quản trị)** — tạo/sửa phiếu, wizard, duyệt làm thêm; kế thừa `spa.group_spa_manager`.
+- **Nhân viên (HR)** — danh sách nhân viên (gắn User đăng nhập).
+- **Hợp đồng lao động** — tạo hợp đồng trạng thái _Running_, lương, đơn giá làm thêm/giờ (nhóm quản trị phiếu lương).
+- Wizard tạo phiếu theo tháng, phiếu lương, làm thêm giờ, ngày nghỉ.
 
-Gán nhóm trong **Cài đặt → Người dùng**.
+## Nhóm quyền (mục **Spa** trên form người dùng)
+
+- **Phiếu lương Spa (đọc)** — xem phiếu lương; kế thừa **Spa Staff** + **HR / Nhân viên** (đọc nhân viên).
+- **Phiếu lương Spa (quản trị)** — tạo/sửa phiếu, wizard, hợp đồng, ngày nghỉ, duyệt làm thêm; kế thừa nhóm đọc + **Quản lý hợp đồng** (`hr_contract`).
+
+**Spa Manager** được cấu hình tự kế thừa **Phiếu lương Spa (quản trị)** — user đã là Spa Manager sẽ thấy menu **Lương NV** sau khi upgrade module.
+
+Gán thêm nhóm đọc/quản trị trong **Cài đặt → Người dùng → tab Quyền → nhóm Spa** (không nằm trong mục Nhân sự).
 
 ## Cài đặt
 

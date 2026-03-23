@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class SpaStaffPayrollServiceLine(models.Model):
@@ -34,16 +34,27 @@ class SpaStaffPayrollServiceLine(models.Model):
         store=True,
         readonly=True,
     )
+    partner_id = fields.Many2one(
+        related="session_id.partner_id",
+        string="Khách hàng",
+        store=True,
+        readonly=True,
+    )
     session_date = fields.Datetime(
         related="session_id.date",
         string="Ngày buổi",
         store=True,
         readonly=True,
     )
+    therapist_names = fields.Char(
+        string="Danh sách nhân viên",
+        compute="_compute_therapist_names",
+        store=True,
+    )
     amount_total = fields.Monetary(
-        string="Tiền buổi (cấu hình SP)",
+        string="Tiền buổi",
         currency_field="currency_id",
-        help="Tổng tiền theo sản phẩm trước khi chia.",
+        help="Tổng tiền theo sản phẩm (Lương NV/1 lần DV) trước khi chia.",
     )
     staff_count = fields.Integer(
         string="Số NV",
@@ -52,13 +63,28 @@ class SpaStaffPayrollServiceLine(models.Model):
     amount_share = fields.Monetary(
         string="Tiền NV này",
         currency_field="currency_id",
-        help="Phần của nhân viên trên phiếu lương.",
+        help="Phần của nhân viên trên phiếu lương (sau khi chia).",
     )
     currency_id = fields.Many2one(
         related="payroll_id.currency_id",
         store=True,
         readonly=True,
     )
+
+    @api.depends("session_id", "session_id.therapist_ids", "session_id.therapist_id")
+    def _compute_therapist_names(self):
+        for line in self:
+            session = line.session_id
+            if not session:
+                line.therapist_names = ""
+                continue
+            users = session.therapist_ids
+            if not users and session.therapist_id:
+                users = session.therapist_id
+            if users:
+                line.therapist_names = ", ".join(users.mapped("name"))
+            else:
+                line.therapist_names = ""
 
 
 class SpaStaffPayrollOvertimeLine(models.Model):

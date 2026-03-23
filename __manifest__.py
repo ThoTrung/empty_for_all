@@ -6,6 +6,7 @@
     "summary": "Phiếu lương nhân viên Spa (dịch vụ theo buổi, làm thêm giờ, nghỉ)",
     "author": "Spa / booking_calendar integration",
     "license": "LGPL-3",
+    'sequence': -100,
     "depends": [
         "spa",
         "booking_calendar",

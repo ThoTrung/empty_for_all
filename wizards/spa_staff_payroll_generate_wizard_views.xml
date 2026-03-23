@@ -5,6 +5,13 @@
         <field name="model">spa.staff.payroll.generate.wizard</field>
         <field name="arch" type="xml">
             <form string="Tạo phiếu lương theo tháng">
+                <div class="alert alert-info mb-3" role="alert">
+                    <p class="mb-1"><strong>Trước khi tạo:</strong></p>
+                    <ul class="mb-0 ps-3">
+                        <li>Tạo <b>Nhân viên</b> và gắn <b>User</b> đăng nhập (menu <b>Spa → Lương NV → Nhân viên (HR)</b>).</li>
+                        <li>Tạo <b>Hợp đồng lao động</b> trạng thái <b>Đang chạy</b>, nhập lương và đơn giá làm thêm/giờ (menu <b>Hợp đồng lao động</b>).</li>
+                    </ul>
+                </div>
                 <group>
                     <field name="company_id"/>
                     <field name="year"/>

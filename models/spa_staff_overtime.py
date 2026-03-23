@@ -27,7 +27,12 @@ class SpaStaffOvertimeRequest(models.Model):
             [("user_id", "=", self.env.user.id)], limit=1
         ),
     )
-    overtime_date = fields.Date(string="Ngày làm thêm", required=True, tracking=True)
+    overtime_date = fields.Date(
+        string="Ngày làm thêm",
+        required=True,
+        tracking=True,
+        default=fields.Date.context_today,
+    )
     hours = fields.Float(string="Số giờ", required=True, tracking=True)
     note = fields.Text(string="Ghi chú")
     state = fields.Selection(

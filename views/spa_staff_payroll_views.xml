@@ -32,10 +32,17 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_bookings_calendar" type="object" class="oe_stat_button" icon="fa-calendar"
+                                string="Đặt lịch (kỳ &amp; NV)"
+                                invisible="not user_id"
+                                help="Mở Đặt lịch dịch vụ, lọc theo nhân viên và kỳ trên phiếu (từ ngày đến ngày)."/>
+                    </div>
                     <group>
                         <group>
                             <field name="name" readonly="1"/>
                             <field name="employee_id" readonly="state != 'draft'"/>
+                            <field name="user_id" invisible="1"/>
                             <field name="contract_id" readonly="state != 'draft'"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="currency_id" groups="base.group_multi_currency"/>
@@ -63,13 +70,14 @@
                         <page string="Dịch vụ (buổi)" name="service_lines">
                             <field name="service_line_ids" readonly="state != 'draft'">
                                 <tree editable="bottom" create="0" delete="0">
-                                    <field name="session_id"/>
-                                    <field name="session_date"/>
-                                    <field name="product_id"/>
-                                    <field name="booking_id" optional="show"/>
-                                    <field name="amount_total"/>
-                                    <field name="staff_count"/>
-                                    <field name="amount_share"/>
+                                    <field name="session_date" string="Ngày buổi"/>
+                                    <field name="partner_id" string="Tên khách hàng"/>
+                                    <field name="product_id" string="Dịch vụ / gói"/>
+                                    <field name="amount_total" string="Tiền buổi"/>
+                                    <field name="staff_count" string="Số NV"/>
+                                    <field name="therapist_names" string="Danh sách nhân viên"/>
+                                    <field name="amount_share" string="Tiền NV này" sum="Tiền NV này"/>
+                                    <field name="session_id" column_invisible="1"/>
                                     <field name="currency_id" column_invisible="1"/>
                                 </tree>
                             </field>
@@ -86,7 +94,7 @@
                                     <field name="overtime_date"/>
                                     <field name="hours"/>
                                     <field name="hourly_rate"/>
-                                    <field name="amount_subtotal"/>
+                                    <field name="amount_subtotal" sum="Làm thêm giờ"/>
                                     <field name="note" optional="show"/>
                                     <field name="currency_id" column_invisible="1"/>
                                 </tree>
