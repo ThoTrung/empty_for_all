@@ -211,6 +211,21 @@ CalendarController.prototype.reloadCalendarConfig = async function() {
     return res;
 };
 
+CalendarController.prototype.openShiftConfigWizard = async function() {
+    if (this.props?.resModel !== "spa.service.booking") {
+        return;
+    }
+    // Use the currently displayed calendar date (local) so duration=0 means "rest today".
+    const luxonDate = this.date;
+    const shiftDate = luxonDate?.toISODate?luxonDate.toISODate() : null;
+    const action = await this.orm.call(
+        "booking.shift.config",
+        "action_open_config_modal",
+        shiftDate?[shiftDate]:[]
+    );
+    return this.action.doAction(action);
+};
+
 // ——— Giữ scale khi chọn ngày từ calendar nhỏ (chỉ áp dụng cho đặt lịch SPA) ———
 // Core Odoo: datePickerProps.onSelect khi click cùng ngày thì cycle scale (day→week→month),
 // khi click ngày khác trong tuần thì ép scale="day" → lịch nhảy lung tung.

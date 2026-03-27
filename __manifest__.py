@@ -18,6 +18,7 @@
         "data/booking_cron.xml",
         "views/spa_booking_non_session_offering_view.xml",
         "views/spa_service_booking_view.xml",
+        "views/booking_shift_config_views.xml",
         "views/spa_treatment_session_booking_views.xml",
         "wizards/recurring_booking_wizard_views.xml",
         "views/res_config_settings_views.xml",

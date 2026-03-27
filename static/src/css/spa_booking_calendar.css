@@ -123,3 +123,12 @@
   display: inline-block;
   font-size: inherit;
 }
+
+/* Compact popover for display settings in calendar header */
+.o_spa_calendar_display_setting .o_spa_calendar_display_popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 17rem;
+}

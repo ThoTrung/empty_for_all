@@ -55,10 +55,11 @@ export class SpaCalendarHeightSelector extends Component {
     setup() {
         this.orm = useService("orm");
         this.state = useState({
-            pixelsPerHour: this.props.model?.meta?.spa_calendar_pixels_per_hour?? 80,
-            minTime: this.props.model?.meta?.spa_calendar_min_time ?? "05:00:00",
-            maxTime: this.props.model?.meta?.spa_calendar_max_time ?? "22:00:00",
+            pixelsPerHour: this.props.model?.meta?.spa_calendar_pixels_per_hour??80,
+            minTime: this.props.model?.meta?.spa_calendar_min_time??"05:00:00",
+            maxTime: this.props.model?.meta?.spa_calendar_max_time??"22:00:00",
             saving: false,
+            open: false,
         });
     }
 
@@ -82,6 +83,18 @@ export class SpaCalendarHeightSelector extends Component {
         const v = this.props.model?.meta?.spa_calendar_max_time;
         if (v != null) return v;
         return this.state.maxTime;
+    }
+
+    get summaryLabel() {
+        return `${this.currentMinTime} - ${this.currentMaxTime} / ${this.currentPixelsPerHour}px`;
+    }
+
+    togglePanel() {
+        this.state.open = !this.state.open;
+    }
+
+    closePanel() {
+        this.state.open = false;
     }
 
     async saveAndReload(payload) {
@@ -108,6 +121,7 @@ export class SpaCalendarHeightSelector extends Component {
         await this.saveAndReload({
             pixels_per_hour: value
         });
+        this.closePanel();
     }
 
     async onMinTimeChange(ev) {

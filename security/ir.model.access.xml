@@ -46,5 +46,23 @@
             <field name="perm_create" eval="1"/>
             <field name="perm_unlink" eval="1"/>
         </record>
+        <record id="access_booking_shift_config_staff" model="ir.model.access">
+            <field name="name">booking_calendar.booking_shift_config_staff</field>
+            <field name="model_id" ref="booking_calendar.model_booking_shift_config"/>
+            <field name="group_id" ref="spa.group_spa_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_booking_shift_config_line_staff" model="ir.model.access">
+            <field name="name">booking_calendar.booking_shift_config_line_staff</field>
+            <field name="model_id" ref="booking_calendar.model_booking_shift_config_line"/>
+            <field name="group_id" ref="spa.group_spa_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
     </data>
 </odoo>

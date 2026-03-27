@@ -12,8 +12,9 @@
                     <field name="product_id"/>
                     <field name="staff_ids"/>
                     <field name="bed_id"/>
-                    <filter string="Đã xác nhận" name="draft" domain="[('state', '=', 'draft')]"/>
-                    <filter string="Đang phục vụ" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                     <filter string="Đặt lịch" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Đã xác nhận" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                    <filter string="Đang phục vụ" name="doing" domain="[('state', '=', 'doing')]"/>
                     <filter string="Đã hủy" name="cancel" domain="[('state', '=', 'cancel')]"/>
                     <separator/>
                     <filter string="Lịch của tôi" name="my_bookings" domain="[('staff_ids', 'in', [uid])]"/>

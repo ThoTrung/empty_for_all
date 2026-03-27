@@ -159,11 +159,11 @@ class SpaServiceBooking(models.Model):
         if d <= 0:
             return False
         try:
-            hi = int(h)
+            hi = float(h)
         except (TypeError, ValueError):
             return False
-        # allow 0..23
-        return 0 <= hi <= 23
+        # allow 0 <= start < 24 (supports minutes as decimals)
+        return 0 <= hi < 24
 
     def _spa_staff_rotation_base_ids(self, required_level):
         """Danh sách NV đủ cấu hình ca theo cấp độ, theo thứ tự sequence."""
@@ -844,6 +844,84 @@ class SpaServiceBooking(models.Model):
         for rec in self:
             if rec.state == "cancel":
                 continue
+            # Check staff shift window (from booking.shift.config, day-specific).
+            # duration=0 means "nhan vien nghi ngay do".
+            def _load_shift_map(shift_day):
+                cfg = self.env["booking.shift.config"].search(
+                    [("shift_date", "=", shift_day)], limit=1
+                )
+                mapping = {}
+                if cfg:
+                    for line in cfg.line_ids:
+                        dur = float(line.shift_duration_hours or 0)
+                        st = float(line.shift_start_time_hours or 0)
+                        for uid in line.user_ids.ids:
+                            mapping[uid] = (st, dur)
+                return mapping
+
+            def _within_shift(user, start_dt, end_dt):
+                if not start_dt or not end_dt:
+                    return True
+                local_start = fields.Datetime.context_timestamp(self, start_dt) or start_dt
+                local_end = fields.Datetime.context_timestamp(self, end_dt) or end_dt
+                if getattr(local_start, "tzinfo", None):
+                    local_start = local_start.replace(tzinfo=None)
+                if getattr(local_end, "tzinfo", None):
+                    local_end = local_end.replace(tzinfo=None)
+
+                day_local = local_start.date()
+                prev_day = day_local - timedelta(days=1)
+                map_today = _load_shift_map(day_local)
+                map_prev = _load_shift_map(prev_day)
+
+                def _get_shift(shift_day):
+                    if shift_day == day_local and user.id in map_today:
+                        return map_today[user.id]
+                    if shift_day == prev_day and user.id in map_prev:
+                        return map_prev[user.id]
+                    h = getattr(user, "spa_shift_start_hour", None)
+                    d = getattr(user, "spa_shift_duration_hours", None)
+                    if h is False or h is None or d is False or d is None:
+                        return None, None
+                    try:
+                        return float(h), float(d)
+                    except (TypeError, ValueError):
+                        return None, None
+
+                def _check_for_day(shift_day):
+                    st_hours, duration_hours = _get_shift(shift_day)
+                    if st_hours is None or duration_hours is None:
+                        return False
+                    if duration_hours <= 0:
+                        return False
+                    if st_hours < 0 or st_hours >= 24:
+                        return False
+                    shift_start = datetime.combine(
+                        shift_day, datetime.min.time()
+                    ) + timedelta(hours=st_hours)
+                    shift_end = shift_start + timedelta(hours=duration_hours)
+                    return local_start >= shift_start and local_end <= shift_end
+
+                return _check_for_day(day_local) or _check_for_day(prev_day)
+
+            for user in rec.staff_ids:
+                if not _within_shift(user, rec.start_datetime, rec.end_datetime):
+                    raise ValidationError(
+                        _(
+                            "Nhân viên %s không thuộc ca làm đã cấu hình cho ngày này.",
+                            user.name,
+                        )
+                    )
+            for line in rec.booking_line_ids:
+                if line.staff_id and line.start_datetime and line.end_datetime:
+                    if not _within_shift(line.staff_id, line.start_datetime, line.end_datetime):
+                        raise ValidationError(
+                            _(
+                                "Nhân viên %s không thuộc ca làm đã cấu hình cho ngày này.",
+                                line.staff_id.name,
+                            )
+                        )
+
             usages = rec._get_staff_capacity_usages()
             for staff_id, start, end, cap in usages:
                 total = rec._sum_staff_capacity_in_range(staff_id, start, end, exclude_booking_id=rec.id)
@@ -1040,6 +1118,20 @@ class SpaServiceBooking(models.Model):
             "view_mode": "form",
             "target": "new",
             "context": ctx,
+        }
+
+    def action_open_shift_config_wizard(self):
+        shift_date = self.env.context.get("shift_date") or fields.Date.context_today(self)
+        config = self.env["booking.shift.config"].get_or_create_for_date(shift_date)
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Ca làm"),
+            "res_model": "booking.shift.config",
+            "res_id": config.id,
+            "view_mode": "form",
+            "views": [(False, "form")],
+            "target": "new",
+            "context": dict(self.env.context),
         }
 
     def action_done(self):
@@ -1311,27 +1403,6 @@ class SpaServiceBooking(models.Model):
             domain.append(("spa_staff_level", "=", "regular"))
             domain.append(("spa_staff_level", "=", False))
         users = self.env["res.users"].search(domain, order="spa_staff_sequence, id")
-        # Luân ca / gợi ý: chỉ NV đã khai báo đủ giờ bắt đầu ca + thời lượng (> 0).
-        def _shift_fully_configured(user):
-            h = user.spa_shift_start_hour
-            if h is False or h is None:
-                return False
-            d = user.spa_shift_duration_hours
-            if d is False or d is None:
-                return False
-            try:
-                d = float(d)
-            except (TypeError, ValueError):
-                return False
-            if d <= 0:
-                return False
-            try:
-                hi = int(h)
-            except (TypeError, ValueError):
-                return False
-            if hi < 0 or hi > 23:
-                return False
-            return True
 
         # Filter by shift window (ca bắt đầu + duration_hours).
         #
@@ -1348,21 +1419,61 @@ class SpaServiceBooking(models.Model):
         start_dt_naive = local_start
         end_dt_naive = local_end
 
+        # Shift config theo ngay (từ modal "Ca làm"): ghi đè lên res.users.
+        # Luu y: duration=0 => coi như nhan vien nghi, chi ảnh hưởng ngay do.
+        day = start_dt_naive.date()
+        prev_day = day - timedelta(days=1)
+
+        def _load_shift_map(shift_day):
+            cfg = self.env["booking.shift.config"].search(
+                [("shift_date", "=", shift_day)], limit=1
+            )
+            mapping = {}
+            if cfg:
+                for line in cfg.line_ids:
+                    dur = float(line.shift_duration_hours or 0)
+                    st = float(line.shift_start_time_hours or 0)
+                    for uid in line.user_ids.ids:
+                        mapping[uid] = (st, dur)
+            return mapping
+
+        shift_map_today = _load_shift_map(day)
+        shift_map_prev = _load_shift_map(prev_day)
+
+        def _get_shift_for_user_day(user, shift_day):
+            # 1) Config per-day override
+            if shift_day == day and user.id in shift_map_today:
+                return shift_map_today[user.id]
+            if shift_day == prev_day and user.id in shift_map_prev:
+                return shift_map_prev[user.id]
+
+            # 2) Fallback to legacy res.users fields (global)
+            h = getattr(user, "spa_shift_start_hour", None)
+            d = getattr(user, "spa_shift_duration_hours", None)
+            if h is False or h is None or d is False or d is None:
+                return None, None
+            try:
+                st = float(h)
+                dur = float(d)
+            except (TypeError, ValueError):
+                return None, None
+            return st, dur
+
         # A booking is considered doable by that staff if the whole [start, end]
         # fits within the staff's shift window (trong giờ local).
         def _within_shift(user):
-            if not _shift_fully_configured(user):
-                return False
-            shift_start_hour = int(user.spa_shift_start_hour)
-            duration_hours = float(user.spa_shift_duration_hours)
+            def _check_for_day(shift_day):
+                st_hours, duration_hours = _get_shift_for_user_day(user, shift_day)
+                if st_hours is None or duration_hours is None:
+                    return False
+                if duration_hours <= 0:
+                    return False
+                if st_hours < 0 or st_hours >= 24:
+                    return False
 
-            day = start_dt_naive.date()
-            prev_day = day - timedelta(days=1)
-
-            def _check_for_day(d):
-                shift_start = datetime.combine(d, datetime.min.time()).replace(
-                    hour=shift_start_hour, minute=0, second=0, microsecond=0
-                )
+                shift_start = datetime.combine(
+                    shift_day, datetime.min.time()
+                ) + timedelta(hours=st_hours)
                 shift_end = shift_start + timedelta(hours=duration_hours)
                 return start_dt_naive >= shift_start and end_dt_naive <= shift_end
 

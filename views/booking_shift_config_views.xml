@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_booking_shift_config_form" model="ir.ui.view">
+            <field name="name">booking.shift.config.form</field>
+            <field name="model">booking.shift.config</field>
+            <field name="arch" type="xml">
+                <form string="Ca lam">
+                    <sheet>
+                        <group>
+                            <field name="shift_date" readonly="1"/>
+                        </group>
+                        <field name="line_ids" nolabel="1">
+                            <tree editable="bottom">
+                                <field name="name"/>
+                                <field name="shift_start_time_hours" widget="float_time" optional="show"/>
+                                <field name="shift_duration_hours" widget="float_time" optional="show"/>
+                                <field name="user_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            </tree>
+                        </field>
+                    </sheet>
+                    <footer>
+                        <button name="action_apply_shift_config" string="Xác nhận" type="object" class="btn-primary"/>
+                        <button string="Đóng" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>
