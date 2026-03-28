@@ -144,124 +144,82 @@ class SpaServiceBooking(models.Model):
             else:
                 rec.end_datetime = rec.start_datetime
 
-    def _spa_is_shift_fully_configured(self, user):
-        """Chỉ coi NV tham gia luân ca nếu đủ 2 trường ca (start + duration)."""
-        h = getattr(user, "spa_shift_start_hour", None)
-        d = getattr(user, "spa_shift_duration_hours", None)
-        if h is False or h is None:
-            return False
-        if d is False or d is None:
-            return False
-        try:
-            d = float(d)
-        except (TypeError, ValueError):
-            return False
-        if d <= 0:
-            return False
-        try:
-            hi = float(h)
-        except (TypeError, ValueError):
-            return False
-        # allow 0 <= start < 24 (supports minutes as decimals)
-        return 0 <= hi < 24
-
-    def _spa_staff_rotation_base_ids(self, required_level):
-        """Danh sách NV đủ cấu hình ca theo cấp độ, theo thứ tự sequence."""
-        domain = [("share", "=", False)]
-        if required_level == "expert":
-            # Cho phép cả nhân viên có spa_staff_level = NULL/False
-            # để không loại hết các NV chỉ đã cấu hình giờ ca.
-            domain.append("|")
-            domain.append(("spa_staff_level", "=", "expert"))
-            domain.append(("spa_staff_level", "=", False))
-        elif required_level == "regular":
-            # "regular": chỉ nhân viên (loại bỏ chuyên gia).
-            # Vẫn cho phép NULL/False để không loại hết NV đã cấu hình giờ ca,
-            # nhưng không bao giờ đưa NV 'expert' vào nhóm regular.
-            domain.append("|")
-            domain.append(("spa_staff_level", "=", "regular"))
-            domain.append(("spa_staff_level", "=", False))
-
-        users = self.env["res.users"].search(domain, order="spa_staff_sequence,id")
-        filtered = users.filtered(lambda u: self._spa_is_shift_fully_configured(u))
-        return filtered.ids
-
-    def _spa_rotation_ordered_staff_ids_by_history(self, product_id, start_dt, end_dt, booking_id=None):
+    @api.model
+    def _spa_staff_booking_count_on_local_day(self, user_id, local_day, exclude_booking_id=None):
         """
-        Đặt thứ tự gợi ý theo luân ca dựa trên "NV mới nhất đã làm trước thời điểm này"
-        trong cùng nhóm cấp độ (expert/regular/any), sau đó lấy các NV đang rảnh để hiển thị.
+        Số lượng đặt lịch trùng ngày local_day mà NV tham gia (staff_ids hoặc booking_line_ids.staff_id).
+        Mỗi booking chỉ tính một lần — kể cả draft hay chỉ chiếm 20% capacity (vẫn là một lịch đã gán).
+        Chỉ loại trừ cancel. exclude_booking_id: bản ghi đang sửa không tính.
         """
-        if not product_id or not start_dt or not end_dt:
+        day_start = datetime.combine(local_day, datetime.min.time())
+        day_end = day_start + timedelta(days=1)
+        dom = [
+            ("state", "!=", "cancel"),
+            ("start_datetime", "<", day_end),
+            ("end_datetime", ">", day_start),
+            "|",
+            ("staff_ids", "in", [user_id]),
+            ("booking_line_ids.staff_id", "=", user_id),
+        ]
+        if exclude_booking_id:
+            dom.append(("id", "!=", exclude_booking_id))
+        return self.search_count(dom)
+
+    @api.model
+    def _spa_rotation_ordered_staff_ids(self, product_id, start_datetime, end_datetime, booking_id=None):
+        """
+        Thứ tự gợi ý / quay vòng (trong các NV đủ điều kiện slot hiện tại):
+
+        1) Ít lịch đặt trong ngày (local) hơn trước — đếm số booking (mọi state trừ cancel, gồm draft)
+           mà NV tham gia; mỗi booking tính 1 dù chỉ 20% capacity. Booking đang sửa không tính.
+        2) Ca bắt đầu sớm hơn (giờ:phút) trước ca muộn hơn.
+        3) spa_staff_sequence, rồi id.
+        """
+        if not start_datetime or not end_datetime:
             return []
-
-        # 1) NV đang rảnh cho slot hiện tại
-        available = self.get_available_staff_ids(product_id, start_dt, end_dt, booking_id=booking_id)
+        available = self.get_available_staff_ids(
+            product_id, start_datetime, end_datetime, booking_id=booking_id
+        )
         if not available:
             return []
 
-        # 2) Xác định cấp độ yêu cầu từ product template
-        product = self.env["product.product"].browse(product_id)
-        required_level = ""
-        if product and product.product_tmpl_id:
-            required_level = getattr(product.product_tmpl_id, "spa_required_staff_level", "") or ""
-
-        level_key = required_level or "any"
-        # 3) Base rotation list: tất cả NV đủ cấu hình ca trong nhóm cấp độ
-        base_ids = self._spa_staff_rotation_base_ids(level_key)
-        if not base_ids:
-            return available.ids
-
-        available_set = set(available.ids)
-
-        # 4) Tìm NV đã làm gần nhất trước thời điểm start_dt (trong base_ids)
-        #
-        # Reset theo "ngày mới": nếu booking gần nhất rơi vào ngày khác
-        # thì bỏ qua để thứ tự ưu tiên của lần đầu trong ngày bắt đầu lại theo spa_staff_sequence.
-        # Reset theo "ngày mới" dựa trên local day (timezone của user).
-        local_start = fields.Datetime.context_timestamp(self, start_dt) or start_dt
+        local_start = fields.Datetime.context_timestamp(self, start_datetime) or start_datetime
         if getattr(local_start, "tzinfo", None):
             local_start = local_start.replace(tzinfo=None)
-        start_day_naive = local_start.date()
-        Booking = self.env["spa.service.booking"]
-        dom = [
-            # Rotation dựa trên lịch sử "thực" (loại trừ draft/cancel),
-            # để lần đầu trong ngày không bị xoay do các draft thử nghiệm trước đó.
-            ("state", "not in", ["cancel", "draft"]),
-            ("start_datetime", "<", start_dt),
-            ("staff_ids", "in", base_ids),
-        ]
-        if booking_id:
-            dom.append(("id", "!=", booking_id))
-        last_booking = Booking.search(dom, order="start_datetime desc, id desc", limit=1)
-        if last_booking and last_booking.staff_ids:
-            local_last_start = (
-                fields.Datetime.context_timestamp(self, last_booking.start_datetime)
-                or last_booking.start_datetime
+        local_day = local_start.date()
+        prev_day = local_day - timedelta(days=1)
+        ShiftCfg = self.env["booking.shift.config"]
+        shift_map_today = ShiftCfg.get_user_shift_map_for_date(local_day)
+        shift_map_prev = ShiftCfg.get_user_shift_map_for_date(prev_day)
+
+        def _shift_start_hours_for_order(user):
+            st, dur = shift_map_today.get(user.id, (None, None))
+            if dur is not None and dur > 0:
+                return float(st)
+            stp, durp = shift_map_prev.get(user.id, (None, None))
+            if durp is not None and durp > 0:
+                return float(stp)
+            return 999.0
+
+        rows = []
+        for user in available:
+            day_booking_count = self._spa_staff_booking_count_on_local_day(
+                user.id, local_day, exclude_booking_id=booking_id
             )
-            if getattr(local_last_start, "tzinfo", None):
-                local_last_start = local_last_start.replace(tzinfo=None)
-            last_day_naive = local_last_start.date()
-            if last_day_naive != start_day_naive:
-                last_id = False
-            else:
-                last_staff = sorted(
-                    last_booking.staff_ids, key=lambda u: (u.spa_staff_sequence or 0, u.id)
-                )[0]
-                last_id = last_staff.id
-        else:
-            last_id = False
+            st_h = _shift_start_hours_for_order(user)
+            seq = user.spa_staff_sequence or 0
+            # Tuple: (số lịch trong ngày tăng dần → ít lịch ưu tiên trước, ca sớm, sequence, id)
+            rows.append((day_booking_count, st_h, seq, user.id))
+        rows.sort(key=lambda r: (r[0], r[1], r[2], r[3]))
+        return [r[3] for r in rows]
 
-        # 5) Luân ca: bắt đầu sau last_id trong base_ids
-        if last_id in base_ids:
-            idx = base_ids.index(last_id)
-            rotated = base_ids[idx + 1 :] + base_ids[: idx + 1]
-        else:
-            rotated = base_ids
-
-        # 6) Chỉ lấy phần tử đang rảnh
-        ordered_available = [uid for uid in rotated if uid in available_set]
-        # Fallback: nếu vòng quay lọc hết, dùng available hiện tại
-        return ordered_available or available.ids
+    def _spa_rotation_ordered_staff_ids_by_history(self, product_id, start_dt, end_dt, booking_id=None):
+        """Gợi ý / thứ tự luân ca (alias tên cũ)."""
+        if not product_id or not start_dt or not end_dt:
+            return []
+        return self._spa_rotation_ordered_staff_ids(
+            product_id, start_dt, end_dt, booking_id=booking_id
+        )
 
     @api.depends(
         "booking_kind",
@@ -844,20 +802,9 @@ class SpaServiceBooking(models.Model):
         for rec in self:
             if rec.state == "cancel":
                 continue
-            # Check staff shift window (from booking.shift.config, day-specific).
-            # duration=0 means "nhan vien nghi ngay do".
-            def _load_shift_map(shift_day):
-                cfg = self.env["booking.shift.config"].search(
-                    [("shift_date", "=", shift_day)], limit=1
-                )
-                mapping = {}
-                if cfg:
-                    for line in cfg.line_ids:
-                        dur = float(line.shift_duration_hours or 0)
-                        st = float(line.shift_start_time_hours or 0)
-                        for uid in line.user_ids.ids:
-                            mapping[uid] = (st, dur)
-                return mapping
+            # Check staff shift window: chỉ theo booking.shift.config theo từng ngày (không dùng giờ ca trên User).
+            # duration=0 trên dòng ca => nghỉ ngày đó.
+            ShiftCfg = self.env["booking.shift.config"]
 
             def _within_shift(user, start_dt, end_dt):
                 if not start_dt or not end_dt:
@@ -871,22 +818,15 @@ class SpaServiceBooking(models.Model):
 
                 day_local = local_start.date()
                 prev_day = day_local - timedelta(days=1)
-                map_today = _load_shift_map(day_local)
-                map_prev = _load_shift_map(prev_day)
+                map_today = ShiftCfg.get_user_shift_map_for_date(day_local)
+                map_prev = ShiftCfg.get_user_shift_map_for_date(prev_day)
 
                 def _get_shift(shift_day):
                     if shift_day == day_local and user.id in map_today:
                         return map_today[user.id]
                     if shift_day == prev_day and user.id in map_prev:
                         return map_prev[user.id]
-                    h = getattr(user, "spa_shift_start_hour", None)
-                    d = getattr(user, "spa_shift_duration_hours", None)
-                    if h is False or h is None or d is False or d is None:
-                        return None, None
-                    try:
-                        return float(h), float(d)
-                    except (TypeError, ValueError):
-                        return None, None
+                    return None, None
 
                 def _check_for_day(shift_day):
                     st_hours, duration_hours = _get_shift(shift_day)
@@ -1122,17 +1062,9 @@ class SpaServiceBooking(models.Model):
 
     def action_open_shift_config_wizard(self):
         shift_date = self.env.context.get("shift_date") or fields.Date.context_today(self)
-        config = self.env["booking.shift.config"].get_or_create_for_date(shift_date)
-        return {
-            "type": "ir.actions.act_window",
-            "name": _("Ca làm"),
-            "res_model": "booking.shift.config",
-            "res_id": config.id,
-            "view_mode": "form",
-            "views": [(False, "form")],
-            "target": "new",
-            "context": dict(self.env.context),
-        }
+        if isinstance(shift_date, str):
+            shift_date = fields.Date.from_string(shift_date)
+        return self.env["booking.shift.config"].action_open_config_modal(shift_date)
 
     def action_done(self):
         for booking in self:
@@ -1334,8 +1266,7 @@ class SpaServiceBooking(models.Model):
 
         id_to_name = dict(pairs)
         # Khi mở dropdown trên form đặt lịch, chỉ hiển thị nhân viên "luân ca phù hợp":
-        # - có đủ 2 trường ca
-        # - slot nằm trọn trong khung ca
+        # - có dòng ca trong booking.shift.config cho ngày (slot nằm trọn trong khung đó)
         # - còn đủ capacity %
         # Các nhân viên khác không được đưa vào luân ca => không nên xuất hiện trong danh sách chọn.
         out = []
@@ -1347,41 +1278,22 @@ class SpaServiceBooking(models.Model):
     @api.model
     def _rotation_ordered_available_ids(self, product_id, start_datetime, end_datetime, booking_id=None):
         """
-        Danh sách id nhân viên khả dụng cho slot, đã xoay vòng theo ir.config_parameter
-        (spa.rotation_last_user_id.<cấp_độ>). Không ghi ICP — dùng cho dropdown chọn NV.
+        Danh sách id nhân viên khả dụng cho slot, cùng thứ tự gợi ý luân ca:
+        ít lịch đặt trong ngày hơn → ca bắt đầu sớm hơn → spa_staff_sequence. Không ghi ICP.
 
-        Logic luân ca đầy đủ (kèm ghi nhận lượt) nằm ở get_suggested_staff_ids().
+        get_suggested_staff_ids() vẫn ghi ICP theo người đứng đầu danh sách này (tùy chọn tích hợp).
         """
-        available = self.get_available_staff_ids(product_id, start_datetime, end_datetime, booking_id)
-        if not available:
-            return []
-        product = self.env["product.product"].browse(product_id) if product_id else None
-        required_level = ""
-        if product and product.product_tmpl_id:
-            required_level = getattr(
-                product.product_tmpl_id, "spa_required_staff_level", ""
-            ) or ""
-        level_key = required_level or "any"
-        ICP = self.env["ir.config_parameter"].sudo()
-        param_key = "spa.rotation_last_user_id.%s" % level_key
-        last_id = False
-        try:
-            last_id = int(ICP.get_param(param_key, "0") or "0")
-        except (TypeError, ValueError):
-            pass
-        ids = list(available.ids)
-        if not ids:
-            return []
-        if last_id in ids:
-            idx = ids.index(last_id)
-            return ids[idx + 1 :] + ids[: idx + 1]
-        return ids
+        return self._spa_rotation_ordered_staff_ids(
+            product_id, start_datetime, end_datetime, booking_id=booking_id
+        )
 
     @api.model
     def get_available_staff_ids(self, product_id, start_datetime, end_datetime, booking_id=None):
         """
-        Nhân viên đủ cấp độ, đã khai báo đủ giờ bắt đầu ca + thời lượng ca (Spa),
-        slot nằm trọn trong ca, và còn đủ capacity % trong (start_datetime, end_datetime).
+        Nhân viên đủ cấp độ, có ca trong booking.shift.config cho ngày local của slot
+        (hoặc ca ngày hôm trước nếu slot nằm trong khung ca qua đêm), slot nằm trọn trong khung ca,
+        và còn đủ capacity % trong (start_datetime, end_datetime).
+        Không dùng spa_shift_start_hour / spa_shift_duration_hours trên res.users.
         booking_id: loại trừ đặt lịch này khi tính capacity (khi sửa).
         """
         if not start_datetime or not end_datetime:
@@ -1404,7 +1316,7 @@ class SpaServiceBooking(models.Model):
             domain.append(("spa_staff_level", "=", False))
         users = self.env["res.users"].search(domain, order="spa_staff_sequence, id")
 
-        # Filter by shift window (ca bắt đầu + duration_hours).
+        # Lọc theo khung ca trên booking.shift.config (ngày local + có thể ca từ hôm trước).
         #
         # Odoo lưu `start_datetime/end_datetime` ở UTC (khi DB trả về có thể là aware/naive).
         # Để so sánh đúng theo "giờ địa phương" của user (vd: Việt Nam UTC+7),
@@ -1419,45 +1331,19 @@ class SpaServiceBooking(models.Model):
         start_dt_naive = local_start
         end_dt_naive = local_end
 
-        # Shift config theo ngay (từ modal "Ca làm"): ghi đè lên res.users.
-        # Luu y: duration=0 => coi như nhan vien nghi, chi ảnh hưởng ngay do.
+        # Ca làm theo ngày: chỉ booking.shift.config (modal "Ca làm"). duration=0 => nghỉ ngày đó.
         day = start_dt_naive.date()
         prev_day = day - timedelta(days=1)
-
-        def _load_shift_map(shift_day):
-            cfg = self.env["booking.shift.config"].search(
-                [("shift_date", "=", shift_day)], limit=1
-            )
-            mapping = {}
-            if cfg:
-                for line in cfg.line_ids:
-                    dur = float(line.shift_duration_hours or 0)
-                    st = float(line.shift_start_time_hours or 0)
-                    for uid in line.user_ids.ids:
-                        mapping[uid] = (st, dur)
-            return mapping
-
-        shift_map_today = _load_shift_map(day)
-        shift_map_prev = _load_shift_map(prev_day)
+        ShiftCfg = self.env["booking.shift.config"]
+        shift_map_today = ShiftCfg.get_user_shift_map_for_date(day)
+        shift_map_prev = ShiftCfg.get_user_shift_map_for_date(prev_day)
 
         def _get_shift_for_user_day(user, shift_day):
-            # 1) Config per-day override
             if shift_day == day and user.id in shift_map_today:
                 return shift_map_today[user.id]
             if shift_day == prev_day and user.id in shift_map_prev:
                 return shift_map_prev[user.id]
-
-            # 2) Fallback to legacy res.users fields (global)
-            h = getattr(user, "spa_shift_start_hour", None)
-            d = getattr(user, "spa_shift_duration_hours", None)
-            if h is False or h is None or d is False or d is None:
-                return None, None
-            try:
-                st = float(h)
-                dur = float(d)
-            except (TypeError, ValueError):
-                return None, None
-            return st, dur
+            return None, None
 
         # A booking is considered doable by that staff if the whole [start, end]
         # fits within the staff's shift window (trong giờ local).
@@ -1494,11 +1380,9 @@ class SpaServiceBooking(models.Model):
     @api.model
     def get_suggested_staff_ids(self, product_id, start_datetime, end_datetime, booking_id=None):
         """
-        Gợi ý nhân viên theo luân chuyển: lọc đủ cấp độ + còn capacity, sắp xếp theo vòng luân chuyển,
-        người đúng lượt nếu bận thì bỏ qua và gợi ý người tiếp theo còn rảnh.
-        Trả về list id (thứ tự ưu tiên). Mỗi lần gọi sẽ ghi lại con trỏ luân ca (ICP).
-
-        Thứ tự hiển thị trên form (không ghi ICP) dùng _rotation_ordered_available_ids + name_search res.users.
+        Gợi ý nhân viên: lọc đủ cấp độ + còn capacity, sắp xếp như _spa_rotation_ordered_staff_ids
+        (ít lịch trong ngày → ca sớm → sequence). Trả về list id (thứ tự ưu tiên).
+        Ghi spa.rotation_last_user_id.<cấp_độ> = id đứng đầu (tương thích tích hợp cũ).
         """
         ordered = self._rotation_ordered_available_ids(
             product_id, start_datetime, end_datetime, booking_id

@@ -5,7 +5,7 @@
             <field name="name">booking.shift.config.form</field>
             <field name="model">booking.shift.config</field>
             <field name="arch" type="xml">
-                <form string="Ca lam">
+                <form string="Ca làm">
                     <sheet>
                         <group>
                             <field name="shift_date" readonly="1"/>

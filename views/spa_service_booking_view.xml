@@ -122,7 +122,7 @@
                                 <field name="end_datetime" readonly="1"/>
                                 <field name="staff_ids"
                                        widget="many2many_tags"
-                                       domain="[('share', '=', False), ('spa_shift_start_hour', '!=', False), ('spa_shift_duration_hours', '>', 0)]"
+                                       domain="[('share', '=', False)]"
                                        readonly="is_locked"/>
                                 <field name="suggested_staff_html" readonly="1"/>
                                 <field name="bed_id" readonly="is_locked"/>
@@ -161,7 +161,7 @@
                                     <field name="sequence" widget="handle"/>
                                     <field name="product_id"/>
                                     <field name="staff_id"
-                                           domain="[('share', '=', False), ('spa_shift_start_hour', '!=', False), ('spa_shift_duration_hours', '>', 0)]"/>
+                                           domain="[('share', '=', False)]"/>
                                     <field name="start_datetime"/>
                                     <field name="duration_minutes"/>
                                     <field name="end_datetime"/>

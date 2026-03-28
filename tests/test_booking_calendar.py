@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 
+from odoo import fields
 from odoo.tests import TransactionCase
 from odoo.exceptions import ValidationError, UserError
 
@@ -110,10 +111,37 @@ class TestBookingCalendar(TransactionCase):
             "duration_minutes": 60,
         })
 
+    def _ensure_shift_lines(self, start_dt, line_specs):
+        """Tạo/ghi booking.shift.config cho ngày local của start_dt. line_specs: [(user_ids, start_h, dur_h), ...]."""
+        local = fields.Datetime.context_timestamp(self.env.user, start_dt)
+        if getattr(local, "tzinfo", None):
+            local = local.replace(tzinfo=None)
+        d = local.date()
+        cfg = self.env["booking.shift.config"].search([("shift_date", "=", d)], limit=1)
+        if cfg:
+            cfg.line_ids.unlink()
+        else:
+            cfg = self.env["booking.shift.config"].create(
+                {"name": "Test ca làm", "shift_date": d}
+            )
+        Line = self.env["booking.shift.config.line"]
+        for uids, st, dur in line_specs:
+            Line.create(
+                {
+                    "config_id": cfg.id,
+                    "name": "Ca",
+                    "shift_start_time_hours": float(st),
+                    "shift_duration_hours": float(dur),
+                    "user_ids": [(6, 0, list(uids))],
+                }
+            )
+        return cfg
+
     def test_booking_simple_unchanged(self):
         """Đặt lịch đơn giản (1 NV, 1 giường) vẫn hoạt động như cũ."""
         start = datetime.now() + timedelta(days=1)
         start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
         booking = self.env["spa.service.booking"].create({
             "partner_id": self.partner.id,
             "card_id": self.card.id,
@@ -188,6 +216,7 @@ class TestBookingCalendar(TransactionCase):
         """Cùng 1 nhân viên: 20% + 30% trong cùng khung giờ được phép (≤100%)."""
         start = datetime.now() + timedelta(days=2)
         start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
         self.env["spa.service.booking"].create({
             "partner_id": self.partner.id,
             "card_id": self.card.id,
@@ -238,6 +267,7 @@ class TestBookingCalendar(TransactionCase):
 
         start = datetime.now() + timedelta(days=20)
         start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
 
         booking1 = booking_model.create({
             "partner_id": self.partner.id,
@@ -268,6 +298,7 @@ class TestBookingCalendar(TransactionCase):
         """Cùng 1 nhân viên: đã có 20%, thêm 90% trong cùng khung giờ → ValidationError."""
         start = datetime.now() + timedelta(days=3)
         start = start.replace(hour=14, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
         self.env["spa.service.booking"].create({
             "partner_id": self.partner.id,
             "card_id": self.card.id,
@@ -299,6 +330,13 @@ class TestBookingCalendar(TransactionCase):
         """Nhiều nhân viên cùng 1 booking: từng nhân viên đều bị tính capacity và bị chặn nếu vượt 100%."""
         start = datetime.now() + timedelta(days=6)
         start = start.replace(hour=15, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(
+            start,
+            [
+                ([self.user_a.id], 8.0, 10.0),
+                ([self.user_b.id], 8.0, 10.0),
+            ],
+        )
         # Booking 90% cho cả A và B cùng lúc
         card90 = self.env["spa.treatment.card"].create({
             "name": "Card 90",
@@ -336,21 +374,23 @@ class TestBookingCalendar(TransactionCase):
             })
 
     def test_get_available_staff_ids(self):
-        """get_available_staff_ids lọc NV đủ cấp độ, có đủ cấu hình ca và còn capacity."""
+        """get_available_staff_ids lọc NV đủ cấp độ, có ca trong booking.shift.config và còn capacity."""
         start = datetime.now() + timedelta(days=4)
         start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
         end = start + timedelta(minutes=60)
         ids = self.env["spa.service.booking"].get_available_staff_ids(
             self.product_svc.id, start, end
         )
         self.assertIn(self.user_a.id, ids.ids)
-        # NV không khai báo đủ giờ bắt đầu + thời lượng ca không tham gia luân ca / gợi ý.
+        # NV không có trong cấu hình ca ngày đó không được gợi ý.
         self.assertNotIn(self.user_b.id, ids.ids)
 
     def test_get_suggested_staff_ids_returns_list(self):
         """get_suggested_staff_ids trả về list id theo thứ tự ưu tiên."""
         start = datetime.now() + timedelta(days=5)
         start = start.replace(hour=11, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
         end = start + timedelta(minutes=60)
         ids = self.env["spa.service.booking"].get_suggested_staff_ids(
             self.product_svc.id, start, end
@@ -363,6 +403,14 @@ class TestBookingCalendar(TransactionCase):
         start = datetime.now() + timedelta(days=7)
         start = start.replace(hour=8, minute=0, second=0, microsecond=0)
         end = start + timedelta(minutes=30)
+        self._ensure_shift_lines(
+            start,
+            [
+                ([self.user_a.id], 8.0, 10.0),
+                ([self.user_shift9.id], 9.0, 10.0),
+                ([self.user_shift10.id], 10.0, 10.0),
+            ],
+        )
 
         avail = self.env["spa.service.booking"].get_available_staff_ids(
             self.product_20_expert.id, start, end
@@ -385,18 +433,21 @@ class TestBookingCalendar(TransactionCase):
             "name": "Regular Suggestion",
             "login": "regular_suggestion_booking_test",
             "spa_staff_level": "regular",
-            "spa_shift_start_hour": 8,
-            "spa_shift_duration_hours": 10.0,
             "spa_staff_sequence": 1,
         })
         expert_staff = self.env["res.users"].create({
             "name": "Expert Should Not Appear",
             "login": "expert_should_not_appear_booking_test",
             "spa_staff_level": "expert",
-            "spa_shift_start_hour": 8,
-            "spa_shift_duration_hours": 10.0,
             "spa_staff_sequence": 2,
         })
+        self._ensure_shift_lines(
+            start,
+            [
+                ([regular_staff.id], 8.0, 10.0),
+                ([expert_staff.id], 8.0, 10.0),
+            ],
+        )
 
         avail_ids = set(booking_model.get_available_staff_ids(
             self.product_20.id, start, end
@@ -414,43 +465,29 @@ class TestBookingCalendar(TransactionCase):
         self.assertEqual(ordered_ids[0], regular_staff.id)
 
     def test_suggested_staff_rotation_by_history_next_after_busy(self):
-        """Gợi ý luân ca theo history: người vừa bận thì không được đứng đầu."""
-        # Tắt NV expert sẵn có trong setup để tránh nhiễu.
-        for u in (self.user_a, self.user_shift9, self.user_shift10):
-            u.spa_shift_start_hour = False
-            u.spa_shift_duration_hours = False
-
-        # Base order A,B,C,D theo sequence
+        """Gợi ý: NV đã có nhiều lịch hơn trong ngày không đứng đầu (ưu tiên ít lịch trước)."""
         staff_a = self.env["res.users"].create({
             "name": "Hist Staff A",
             "login": "hist_staff_a_booking_test",
             "spa_staff_level": "expert",
-            "spa_shift_start_hour": 8,
-            "spa_shift_duration_hours": 2.0,
             "spa_staff_sequence": 1,
         })
         staff_b = self.env["res.users"].create({
             "name": "Hist Staff B",
             "login": "hist_staff_b_booking_test",
             "spa_staff_level": "expert",
-            "spa_shift_start_hour": 8,
-            "spa_shift_duration_hours": 2.0,
             "spa_staff_sequence": 2,
         })
         staff_c = self.env["res.users"].create({
             "name": "Hist Staff C",
             "login": "hist_staff_c_booking_test",
             "spa_staff_level": "expert",
-            "spa_shift_start_hour": 8,
-            "spa_shift_duration_hours": 2.0,
             "spa_staff_sequence": 3,
         })
         staff_d = self.env["res.users"].create({
             "name": "Hist Staff D",
             "login": "hist_staff_d_booking_test",
             "spa_staff_level": "expert",
-            "spa_shift_start_hour": 8,
-            "spa_shift_duration_hours": 2.0,
             "spa_staff_sequence": 4,
         })
 
@@ -459,6 +496,15 @@ class TestBookingCalendar(TransactionCase):
         end_prev = start_prev + timedelta(minutes=60)
         start_now = base_day.replace(hour=8, minute=15, second=0, microsecond=0)
         end_now = start_now + timedelta(minutes=30)
+        self._ensure_shift_lines(
+            start_now,
+            [
+                ([staff_a.id], 8.0, 4.0),
+                ([staff_b.id], 8.0, 4.0),
+                ([staff_c.id], 8.0, 4.0),
+                ([staff_d.id], 8.0, 4.0),
+            ],
+        )
 
         # Booking trước: dùng product capacity 90 để làm cho A "bận" với current slot (20%).
         card_prev = self.env["spa.treatment.card"].create({
@@ -477,7 +523,8 @@ class TestBookingCalendar(TransactionCase):
             "duration": 60,
             "staff_ids": [(6, 0, [staff_a.id])],
             "bed_id": False,
-            "state": "confirmed",
+            # Draft vẫn tính một lịch cho luân phiên gợi ý (trước đây loại draft khiến A vẫn đứng đầu).
+            "state": "draft",
         })
 
         card_now = self.env["spa.treatment.card"].create({
@@ -508,11 +555,70 @@ class TestBookingCalendar(TransactionCase):
         self.assertTrue(ordered_ids)
         self.assertEqual(ordered_ids[0], staff_b.id)
 
+    def test_suggestion_20pct_draft_counts_a_last_among_abc(self):
+        """Cùng ngày: A đã có 1 booking draft 20%, B/C chưa — gợi ý B (rồi C) trước, A cuối."""
+        a = self.env["res.users"].create({
+            "name": "Rot A",
+            "login": "rot_a_booking_test",
+            "spa_staff_level": "expert",
+            "spa_staff_sequence": 1,
+        })
+        b = self.env["res.users"].create({
+            "name": "Rot B",
+            "login": "rot_b_booking_test",
+            "spa_staff_level": "expert",
+            "spa_staff_sequence": 2,
+        })
+        c = self.env["res.users"].create({
+            "name": "Rot C",
+            "login": "rot_c_booking_test",
+            "spa_staff_level": "expert",
+            "spa_staff_sequence": 3,
+        })
+        day = datetime.now() + timedelta(days=55)
+        t1 = day.replace(hour=10, minute=0, second=0, microsecond=0)
+        t2 = day.replace(hour=11, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(
+            t2,
+            [([a.id, b.id, c.id], 8.0, 12.0)],
+        )
+        card20 = self.env["spa.treatment.card"].create({
+            "name": "Rot Card 20",
+            "partner_id": self.partner.id,
+            "product_id": self.product_20_expert.id,
+            "total_sessions": 10,
+            "duration_minutes": 30,
+        })
+        self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": card20.id,
+            "product_id": self.product_20_expert.id,
+            "booking_kind": "card",
+            "start_datetime": t1,
+            "duration": 30,
+            "staff_ids": [(6, 0, [a.id])],
+            "bed_id": False,
+            "state": "draft",
+        })
+        end2 = t2 + timedelta(minutes=30)
+        ordered = self.env["spa.service.booking"]._spa_rotation_ordered_staff_ids(
+            self.product_20_expert.id, t2, end2, booking_id=None
+        )
+        self.assertEqual(ordered, [b.id, c.id, a.id])
+
     def test_rotation_round_robin_with_shifts(self):
-        """Luân ca: vòng theo thứ tự ids trong available list."""
+        """Thứ tự gợi ý ổn định: cùng slot, cùng ngày — theo giờ bắt đầu ca (config) rồi sequence."""
         start = datetime.now() + timedelta(days=8)
         start = start.replace(hour=10, minute=0, second=0, microsecond=0)
         end = start + timedelta(minutes=30)
+        self._ensure_shift_lines(
+            start,
+            [
+                ([self.user_a.id], 8.0, 10.0),
+                ([self.user_shift9.id], 9.0, 10.0),
+                ([self.user_shift10.id], 10.0, 10.0),
+            ],
+        )
 
         booking_model = self.env["spa.service.booking"]
         avail_ids = booking_model.get_available_staff_ids(
@@ -520,28 +626,29 @@ class TestBookingCalendar(TransactionCase):
         ).ids
         self.assertEqual(set(avail_ids), {self.user_a.id, self.user_shift9.id, self.user_shift10.id})
 
-        ICP = self.env["ir.config_parameter"].sudo()
-        param_key = "spa.rotation_last_user_id.expert"
-        last_id = avail_ids[0]
-        ICP.set_param(param_key, str(last_id))
-
+        expected_order = [
+            self.user_a.id,
+            self.user_shift9.id,
+            self.user_shift10.id,
+        ]
         order1 = booking_model.get_suggested_staff_ids(self.product_20_expert.id, start, end)
-        self.assertEqual(order1, avail_ids[1:] + avail_ids[:1])
-        self.assertEqual(order1[0], avail_ids[1])
-
         order2 = booking_model.get_suggested_staff_ids(self.product_20_expert.id, start, end)
-        self.assertEqual(order2, avail_ids[2:] + avail_ids[:2])
-        self.assertEqual(order2[0], avail_ids[2])
-
-        order3 = booking_model.get_suggested_staff_ids(self.product_20_expert.id, start, end)
-        self.assertEqual(order3, avail_ids[:1] + avail_ids[1:2] + avail_ids[2:])  # wrap
-        self.assertEqual(order3[0], avail_ids[0])
+        self.assertEqual(order1, expected_order)
+        self.assertEqual(order2, expected_order)
 
     def test_capacity_filter_20_30_with_shift_and_rotation(self):
         """Capacity % 20/30%: NV đã đầy capacity thì không được gợi ý."""
         start = datetime.now() + timedelta(days=9)
         start = start.replace(hour=10, minute=0, second=0, microsecond=0)
         end = start + timedelta(minutes=30)
+        self._ensure_shift_lines(
+            start,
+            [
+                ([self.user_a.id], 8.0, 10.0),
+                ([self.user_shift9.id], 9.0, 10.0),
+                ([self.user_shift10.id], 10.0, 10.0),
+            ],
+        )
 
         # Occupy 90% capacity (3 x 30%) on shift8 staff (self.user_a)
         card30exp = self.env["spa.treatment.card"].create({
@@ -568,15 +675,10 @@ class TestBookingCalendar(TransactionCase):
         ).ids
         self.assertEqual(set(avail_ids), {self.user_shift9.id, self.user_shift10.id})
 
-        # Rotation among the remaining 2 staff
-        ICP = self.env["ir.config_parameter"].sudo()
-        param_key = "spa.rotation_last_user_id.expert"
-        ICP.set_param(param_key, str(avail_ids[0]))
-
         order1 = booking_model.get_suggested_staff_ids(self.product_20_expert.id, start, end)
-        self.assertEqual(order1[0], avail_ids[1])
         order2 = booking_model.get_suggested_staff_ids(self.product_20_expert.id, start, end)
-        self.assertEqual(order2[0], avail_ids[0])
+        self.assertEqual(order1, order2)
+        self.assertEqual(order1[0], self.user_shift9.id)
 
     def test_product_sub_service_and_composite(self):
         """Dịch vụ cha có dịch vụ con, thứ tự sequence."""
@@ -605,6 +707,7 @@ class TestBookingCalendar(TransactionCase):
         })
         start = datetime.now() + timedelta(days=2)
         start = start.replace(hour=14, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
         booking = self.env["spa.service.booking"].create({
             "partner_id": self.partner.id,
             "booking_kind": "non_session",
