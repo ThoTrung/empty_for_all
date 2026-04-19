@@ -1,0 +1,36 @@
+<odoo>
+    <!-- Paper format: A4 portrait, small margins to match the screenshot -->
+    <record id="paperformat_quotation_price_a4p" model="report.paperformat">
+        <field name="name">Quotation Price A4 Portrait</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_spacing">2</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <!-- Report action -->
+    <record id="action_report_quotation_price" model="ir.actions.report">
+        <field name="name">Bảng giá thuê</field>
+        <field name="model">rental.contract</field>  <!-- change if your model differs -->
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">rental.report_quotation_price_document</field>
+        <field name="report_file">rental.report_quotation_price_document</field>
+        <field name="paperformat_id" ref="paperformat_quotation_price_a4p"/>
+        <field name="print_report_name">'Bang_gia_thue_' + (object.name or '')</field>
+    </record>
+
+    <record id="action_report_quotation_price_html" model="ir.actions.report">
+        <field name="name">Bảng giá thuê (HTML)</field>
+        <field name="model">rental.contract</field>
+        <field name="report_type">qweb-html</field>
+        <field name="report_name">rental.report_quotation_price_document</field>
+        <field name="paperformat_id" ref="paperformat_quotation_price_a4p"/>
+    </record>
+</odoo>

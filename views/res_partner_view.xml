@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Add the field to the Contact form (separate 'Rental' page to keep it tidy) -->
+    <record id="view_partner_form_inherit_rental" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.rental.customer_type</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Rental">
+                    <group>
+                        <field name="customer_type" invisible="1"/>
+                    </group>
+                </page>
+            </xpath>
+             <xpath expr="//div[@class='oe_button_box']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver', 'renter']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="company_id" placeholder="Company_id"/>
+                <field name="customer_type"/>
+                <field name="bank_account" invisible="customer_type in ['driver']"/>
+                <field name="id_number" invisible="customer_type not in ['driver']"/>
+            </xpath>
+
+             <xpath expr="//field[@name='type']" position="attributes">
+<!--                <attribute name="invisible">customer_type in ['driver', 'renter']</attribute>-->
+                <attribute name="invisible">1</attribute>
+            </xpath>
+             <xpath expr="//field[@name='company_type']" position="attributes">
+<!--                <attribute name="invisible">customer_type in ['driver', 'renter']</attribute>-->
+                <attribute name="invisible">1</attribute>
+            </xpath>
+             <xpath expr="//field[@name='parent_id']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='street']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='street2']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='city']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='state_id']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='zip']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='country_id']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='function']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+
+<!--            Mobile and email use widget, so it still have label when invisible like bellow, use other way-->
+<!--            <xpath expr="//field[@name='mobile']" position="attributes">-->
+<!--                <attribute name="invisible">customer_type in ['driver']</attribute>-->
+<!--            </xpath>-->
+<!--            <xpath expr="//field[@name='email']" position="attributes">-->
+<!--                <attribute name="invisible">customer_type in ['driver']</attribute>-->
+<!--            </xpath>-->
+
+            <xpath expr="//field[@name='website']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='title']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='lang']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='category_id']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='vat']" position="attributes">
+                <attribute name="invisible">customer_type in ['driver']</attribute>
+            </xpath>
+            <xpath expr="//notebook" position="attributes">
+                <attribute name="invisible">customer_type in ['driver', 'renter']</attribute>
+            </xpath>
+
+<!--            New way - Hide sheet instead of each field -->
+            <!-- Hide the original sheet -->
+            <xpath expr="//sheet" position="attributes">
+              <attribute name="invisible">customer_type in ['driver', 'renter', 'my_company_profile']</attribute>
+            </xpath>
+
+            <!-- Add a new sheet with your custom fields Driver -->
+            <xpath expr="//sheet" position="after">
+                <sheet invisible="customer_type not in ['driver'] or is_company == True">
+                    <field name="image_1920" widget="image" class="oe_avatar" options="{&quot;preview_image&quot;: &quot;avatar_128&quot;}"/>
+                    <div class="oe_title mb24">
+                        <h1>
+                            <field id="company" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="Cty TNHH Lộc Phát" invisible="not is_company" required="type == 'contact'"/>
+                            <field id="individual" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="Nguyễn Văn A" invisible="is_company" required="type == 'contact'"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id" placeholder="Company" groups="rental.group_rental_admin"/>
+                            <field name="customer_type" invisible="1"/>
+                            <field name="phone" placeholder="0987654321"/>
+                            <field name="vat" placeholder="66778899"/>
+                            <field name="bank_account" placeholder="Stk 6677028 tại ngân hàng ABC"/>
+                            <field name="street" string="Address" placeholder="Số nhà 215 đường 422"/>
+                        </group>
+                        <group>
+                            <field name="birthday" placeholder="06/07/2000"/>
+                            <field name="id_number" placeholder="00089009324"/>
+                            <field name="id_issued_by" placeholder="Cục cảnh sát"/>
+                            <field name="id_issued_date" placeholder="01/01/2001"/>
+                            <field name="id_permanent_residence" placeholder="Số nhà - đường ..."/>
+                        </group>
+                    </group>
+                </sheet>
+            </xpath>
+
+            <xpath expr="//sheet" position="after">
+                <sheet invisible="not (customer_type in ['renter', 'my_company_profile'] and is_company == True)">
+                    <field name="image_1920" widget="image" class="oe_avatar" options="{&quot;preview_image&quot;: &quot;avatar_128&quot;}"/>
+                    <div class="oe_title mb24">
+                        <h1>
+                            <field id="company" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="Cty TNHH Lộc Phát" invisible="not is_company" required="type == 'contact'"/>
+                            <field id="individual" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="Nguyễn Văn A" invisible="is_company" required="type == 'contact'"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id" placeholder="Company" groups="rental.group_rental_admin"/>
+                            <field name="customer_type" placeholder="Customer type" groups="rental.group_rental_admin"/>
+                            <field name="vat" placeholder="66778899"/>
+                            <field name="bank_account" placeholder="Stk 6677028 tại ngân hàng ABC"/>
+                            <field name="street" string="Address" placeholder="Số nhà 215 đường 422"/>
+                        </group>
+                        <group>
+                            <field name="phone" placeholder="0987654321"/>
+                            <field name="fax"/>
+                            <field name="email" placeholder="locphat@gmail.com"/>
+                            <field name="website" placeholder="rental.linhha.com"/>
+                        </group>
+                    </group>
+
+                    <notebook colspan="4">
+                        <page string="Đại diện" name="contact_addresses" autofocus="autofocus">
+                            <div class="mb-2">
+                                <button name="action_open_link_representative_wizard"
+                                        type="object"
+                                        string="Gắn đại diện có sẵn"
+                                        class="btn-secondary"
+                                        icon="fa-link"
+                                        invisible="not is_company"/>
+                            </div>
+                            <field name="child_ids" mode="kanban" context="{'default_parent_id': id, 'default_street': street, 'default_street2': street2, 'default_city': city, 'default_state_id': state_id, 'default_zip': zip, 'default_country_id': country_id, 'default_lang': lang, 'default_user_id': user_id, 'default_type': 'contact'}">
+                                <kanban>
+                                    <field name="id"/>
+                                    <field name="color"/>
+                                    <field name="name"/>
+                                    <field name="title"/>
+                                    <field name="type"/>
+                                    <field name="email"/>
+                                    <field name="parent_id"/>
+                                    <field name="is_company"/>
+                                    <field name="function"/>
+                                    <field name="phone"/>
+                                    <field name="street"/>
+                                    <field name="street2"/>
+                                    <field name="zip"/>
+                                    <field name="city"/>
+                                    <field name="country_id"/>
+                                    <field name="mobile"/>
+                                    <field name="state_id"/>
+                                    <field name="image_128"/>
+                                    <field name="avatar_128"/>
+                                    <field name="lang"/>
+                                    <!-- fields in form x2many view to diminish requests -->
+                                    <field name="comment"/>
+                                    <field name="display_name"/>
+                                    <templates>
+                                        <t t-name="kanban-box">
+                                            <t t-set="color" t-value="kanban_color(record.color.raw_value)"/>
+                                            <div t-att-class="color + (record.title.raw_value == 1 ? ' oe_kanban_color_alert' : '') + ' oe_kanban_global_click'">
+                                                <div class="o_kanban_image">
+                                                    <img alt="Contact image" t-att-src="kanban_image('res.partner', 'avatar_128', record.id.raw_value)"/>
+                                                </div>
+                                                <div class="oe_kanban_details">
+<!--                                                    <field name="title"/><field name="name"/>-->
+                                                    <span><span t-if="record.title.raw_value"><field name="title"/>: </span><field name="name"/></span>
+                                                    <div t-if="record.function.raw_value"><field name="function"/></div>
+                                                    <div t-if="record.email.raw_value"><field name="email" widget="email"/></div>
+                                                    <div t-if="record.type.raw_value != 'contact'">
+                                                        <div>
+                                                            <field name="zip"/><t t-if="record.city"> </t>
+                                                            <field name="city"/>
+                                                        </div>
+                                                        <field t-if="record.state_id.raw_value" name="state_id"/><t t-if="record.country_id"> </t>
+                                                        <field name="country_id"/>
+                                                    </div>
+                                                    <div t-if="record.phone.raw_value">Phone: <t t-esc="record.phone.value"/></div>
+                                                    <div t-if="record.mobile.raw_value">Mobile: <t t-esc="record.mobile.value"/></div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </templates>
+                                </kanban>
+                                <form string="Đại diện">
+                                    <sheet>
+<!--                                        We set default type is contract for this case, we don't need the radio type button -->
+                                        <field name="type" required="1" widget="radio" options="{'horizontal': true}" invisible="1"/>
+                                        <field name="parent_id" invisible="1"/>
+                                        <div class="text-muted oe_edit_only" invisible="1">
+                                            <p class="mb-0" invisible="type != 'contact'">
+                                                <span>Use this to organize the contact details of employees of a given company (e.g. CEO, CFO, ...).</span>
+                                            </p>
+                                            <p class="mb-0" invisible="type != 'invoice'">
+                                                <span>Preferred address for all invoices. Selected by default when you invoice an order that belongs to this company.</span>
+                                            </p>
+                                            <p class="mb-0" invisible="type != 'delivery'">
+                                                <span>Preferred address for all deliveries. Selected by default when you deliver an order that belongs to this company.</span>
+                                            </p>
+                                            <p class="mb-0" invisible="type != 'other'">
+                                                <span>Other address for the company (e.g. subsidiary, ...)</span>
+                                            </p>
+                                        </div>
+                                        <hr/>
+                                        <group>
+                                            <group>
+                                                <field name="name" string="Contact Name" placeholder="Nguyên Văn B" required="type == 'contact'"/>
+                                                <field name="title" options="{'no_open': True}" placeholder="Ông / Bà" invisible="type != 'contact'"/>
+                                                <field name="function" placeholder="Giám đốc" invisible="type != 'contact'"/>
+                                                <label for="street" string="Address" invisible="type == 'contact'"/>
+                                                <div invisible="type == 'contact'">
+                                                    <div class="o_address_format" name="div_address">
+                                                        <field name="street" placeholder="Street..." class="o_address_street"/>
+                                                        <field name="street2" placeholder="Street 2..." class="o_address_street"/>
+                                                        <field name="city" placeholder="City" class="o_address_city"/>
+                                                        <field name="state_id" class="o_address_state" placeholder="State" options="{'no_open': True, 'no_quick_create': True}" context="{'country_id': country_id, 'default_country_id': country_id, 'zip': zip}"/>
+                                                        <field name="zip" placeholder="ZIP" class="o_address_zip"/>
+                                                        <field name="country_id" placeholder="Country" class="o_address_country" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}"/>
+                                                    </div>
+                                                </div>
+                                            </group>
+                                            <group>
+                                                <field name="phone" placeholder="0987654321" widget="phone"/>
+                                                <field name="email" placeholder="locphat@gmail.com" widget="email"/>
+<!--                                                <field name="mobile" widget="phone"/>-->
+                                                <field name="company_id" invisible="1"/>
+                                            </group>
+                                        </group>
+                                        <group>
+                                            <field name="comment" placeholder="Ghi chú" nolabel="1" colspan="2"/>
+                                        </group>
+                                        <field name="lang" invisible="True"/>
+                                        <field name="user_id" invisible="True"/>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                        <page name="internal_notes" string="Ghi chú nội bộ">
+                            <field name="comment" placeholder="Ghi chú..."/>
+                        </page>
+                        <page name="company_rental_contract_ids" string="Hợp đồng thuê">
+                            <field name="rental_contract_ids"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ACTION: Renters list (filtered) -->
+    <record id="action_res_partner_renters" model="ir.actions.act_window">
+        <field name="name">Renters</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">
+            [
+                ("is_company", "=", True),
+                ("customer_type", "=", "renter"),
+            ]
+        </field>
+        <!-- default on create -->
+        <field name="context">
+            {
+                'default_is_company': True,
+                'default_customer_type': 'renter',
+            }
+        </field>
+<!--                'default_company_type': 'company'-->
+<!--                'default_customer_type': 'renter',-->
+        <!-- optional: use existing partner views by default; Odoo will pick them -->
+    </record>
+
+    <!-- ACTION: Drivers list (filtered) -->
+    <record id="action_res_partner_drivers" model="ir.actions.act_window">
+        <field name="name">Drivers</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">
+            [
+                ("customer_type", "=", "driver"),
+                ("is_company", "=", False),
+            ]
+        </field>
+        <field name="context">
+            {
+                'default_customer_type': 'driver',
+                'default_is_company': False,
+            }
+        </field>
+    </record>
+
+<!--    <record id="action_res_partner_my_company_profile" model="ir.actions.act_window">-->
+<!--        <field name="name">My company profile</field>-->
+<!--        <field name="res_model">res.partner</field>-->
+<!--        <field name="view_mode">tree,form</field>-->
+<!--        <field name="domain">-->
+<!--            [-->
+<!--                ("customer_type", "=", "my_company_profile"),-->
+<!--                ("is_company", "=", True),-->
+<!--            ]-->
+<!--        </field>-->
+<!--        <field name="context">{'create': False}</field>-->
+<!--    </record>-->
+
+    <record id="action_ser_res_partner_my_company_profile" model="ir.actions.server">
+        <field name="name">My company profile</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="state">code</field>
+        <field name="code">
+            action = {
+                'type': 'ir.actions.act_window',
+                'name': 'My company profile',
+                'res_model': 'res.partner',
+                'view_mode': 'form',
+                'views': [(False, 'form')],
+                'res_id': env.company.partner_id.id,   # ✅ open this record directly
+                'context': {'create': False},
+            }
+        </field>
+    </record>
+
+<!--    <record id="action_res_partner_my_company_profile" model="ir.actions.server">-->
+<!--        <field name="name">My company profile</field>-->
+<!--        <field name="model_id" ref="base.model_res_partner"/>-->
+<!--        <field name="state">code</field>-->
+<!--        <field name="code">action = env["res.partner"].action_open_my_company_profile()</field>-->
+<!--    </record>-->
+</odoo>

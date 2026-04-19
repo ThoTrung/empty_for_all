@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+<!--        <record id="view_rental_invoice_search" model="ir.ui.view">-->
+<!--            <field name="name">rental.invoice.search</field>-->
+<!--            <field name="model">rental.invoice</field>-->
+<!--            <field name="arch" type="xml">-->
+<!--                <search>-->
+<!--                    <field name="name" string="Area"/>-->
+<!--                </search>-->
+<!--            </field>-->
+<!--        </record>-->
+
+        <record id="view_rental_invoice_tree" model="ir.ui.view">
+            <field name="name">rental.invoice.tree</field>
+            <field name="model">rental.invoice</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="code" optional="show"/>
+                    <field name="start_date" optional="show"/>
+                    <field name="end_date" optional="show"/>
+                    <field name="name" optional="show"/>
+                    <field name="rental_contract_id" optional="show"/>
+                    <field name="state"
+                           widget="badge"
+                           decoration-success="state=='done'"
+                           decoration-danger="state=='cancel'"
+                           optional="show"
+                    />
+                    <field name="total_price" widget="monetary" sum="Total price" optional="show"/>
+                    <field name="currency_id" optional="hide"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_rental_invoice_form" model="ir.ui.view">
+            <field name="name">rental.invoice.form</field>
+            <field name="model">rental.invoice</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <field name="rental_contract_id"/>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                            <field name="total_price" widget="monetary"/>
+                        </group>
+                        <field name="rental_invoice_line_ids" readonly="1">
+                            <tree>
+                                <field name="start_date" optional="show"/>
+                                <field name="end_date" optional="show"/>
+                                <field name="rental_days" optional="show"/>
+                                <field name="product_id" optional="show"/>
+                                <field name="staff_display_uom_id" string="Đơn vị hiển thị" optional="show"/>
+                                <field name="uom_id" optional="hide" string="ĐVT (mẫu/kho)"/>
+                                <field name="qty" optional="show"/>
+                                <field name="unit_price" widget="monetary" optional="show"/>
+                                <field name="total_price" widget="monetary" sum="Total price" optional="show"/>
+                                <field name="currency_id" optional="hide"/>
+                            </tree>
+                        </field>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_rental_invoice" model="ir.actions.act_window">
+            <field name="name">Area</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">rental.invoice</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p></p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

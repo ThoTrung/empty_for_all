@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ptal_tree_inherit_rental" model="ir.ui.view">
+        <field name="name">product.template.attribute.value.tree.inherit.rental</field>
+        <field name="model">product.template.attribute.value</field>
+        <!-- This view contains the attribute lines + their value_ids tree -->
+        <field name="inherit_id" ref="product.product_template_attribute_value_view_tree"/>
+        <field name="arch" type="xml">
+          <!-- value_ids is a tree of product.template.attribute.value -->
+            <xpath expr="//tree" position="inside">
+                <field name="price_multiplier"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_ptal_form_inherit_rental" model="ir.ui.view">
+        <field name="name">product.template.attribute.value.form.inherit.rental</field>
+        <field name="model">product.template.attribute.value</field>
+        <!-- This view contains the attribute lines + their value_ids tree -->
+        <field name="inherit_id" ref="product.product_template_attribute_value_view_form"/>
+        <field name="arch" type="xml">
+          <!-- value_ids is a tree of product.template.attribute.value -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="price_multiplier" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

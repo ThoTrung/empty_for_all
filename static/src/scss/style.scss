@@ -1,0 +1,41 @@
+.x_variant_tag_big {
+    .o_badge.badge {
+        font-size: large;
+    }
+}
+
+.o_form_label .o_required_modifier::after {
+    content: " *";
+    color: red;
+    font-weight: bold;
+}
+
+.o_control_panel_main {
+    .o_control_panel_breadcrumbs {
+        .o_form_status_indicator {
+            button {
+                font-size: 24px;
+            }
+        }
+    }
+}
+.o_sale_order {
+    .oe_subtotal_footer {
+        .o_field_account-tax-totals-field {
+            table {
+                width: 100%;
+            }
+        }
+    }
+}
+
+.bold-style table th,
+.bold-style .o_list_view table thead th,
+.bold-style .o_form_label,
+.o_notebook .o_notebook_headers .nav-link,
+.o_notebook .nav-link.active
+{
+    font-weight: 700 !important;
+}
+
+

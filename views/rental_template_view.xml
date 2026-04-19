@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_template_tree" model="ir.ui.view">
+        <field name="name">rental.template.tree</field>
+        <field name="model">rental.template</field>
+        <field name="arch" type="xml">
+            <tree string="Rental Templates">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="template_type"/>
+                <field name="is_default"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_rental_template_form" model="ir.ui.view">
+        <field name="name">rental.template.form</field>
+        <field name="model">rental.template</field>
+        <field name="arch" type="xml">
+            <form string="Mẫu tài liệu cho thuê">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id"/>
+                        <field name="template_type"/>
+                        <field name="file_data" widget="binary" filename="file_name"/>
+                        <field name="file_name"/>
+                        <field name="is_default"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rental_template" model="ir.actions.act_window">
+        <field name="name">Mẫu tài liệu cho thuê</field>
+        <field name="res_model">rental.template</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{}</field>
+    </record>
+</odoo>

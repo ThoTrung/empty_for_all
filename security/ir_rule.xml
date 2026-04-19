@@ -1,0 +1,223 @@
+<odoo>
+    <!-- <data noupdate="1"> -->
+    <data>
+        <!-- Multi-company rule: only see records in your allowed companies -->
+<!--        Not share between branches -->
+        <record id="rental_contract_company_rule" model="ir.rule">
+            <field name="name">Rental Contract: multi-company</field>
+            <field name="model_id" ref="model_rental_contract"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <!-- If you want, set the explicit perms (defaults are True) -->
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="rental_contract_line_company_rule" model="ir.rule">
+            <field name="name">Rental Contract Line: multi-company</field>
+            <field name="model_id" ref="model_rental_contract_line"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rental_construction_work_company_rule" model="ir.rule">
+            <field name="name">Rental Construction Work: multi-company</field>
+            <field name="model_id" ref="model_construction_work"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="rental_construction_project_company_rule" model="ir.rule">
+            <field name="name">Rental Construction Project: multi-company</field>
+            <field name="model_id" ref="rental.model_construction_project"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="rental_construction_address_company_rule" model="ir.rule">
+            <field name="name">Rental Construction Address: multi-company</field>
+            <field name="model_id" ref="rental.model_construction_address"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rental_transport_truck_company_rule" model="ir.rule">
+            <field name="name">Rental Transport truck: multi-company</field>
+            <field name="model_id" ref="model_transport_truck"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rental_rr_transport_company_rule" model="ir.rule">
+            <field name="name">Rental RR Transport: multi-company (Staff+)</field>
+            <field name="model_id" ref="model_rr_transport"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('rental.group_rental_staff'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rental_rr_transport_courier_assignee_rule" model="ir.rule">
+            <field name="name">Rental RR Transport: Người giao/nhận — chỉ phiếu được gán</field>
+            <field name="model_id" ref="model_rr_transport"/>
+            <field name="domain_force">['&amp;', ('company_id', 'in', company_ids), '|', ('deliverer_partner_id', '=', user.partner_id.id), ('receiver_partner_id', '=', user.partner_id.id)]</field>
+            <field name="groups" eval="[(4, ref('rental.group_rental_transport_courier'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rental_rr_transport_line_company_rule" model="ir.rule">
+            <field name="name">Rental RR Transport line: multi-company (Staff+)</field>
+            <field name="model_id" ref="model_rr_transport_line"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('rental.group_rental_staff'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rental_rr_transport_line_courier_assignee_rule" model="ir.rule">
+            <field name="name">Rental RR Transport line: Người giao/nhận — theo phiếu cha</field>
+            <field name="model_id" ref="model_rr_transport_line"/>
+            <field name="domain_force">['&amp;', ('company_id', 'in', company_ids), '|', ('transport_id.deliverer_partner_id', '=', user.partner_id.id), ('transport_id.receiver_partner_id', '=', user.partner_id.id)]</field>
+            <field name="groups" eval="[(4, ref('rental.group_rental_transport_courier'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rental_stock_picking_courier_transport_rule" model="ir.rule">
+            <field name="name">Stock picking: Người giao/nhận — phiếu gắn rr.transport được gán</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="domain_force">['&amp;', ('company_id', 'in', company_ids), ('rental_transport_id', '!=', False), '|', ('rental_transport_id.deliverer_partner_id', '=', user.partner_id.id), ('rental_transport_id.receiver_partner_id', '=', user.partner_id.id)]</field>
+            <field name="groups" eval="[(4, ref('rental.group_rental_transport_courier'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        <record id="rental_stock_move_courier_transport_rule" model="ir.rule">
+            <field name="name">Stock move: Người giao/nhận — theo phiếu kho gắn transport</field>
+            <field name="model_id" ref="stock.model_stock_move"/>
+            <field name="domain_force">['&amp;', ('company_id', 'in', company_ids), ('picking_id.rental_transport_id', '!=', False), '|', ('picking_id.rental_transport_id.deliverer_partner_id', '=', user.partner_id.id), ('picking_id.rental_transport_id.receiver_partner_id', '=', user.partner_id.id)]</field>
+            <field name="groups" eval="[(4, ref('rental.group_rental_transport_courier'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        <record id="rental_stock_move_line_courier_transport_rule" model="ir.rule">
+            <field name="name">Stock move line: Người giao/nhận — theo phiếu kho gắn transport</field>
+            <field name="model_id" ref="stock.model_stock_move_line"/>
+            <field name="domain_force">['&amp;', ('company_id', 'in', company_ids), ('picking_id.rental_transport_id', '!=', False), '|', ('picking_id.rental_transport_id.deliverer_partner_id', '=', user.partner_id.id), ('picking_id.rental_transport_id.receiver_partner_id', '=', user.partner_id.id)]</field>
+            <field name="groups" eval="[(4, ref('rental.group_rental_transport_courier'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rental_transport_matrix_company_rule" model="ir.rule">
+            <field name="name">Rental Transport Matrix: multi-company</field>
+            <field name="model_id" ref="rental.model_rental_transport_matrix"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rental_product_template_set_company_rule" model="ir.rule">
+            <field name="name">Rental Product Template Set: multi-company</field>
+            <field name="model_id" ref="rental.model_rental_product_template_set"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="rental_product_template_set_line_company_rule" model="ir.rule">
+            <field name="name">Rental Product Template Set Line: multi-company</field>
+            <field name="model_id" ref="rental.model_rental_product_template_set_line"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rental_invoice_company_rule" model="ir.rule">
+            <field name="name">Rental Invoice: multi-company</field>
+            <field name="model_id" ref="rental.model_rental_invoice"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rental_invoice_line_company_rule" model="ir.rule">
+            <field name="name">Rental Invoice Line: multi-company</field>
+            <field name="model_id" ref="rental.model_rental_invoice_line"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+<!--        <record id="rental_res_partner_company_rule" model="ir.rule">-->
+<!--            <field name="name">Rental Res Partners: multi-company</field>-->
+<!--            <field name="model_id" ref="base.model_res_partner"/>-->
+<!--&lt;!&ndash;            <field name="domain_force">[('company_group_id','in', user.company_ids.company_group_id.ids)]</field>&ndash;&gt;-->
+<!--            <field name="domain_force">[('company_id', 'in', company_ids), ('customer_type', 'in', ['renter', 'driver'])]</field>-->
+<!--            <field name="groups" eval="[(4, ref('base.group_user'))]"/>-->
+<!--            <field name="perm_read" eval="True"/>-->
+<!--            <field name="perm_write" eval="True"/>-->
+<!--            <field name="perm_create" eval="True"/>-->
+<!--            <field name="perm_unlink" eval="True"/>-->
+<!--        </record>-->
+
+        <!-- Let everyone see their own partner (login/contact) explicitly -->
+<!--        <record id="rule_partner_self_visibility" model="ir.rule">-->
+<!--            <field name="name">Show own partner</field>-->
+<!--            <field name="model_id" ref="base.model_res_partner"/>-->
+<!--            <field name="domain_force">['|', ('id','=', user.partner_id.id), ('company_id', 'in', company_ids)]</field>-->
+<!--            <field name="perm_read" eval="True"/>-->
+<!--            <field name="perm_write" eval="False"/>-->
+<!--            <field name="perm_create" eval="False"/>-->
+<!--            <field name="perm_unlink" eval="False"/>-->
+<!--        </record>-->
+
+    </data>
+</odoo>

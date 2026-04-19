@@ -1,0 +1,102 @@
+<!-- views/account_move_view.xml -->
+<odoo>
+
+  <record id="view_rental_inherit_account_move_tree" model="ir.ui.view">
+        <field name="name">view.rental.inherit.account.move.tree</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="rental_start_date" optional="show"/>
+                <field name="rental_end_date" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+  <!-- Put the contract field on the customer invoice form -->
+  <record id="view_rental_inherit_account_move_form" model="ir.ui.view">
+    <field name="name">view.rental.inherit.account.move.form</field>
+    <field name="model">account.move</field>
+    <field name="inherit_id" ref="account.view_move_form"/>
+    <field name="arch" type="xml">
+      <!-- Insert near the top info group -->
+        <xpath expr="//form/header" position="inside">
+                <button name="action_download_business_xlsx"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-download"
+                        string="Tải bảng thanh toán chi tiết"
+                        invisible="business_xlsx_attachment_id==False"
+                >
+                  <field name="business_xlsx_attachment_id" widget="statinfo" invisible="1"/>
+                </button>
+                <button name="action_download_rental_payment_table_grouped"
+                        type="object"
+                        string="Tải bảng thanh toán (gộp mẫu SP)"
+                        class="btn-secondary"
+                        invisible="not rental_contract_id or not rental_start_date or not rental_end_date"
+                />
+        </xpath>
+      <xpath expr="//field[@name='partner_id']" position="after">
+        <field name="rental_contract_id" options="{'no_create_edit': True}" readonly="1"/>
+        <field name="rental_start_date" readonly="1"/>
+        <field name="rental_end_date" readonly="1"/>
+        <field name="rental_billing_mode" readonly="1" invisible="not rental_contract_id"/>
+        <field name="rental_billing_explanation"
+               readonly="1"
+               invisible="not rental_contract_id"
+               colspan="2"
+               nolabel="1"
+               class="text-muted o_row"/>
+      </xpath>
+      <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='price_unit']" position="after">
+        <field name="rental_price_month"
+               string="Giá tháng (biến thể)"
+               optional="show"
+               readonly="1"
+               widget="monetary"
+               column_invisible="not parent.rental_contract_id"/>
+        <field name="rental_price_day"
+               string="Giá ngày (biến thể)"
+               optional="show"
+               readonly="1"
+               widget="monetary"
+               column_invisible="not parent.rental_contract_id"/>
+      </xpath>
+      <!-- Rental invoices: show staff UoM from variant (fallback template uom); hide default product_uom column -->
+      <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='product_uom_id'][1]" position="attributes">
+        <attribute name="column_invisible">parent.rental_contract_id</attribute>
+      </xpath>
+      <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='product_uom_id'][1]" position="after">
+        <field name="staff_display_uom_id"
+               string="ĐVT"
+               groups="uom.group_uom"
+               optional="show"
+               readonly="1"
+               column_invisible="not parent.rental_contract_id"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- Add group-by / filter in invoice search -->
+  <record id="view_rental_inherit_account_move_search" model="ir.ui.view">
+    <field name="name">view.rental.inherit.account.move.search</field>
+    <field name="model">account.move</field>
+    <field name="inherit_id" ref="account.view_account_move_filter"/>
+    <field name="arch" type="xml">
+      <xpath expr="//search" position="inside">
+        <field name="rental_contract_id"/>
+        <filter name="group_rental_contract"
+                string="Contract"
+                context="{'group_by': 'rental_contract_id'}"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="action_move_out_invoice_and_refund_type" model="ir.actions.act_window">
+      <field name="name">Invoices and Refund</field>
+      <field name="res_model">account.move</field>
+      <field name="view_mode">tree,kanban,form,activity</field>
+      <field name="context">{'default_move_type': 'out_invoice'}</field>
+      <field name="domain">[('move_type', 'in', ['out_invoice', 'out_refund']), ('rental_contract_id', '!=', False)]</field>
+  </record>
+</odoo>

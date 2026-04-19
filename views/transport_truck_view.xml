@@ -1,0 +1,34 @@
+<odoo>
+    <record id="view_transport_truck_tree" model="ir.ui.view">
+        <field name="name">transport.truck.tree</field>
+        <field name="model">transport.truck</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="plate" optional="show"/>
+                <field name="name" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_transport_truck_form" model="ir.ui.view">
+        <field name="name">transport.truck.form</field>
+        <field name="model">transport.truck</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="plate" />
+                        <field name="name" />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action & Menu -->
+    <record id="action_transport_truck" model="ir.actions.act_window">
+        <field name="name">Transport truck</field>
+        <field name="res_model">transport.truck</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

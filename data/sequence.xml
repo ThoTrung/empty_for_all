@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Sequences for device -->
+<!--    <data noupdate="1">-->
+    <data>
+        <record id="seq_rental_contract" model="ir.sequence">
+            <field name="name">Rental contract</field>
+            <field name="code">rental.contract</field>
+            <field name="prefix">RC</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="seq_transport" model="ir.sequence">
+            <field name="name">Transport</field>
+            <field name="code">rr.transport</field>
+            <field name="prefix">TR</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="seq_rental_invoice" model="ir.sequence">
+            <field name="name">Rental invoice</field>
+            <field name="code">rental.invoice</field>
+            <field name="prefix">RI</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

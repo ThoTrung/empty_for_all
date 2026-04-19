@@ -1,0 +1,36 @@
+<odoo>
+    <record id="view_construction_work_tree" model="ir.ui.view">
+        <field name="name">construction.work.tree</field>
+        <field name="model">construction.work</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" optional="show"/>
+                <field name="project_id" optional="show"/>
+                <field name="address_ids" widget="many2many_tags" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_work_form" model="ir.ui.view">
+        <field name="name">construction.work.form</field>
+        <field name="model">construction.work</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                            <field name="name" />
+                            <field name="project_id" options="{'no_create': False}"/>
+                            <field name="address_ids" widget="many2many_tags" options="{'no_create': False}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action & Menu -->
+    <record id="action_construction_work" model="ir.actions.act_window">
+        <field name="name">Construction work</field>
+        <field name="res_model">construction.work</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

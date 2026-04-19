@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Compact contact dialog when creating from rental contract (context rental_contact_quick). -->
+    <record id="view_partner_form_rental_contract_contact_quick" model="ir.ui.view">
+        <field name="name">res.partner.form.rental.contract.contact.quick</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="priority" eval="95"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='warning_tax']" position="attributes">
+                <attribute name="invisible">context.get('rental_contact_quick') or not same_vat_partner_id</attribute>
+            </xpath>
+            <xpath expr="//div[@name='warning_company']" position="attributes">
+                <attribute name="invisible">context.get('rental_contact_quick') or not same_company_registry_partner_id</attribute>
+            </xpath>
+            <xpath expr="//div[contains(@class,'oe_button_box')]" position="attributes">
+                <attribute name="invisible">context.get('rental_contact_quick') or customer_type in ['driver', 'renter']</attribute>
+            </xpath>
+            <xpath expr="//widget[@name='web_ribbon']" position="attributes">
+                <attribute name="invisible">context.get('rental_contact_quick') or active</attribute>
+            </xpath>
+            <xpath expr="//field[@name='image_1920']" position="attributes">
+                <attribute name="invisible">context.get('rental_contact_quick')</attribute>
+            </xpath>
+            <xpath expr="//div[contains(@class,'oe_title')]" position="attributes">
+                <attribute name="invisible">context.get('rental_contact_quick')</attribute>
+            </xpath>
+            <xpath expr="//sheet/group[1]" position="attributes">
+                <attribute name="invisible">context.get('rental_contact_quick')</attribute>
+            </xpath>
+            <xpath expr="//sheet/notebook" position="attributes">
+                <attribute name="invisible">context.get('rental_contact_quick')</attribute>
+            </xpath>
+            <xpath expr="//div[contains(@class,'oe_chatter')]" position="attributes">
+                <attribute name="invisible">context.get('rental_contact_quick')</attribute>
+            </xpath>
+
+            <xpath expr="//div[contains(@class,'oe_button_box')]" position="after">
+                <group invisible="not context.get('rental_contact_quick')" col="2" colspan="2">
+                    <group>
+                        <field name="name" string="Tên liên hệ" default_focus="1" required="type == 'contact'"/>
+                        <field name="title" options="{'no_open': True}" placeholder="vd: Ông"/>
+                        <field name="function" string="Vị trí công việc" placeholder="vd: Giám đốc"/>
+                    </group>
+                    <group>
+                        <field name="phone" widget="phone"/>
+                        <field name="email" widget="email"/>
+                    </group>
+                    <field name="comment" string="Ghi chú" colspan="2" nolabel="1" placeholder="Ghi chú"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

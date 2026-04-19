@@ -1,0 +1,18 @@
+<odoo>
+    <record id="view_res_users_form_inherit_rental_leader" model="ir.ui.view">
+        <field name="name">res.users.form.inherit.rental.leader</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook/page[@name='preferences']/group" position="inside">
+                <group string="Rental" groups="rental.group_rental_manager">
+                    <field name="is_rental_leader"/>
+                    <field name="rental_leader_id"
+                           string="Leader phụ trách hợp đồng"
+                           domain="[('is_rental_leader','=',True), ('company_ids','in',[company_id])]"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+

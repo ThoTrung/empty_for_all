@@ -1,0 +1,13 @@
+/* Overlap warning wizard: readable warning block in dialog */
+.o_rental_matrix_overlap_body .alert-warning {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Wide modals: used by Dialog patch (size_class context or .o_rr_transport_form) */
+.modal-dialog.modal-dialog-centered.modal-xxxl {
+    max-width: 1600px;
+    width: 96vw;
+}
+.modal-dialog.modal-dialog-centered.modal-xl {
+    max-width: 1200px;
+}

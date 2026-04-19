@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_attribute_form_inherit_default_multiplier" model="ir.ui.view">
+        <field name="name">product.attribute.form.inherit.default.multiplier</field>
+        <field name="model">product.attribute</field>
+        <!-- Core Product Attribute form -->
+        <field name="inherit_id" ref="product.product_attribute_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Add column in the Attribute Values tree -->
+            <xpath expr="//field[@name='value_ids']/tree/field[@name='default_extra_price']" position="after">
+                <field name="default_price_multiplier"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

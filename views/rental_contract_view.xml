@@ -1,0 +1,321 @@
+<odoo>
+    <data>
+        <record id="view_rental_contract_search" model="ir.ui.view">
+            <field name="name">rental.contract.search</field>
+            <field name="model">rental.contract</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+<!--                    <field name="a_company_id"/>-->
+                    <searchpanel>
+                        <field name="status" select="multi" icon="fa-check" enable_counters="1"/>
+                    </searchpanel>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_rental_contract_tree" model="ir.ui.view">
+            <field name="name">rental.contract.tree</field>
+            <field name="model">rental.contract</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <header>
+                        <button name="%(action_create_invoice_wizard)d"
+                                type="action"
+                                string="Export debt confirmation comparison table"
+                                class="btn-info me-2"
+                                context="{
+                                    'date_range_callback': 'export_debt_confirmation_comparison_table',
+                                }"
+                        />
+                    </header>
+                    <field name="code" optional="show"/>
+                    <field name="contract_date" optional="show"/>
+                    <field name="name" optional="hide"/>
+                    <field name="status"
+                           widget="badge"
+                           decoration-success="status == 'active'"
+                           decoration-muted="status in ('finish')"
+                           optional="show"
+                    />
+                    <field name="a_party" optional="show"/>
+                    <field name="b_party" optional="show"/>
+                    <field name="amount_invoiced" optional="show"/>
+                    <field name="amount_paid" optional="show"/>
+                    <field name="amount_due" optional="show"/>
+                    <field name="construction_work_id" optional="show"/>
+                    <field name="construction_work_project_id" optional="hide"/>
+                    <field name="construction_work_address" optional="hide"/>
+<!--                    <field name="a_company_id" optional="show"/>-->
+<!--                    <field name="a_representative_id" optional="show"/>-->
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_rental_contract_form" model="ir.ui.view">
+            <field name="name">rental.contract.form</field>
+            <field name="model">rental.contract</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <field name="status" widget="statusbar"/>
+                        <button
+                                name="action_download_rental_contract"
+                                string="Download rental contract"
+                                type="object"
+                                class="btn-info"
+                        />
+                        <button
+                                name="action_print_rental_contract"
+                                string="Print rental contract"
+                                type="object"
+                                class="btn-success"
+                        />
+
+
+                        <button
+                                name="request_confirm_from_leader"
+                                string="Cần xác nhận"
+                                type="object"
+                                class="btn-warning"
+                                groups="rental.group_rental_staff"
+                                invisible="not ((status in ['new', 'need_fix']))"
+                        />
+                        <button
+                                name="action_open_reject_confirm_wizard"
+                                string="Không xác nhận"
+                                type="object"
+                                class="btn-danger"
+                                groups="rental.group_rental_leader"
+                                invisible="status != 'need_approve'"
+                        />
+                        <button
+                                name="leader_confirm_rental_contract"
+                                string="Leader confirm"
+                                type="object"
+                                class="btn-warning"
+                                groups="rental.group_rental_leader"
+                                invisible="status not in ['need_approve']"
+                        />
+                        <button
+                                name="action_unlock_edit"
+                                string="Mở khóa"
+                                type="object"
+                                class="btn-warning"
+                                groups="rental.group_rental_leader"
+                                invisible="status in ['new', 'need_fix'] or edit_unlocked"
+                        />
+                        <button
+                                name="action_lock_edit"
+                                string="Khóa"
+                                type="object"
+                                class="btn-secondary"
+                                invisible="not edit_unlocked"
+                        />
+<!--                        <button-->
+<!--                                name="customer_confirm_rental_contract"-->
+<!--                                string="Customer confirm"-->
+<!--                                type="object"-->
+<!--                                class="btn-success"-->
+<!--                                groups="rental.group_rental_staff"-->
+<!--                                invisible="status not in ['new', 'leader_approved']"-->
+<!--                        />-->
+                        <button
+                                name="active_rental_contract"
+                                string="Active rental contract"
+                                type="object"
+                                class="btn-success"
+                                groups="rental.group_rental_staff"
+                                invisible="status not in ['new', 'leader_approved', 'customer_confirmed']"
+                        />
+                        <button
+                                name="finish_rental_contract"
+                                string="Finish rental contract"
+                                type="object"
+                                class="btn-danger"
+                                groups="rental.group_rental_staff"
+                                confirm="Bạn có chắc chắn muốn kết thúc hợp đồng này không?"
+                                invisible="status not in ['active']"
+                        />
+                        <button
+                                name="reactivate_rental_contract"
+                                string="Hoạt động trở lại"
+                                type="object"
+                                class="btn-success"
+                                groups="rental.group_rental_staff"
+                                confirm="Bạn có chắc chắn muốn đưa hợp đồng này hoạt động trở lại không?"
+                                invisible="status != 'finish'"
+                        />
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_open_transport_matrices" type="object" class="oe_stat_button" icon="fa-table" invisible="transport_matrix_count == 0">
+                                <field name="transport_matrix_count" widget="statinfo" string="Confirmation tables"/>
+                            </button>
+                            <button name="action_open_account_moves" type="object" class="oe_stat_button" icon="fa-pencil-square-o" invisible="invoice_count == 0">
+                                <field name="invoice_count" widget="statinfo" string="Invoices in Range"/>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="code" placeholder="Mã hợp đồng"/>
+                            </h1>
+                            <group>
+                                <group>
+                                    <field name="contract_date" placeholder="01/01/2025"/>
+                                </group>
+                                <group>
+                                    <field name="rental_billing_mode"/>
+                                </group>
+                            </group>
+                        </div>
+                        <notebook>
+                            <page string="Base info">
+                                <group>
+                                    <field name="status" invisible="1"/>
+                                    <field name="company_id" invisible="1"/>
+                                    <field name="company_partner_id" invisible="1"/>
+                                    <field name="edit_unlocked" invisible="1"/>
+                                    <field name="can_edit" invisible="1"/>
+                                    <group>
+                                        <separator string="Bên A" class="text-danger text-medium"/>
+                                        <field name="a_company_party" placeholder="Công ty Lộc Phát" options="{'no_create': True}" readonly="not can_edit"/>
+                                        <field name="a_party" placeholder="Nguyễn văn A" readonly="not a_company_party or not can_edit" options="{'no_quick_create': True}" context="{'no_parent_prefix': True, 'default_parent_id': a_company_party, 'default_type': 'contact', 'rental_contact_quick': 1}"/>
+                                        <field name="a_function" readonly="not can_edit"/>
+                                        <field name="a_executor_id" placeholder="Người thực hiện" options="{'no_quick_create': True}" context="{'no_parent_prefix': True, 'default_parent_id': a_company_party, 'default_type': 'contact', 'rental_contact_quick': 1}" readonly="not can_edit"/>
+                                        <field name="a_executor_function" readonly="1"/>
+                                        <field name="a_address" readonly="not can_edit"/>
+                                        <field name="a_phone" readonly="not can_edit"/>
+                                        <field name="a_bank_account" readonly="not can_edit"/>
+                                        <field name="a_vat" readonly="not can_edit"/>
+                                    </group>
+                                    <group>
+                                        <separator string="Bên B" class="text-success text-medium"/>
+                                        <field name="b_company_party" placeholder="" options="{'no_create': True}" readonly="1"/>
+                                        <field name="b_party" string="Đại diện bên B" placeholder="Nguyễn Văn A" options="{'no_quick_create': True}" context="{'no_parent_prefix': True, 'default_parent_id': b_company_party, 'default_type': 'contact', 'rental_contact_quick': 1}" readonly="not b_company_party or not can_edit"/>
+                                        <field name="b_function" readonly="not can_edit"/>
+                                        <field name="b_executor_id" placeholder="Người thực hiện" options="{'no_quick_create': True}" context="{'no_parent_prefix': True, 'default_parent_id': b_company_party, 'default_type': 'contact', 'rental_contact_quick': 1}" readonly="not b_company_party or not can_edit"/>
+                                        <field name="b_executor_function" readonly="1"/>
+                                        <field name="b_address" readonly="not can_edit"/>
+                                        <field name="b_phone" readonly="not can_edit"/>
+                                        <field name="b_bank_account" readonly="not can_edit"/>
+                                        <field name="b_vat" readonly="not can_edit"/>
+                                    </group>
+                                    <group>
+                                        <separator string="Công trình" class="text-info text-medium"/>
+                                        <field name="construction_work_id" options="{'no_quick_create': True}" readonly="not can_edit"/>
+                                        <field name="construction_work_project_id" readonly="1"/>
+                                        <field name="construction_work_address" readonly="1"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <field name="note" readonly="not can_edit"/>
+                                </group>
+                            </page>
+                            <page string="Product lines">
+                                <group>
+                                    <field name="product_list_template_id"
+                                           options="{'no_create_edit': True}"
+                                           readonly="not can_edit"/>
+                                </group>
+                                <button name="action_export_quotation_excel"
+                                        type="object"
+                                        string="Xuất báo giá"
+                                        class="btn-success"
+                                />
+                                <field name="rental_contract_line_ids"
+                                       context="{'default_company_id': company_id}"
+                                       readonly="not can_edit">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_tmpl_id"/>
+                                        <field name="name" placeholder="Description" optional="hide"/>
+                                        <field name="uom_id" optional="show"/>
+                                        <field name="product_uom_qty" optional="show"/>
+                                        <field name="company_id" optional="hide"/>
+                                        <field name="price_unit" widget="monetary" optional="show"/>
+                                        <field name="compensation_price" widget="monetary" optional="show"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Transports">
+                                <button name="%(action_create_invoice_wizard)d"
+                                        type="action"
+                                        string="Export confirmation table for rental volume"
+                                        class="btn-primary"
+                                        context="{
+                                            'date_range_callback': 'action_create_transport_matrix_record',
+                                        }"
+                                />
+                                <field name="rr_transport_ids" context="{'size_class': 'modal-xl'}"/>
+                            </page>
+                            <page string="Price list">
+                                <field name="rr_transport_line_ids" readonly="1">
+                                    <tree editable="bottom">
+                                        <field name="start_rental_or_return_date"/>
+                                        <field name="product_id"/>
+                                        <field name="staff_display_uom_id" string="Đơn vị hiển thị"/>
+                                        <field name="uom_id" optional="hide" string="ĐVT (mẫu/kho)"/>
+                                        <field name="qty"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Invoice">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+<!--                                        <button name="%(action_create_invoice_wizard)d"-->
+<!--                                                type="action"-->
+<!--                                                string="Create invoice"-->
+<!--                                                class="btn-primary me-2"-->
+<!--                                                context="{-->
+<!--                                                    'date_range_callback': 'action_create_rental_invoice',-->
+<!--                                                }"-->
+<!--                                        />-->
+                                        <button name="%(action_create_invoice_wizard)d"
+                                                type="action"
+                                                string="Xuất bảng thanh toán tiền thuê"
+                                                class="btn-success me-2"
+                                                context="{
+                                                    'date_range_callback': 'action_export_invoice_excel',
+                                                }"
+                                        />
+                                        <button name="%(action_create_invoice_wizard)d"
+                                                type="action"
+                                                string="Export debt confirmation comparison table"
+                                                class="btn-info me-2"
+                                                context="{
+                                                    'date_range_callback': 'export_debt_confirmation_comparison_table',
+                                                }"
+                                        />
+                                    </div>
+                                    <group>
+                                        <field name="amount_invoiced" class="fw-bolder"/>
+                                        <field name="amount_paid" class="text-info fw-bolder"/>
+                                        <field name="amount_due" class="text-danger fw-bolder"/>
+                                    </group>
+                                </div>
+                                <field name="account_move_ids" readonly="1"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_rental_contract" model="ir.actions.act_window">
+            <field name="name">Rental contract</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">rental.contract</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p>
+                    There is no rental contract!
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

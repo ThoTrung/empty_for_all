@@ -1,0 +1,93 @@
+<odoo>
+  <!-- Main PDF template -->
+  <template id="report_quotation_price_document">
+    <t t-call="web.html_container">
+      <t t-foreach="docs" t-as="o">
+        <t t-call="web.external_layout">
+          <div class="page report_quotation_price_document">
+            <!-- Title (optional) -->
+            <h3 class="text-center" style="margin: 0 0 8px 0;">BÁO GIÁ THUÊ THIẾT BỊ</h3>
+
+            <!-- Table -->
+            <table class="tbl tbl-compact" style="width:100%; border-collapse:collapse; table-layout:fixed;">
+              <thead>
+                <tr>
+                  <th style="width:6%; text-align:center;">TT</th>
+                  <th style="width:64%;">Tên hàng, chủng loại</th>
+                  <th style="width:10%; text-align:center;">ĐVT</th>
+                  <th style="width:8%; text-align:center;">Số lượng</th>
+                  <th style="width:12%; text-align:center;">Đơn giá thuê<br/>(VND)/ 1 Ngày</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Use enumerate to have the index (TT) start at 1 -->
+                <t t-foreach="enumerate(o.rental_contract_line_ids, 1)" t-as="it">
+                  <t t-set="line" t-value="it[1]"/>
+                  <tr>
+                    <!-- TT -->
+                    <td class="tc">
+                      <t t-esc="it[0] if it and len(it) &gt; 0 else ''"/>
+                    </td>
+                    <!-- Tên hàng -->
+                    <td>
+                      <span t-esc="line.product_tmpl_id and line.product_tmpl_id.name or ''"/>
+                    </td>
+                    <!-- ĐVT -->
+                    <td class="tc">
+                      <span t-esc="line.uom_id and line.uom_id.name or ''"/>
+                    </td>
+                    <!-- Số lượng -->
+                    <td class="tc">
+                      1
+                    </td>
+                    <!-- Đơn giá (with optional highlight) -->
+                    <td class="tr">
+                      <t t-set="currency" t-value="o.currency_id or o.company_id.currency_id"/>
+                      <span t-esc="line.price_unit or 0.0"
+                            t-options='{"widget": "monetary", "display_currency": currency}'/>
+                    </td>
+                  </tr>
+                </t>
+              </tbody>
+            </table>
+
+            <!-- Optional note under the table -->
+            <p>
+              Đơn giá chưa bao gồm thuế (nếu có). Thời hạn thuê và điều kiện khác theo hợp đồng.
+            </p>
+            <style>
+              .report_quotation_price_document {
+                font-family: 'Roboto', sans-serif;
+                color: #000;
+                font-size: 18px;
+              }
+              .o_report_layout_boxed table tbody {
+                color: #000;
+              }
+              .tbl th, .tbl td {
+                  border: 1px solid #000;
+                  padding: 6px 8px;
+                  vertical-align: middle;
+                  word-wrap: break-word;
+              }
+              .tbl thead th {
+                  text-align: center;
+                  font-weight: 800;
+              }
+              .tbl-compact td, .tbl-compact th {
+                  padding-top: 6px;
+                  padding-bottom: 6px;
+              }
+              .tc { text-align: center; }
+              .tr { text-align: right; }
+              .hl { display: inline-block; padding: 2px 4px; }
+              .tbl { border: 1px solid #000; }
+              h3.text-center { text-align: center; }
+              .money { font-weight: 600; }
+            </style>
+          </div>
+        </t>
+      </t>
+    </t>
+  </template>
+</odoo>

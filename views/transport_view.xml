@@ -1,0 +1,199 @@
+<odoo>
+    <record id="view_rr_transport_search" model="ir.ui.view">
+        <field name="name">rr.transport.search</field>
+        <field name="model">rr.transport</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="rental_contract_id" groups="rental.group_rental_staff"/>
+                <separator/>
+                <filter name="draft" string="Nháp" domain="[('state', '=', 'draft')]"/>
+                <filter name="done" string="Hoàn thành" domain="[('state', '=', 'done')]"/>
+                <filter name="cancel" string="Đã hủy" domain="[('state', '=', 'cancel')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_rr_transport_tree" model="ir.ui.view">
+        <field name="name">rr.transport.tree</field>
+        <field name="model">rr.transport</field>
+        <field name="arch" type="xml">
+            <tree delete="0">
+                <field name="code" optional="show"/>
+                <field name="start_rental_or_return_date" optional="show"/>
+                <field name="type"
+                       widget="badge"
+                       decoration-info="type=='delivery'"
+                       decoration-danger="type=='return'"
+                       optional="show"/>
+                <field name="rental_contract_id" optional="show" groups="rental.group_rental_staff"/>
+                <field name="rental_contract_summary" optional="show" groups="rental.group_rental_transport_courier"/>
+                <field name="construction_work_id" optional="hide"/>
+                <field name="construction_work_project_id" optional="hide"/>
+                <field name="construction_work_address" optional="hide"/>
+                <field name="plate" optional="show"/>
+                <field name="driver_name" optional="show"/>
+                <field name="driver_phone" optional="show"/>
+                <field name="fee" optional="show"/>
+                <field name="state"
+                       widget="badge"
+                       decoration-success="state=='done'"
+                       decoration-muted="state=='cancel'"
+                       optional="show"/>
+<!--                <field name="total_qty" optional="show"/>-->
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_rr_transport_form" model="ir.ui.view">
+        <field name="name">rr.transport.form</field>
+        <field name="model">rr.transport</field>
+        <field name="arch" type="xml">
+            <form class="o_rr_transport_form" create="0" delete="0">
+                <sheet>
+                    <header>
+                        <field name="state" widget="statusbar"/>
+                        <button name="action_view_pickings"
+                                type="object"
+                                string="Phiếu kho"
+                                class="btn-secondary"
+                                icon="fa-truck"
+                                groups="rental.group_rental_staff"/>
+                        <button name="action_cancel_transport"
+                                type="object"
+                                string="Hủy phiếu"
+                                class="btn-secondary"
+                                invisible="state == 'cancel'"
+                                confirm="Hủy phiếu xuất nhập kho này? Với trạng thái Hoàn thành, hệ thống sẽ tạo phiếu kho đảo để cân tồn."
+                                groups="rental.group_rental_staff"/>
+                    </header>
+                    <field name="contract_can_edit" invisible="1"/>
+                    <group>
+                        <group>
+                            <field name="start_rental_or_return_date" placeholder="01/01/2026"/>
+                            <field name="type" widget="radio" options="{'horizontal': true}" readonly="state in ['done', 'cancel']"/>
+                        </group>
+                        <group>
+                            <field name="code" readonly="1"/>
+                            <field name="rental_contract_id" readonly="1" force_save="1"/>
+                            <field name="rental_contract_summary" readonly="1" groups="rental.group_rental_transport_courier"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <separator string="BÊN GIAO" class="text-medium"/>
+                            <field name="delivering_party" invisible="1"/>
+                            <field name="delivering_party_parent_id" invisible="1"/>
+                            <field name="dp_name" string="Bên giao" readonly="1"/>
+                            <field name="dp_owner_name" string="Đại diện" readonly="1"/>
+                            <field name="dp_owner_function" string="Chức vụ" readonly="1"/>
+                            <field name="dp_party_phone" string="Số điện thoại" readonly="1"/>
+
+                            <field name="deliverer_partner_id"
+                                   string="Người giao hàng"
+                                   readonly="state in ['done', 'cancel']"
+                                   domain="['|', ('id', '=', delivering_party), ('parent_id', '=?', delivering_party_parent_id)]"
+                                   context="{'no_parent_prefix': True}"
+                            />
+                            <field name="deliverer_phone" string="Số điện thoại" readonly="1"/>
+                            <field name="deliverer_id_number" string="CCCD" readonly="1"/>
+                            <field name="deliverer_partner_function" string="Chức vụ" readonly="1"/>
+                        </group>
+                        <group>
+                            <separator string="BÊN NHẬN" class="text-medium"/>
+                            <field name="receiving_party" invisible="1"/>
+                            <field name="receiving_party_parent_id" invisible="1"/>
+                            <field name="rp_name" string="Bên nhận" readonly="1"/>
+                            <field name="rp_owner_name" string="Đại diện" readonly="1"/>
+                            <field name="rp_owner_function" string="Chức vụ" readonly="1"/>
+                            <field name="rp_party_phone" string="Số điện thoại" readonly="1"/>
+                            <field name="receiver_partner_id"
+                                   string="Người nhận hàng"
+                                   readonly="state in ['done', 'cancel']"
+                                   domain="['|', ('id', '=', receiving_party), ('parent_id', '=?', receiving_party_parent_id)]"
+                                   context="{'no_parent_prefix': True}"
+                            />
+                            <field name="receiver_phone" string="Số điện thoại" readonly="1"/>
+                            <field name="receiver_id_number" string="CCCD" readonly="1"/>
+                            <field name="receiver_partner_function" string="Chức vụ" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <separator string="Thông tin vận chuyển" class="text-danger text-medium"/>
+<!--                            <field name="rental_contract_id" readonly="state in ['done', 'cancel']"/>-->
+                            <field name="state" invisible="1"/>
+                            <!-- <field name="construction_work_id" readonly="state in ['done', 'cancel']"/> -->
+                            <field name="construction_work_id" readonly="1"/>
+                            <field name="construction_work_project_id" readonly="1"/>
+                            <field name="construction_work_address" readonly="1"/>
+                            <field name="equipment_carrier" readonly="state in ['done', 'cancel']"/>
+                            <field name="equipment_carrier_name"/>
+                            <field name="vehicle_start_time" readonly="state in ['done', 'cancel']" placeholder="11/02/2025 07:00:00"/>
+                            <field name="vehicle_arrival_time" readonly="state in ['done', 'cancel']" placeholder="11/02/2025 07:00:00"/>
+                        </group>
+                        <group>
+                            <separator string="Tài xế - Xe" class="text-success text-medium"/>
+                            <field name="driver_id"
+                                   readonly="state in ['done', 'cancel']"
+                                   placeholder="Nguyễn Văn A"
+                                   options="{'no_quick_create': True}"
+                                   context="{'rental_contact_quick': 1, 'default_customer_type': 'driver', 'default_is_company': False}"
+                            />
+<!--                            <field name="driver_name"/>-->
+                            <field name="driver_phone" readonly="state in ['done', 'cancel']" placeholder="0987654321"/>
+                            <field name="transport_truck_id" readonly="state in ['done', 'cancel']" placeholder="30M-09090"/>
+                            <field name="equipment_load" readonly="state in ['done', 'cancel']"/>
+                            <field name="fee" readonly="state in ['done', 'cancel']"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Products">
+<!--                            <field name="transport_line_ids" readonly="state in ['done', 'cancel']">-->
+                            <field name="transport_line_ids" readonly="state in ['done', 'cancel']">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="staff_display_uom_id" string="Đơn vị hiển thị"/>
+                                    <field name="uom_id" optional="hide" string="ĐVT (mẫu/kho)"/>
+                                    <field name="qty"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Phiếu kho" groups="rental.group_rental_staff,rental.group_rental_transport_courier">
+                            <field name="picking_ids" nolabel="1" readonly="1">
+                                <tree create="0" delete="0" edit="0" open_form_view="1">
+                                    <field name="name"/>
+                                    <field name="picking_type_id" optional="show"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'done'"
+                                           decoration-info="state not in ('done', 'cancel')"
+                                           decoration-muted="state == 'cancel'"/>
+                                    <field name="scheduled_date" optional="show"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                    <footer>
+                        <button name="action_export_equipment_delivery_receipt"
+                                type="object"
+                                string="Export Equipment Delivery Receipt"
+                                class="btn-success"
+                        />
+                        <button special="save" string="Save" class="btn-primary" data-hotkey="s" invisible="state != 'draft'" groups="rental.group_rental_staff"/>
+                        <button name="action_create_pickings" type="object" string="Create Picking" invisible="state != 'draft'" groups="rental.group_rental_staff"/>
+                        <button special="cancel" string="Discard" class="btn-secondary" data-hotkey="x"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action & Menu -->
+    <record id="action_rr_transport" model="ir.actions.act_window">
+        <field name="name">Xuất nhập kho</field>
+        <field name="res_model">rr.transport</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_rr_transport_search"/>
+    </record>
+</odoo>

@@ -1,0 +1,50 @@
+<odoo>
+    <record id="view_construction_project_tree" model="ir.ui.view">
+        <field name="name">construction.project.tree</field>
+        <field name="model">construction.project</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_project_form" model="ir.ui.view">
+        <field name="name">construction.project.form</field>
+        <field name="model">construction.project</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_address_tree" model="ir.ui.view">
+        <field name="name">construction.address.tree</field>
+        <field name="model">construction.address</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_address_form" model="ir.ui.view">
+        <field name="name">construction.address.form</field>
+        <field name="model">construction.address</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>
+

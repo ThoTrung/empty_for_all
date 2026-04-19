@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_rental_transport_matrix_tree" model="ir.ui.view">
+            <field name="name">rental.transport.matrix.tree</field>
+            <field name="model">rental.transport.matrix</field>
+            <field name="arch" type="xml">
+                <tree string="Rental volume confirmation tables" default_order="company_id, id desc">
+                    <field name="company_id" optional="show"/>
+                    <field name="name"/>
+                    <field name="rental_contract_id"/>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_rental_transport_matrix_form" model="ir.ui.view">
+            <field name="name">rental.transport.matrix.form</field>
+            <field name="model">rental.transport.matrix</field>
+            <field name="arch" type="xml">
+                <form string="Confirmation table for rental volume">
+                    <header>
+                        <button name="action_recalculate_matrix"
+                                type="object"
+                                string="Tính toán lại"
+                                class="btn-secondary"/>
+                        <button name="action_download_excel"
+                                type="object"
+                                string="Download Excel"
+                                class="btn-primary"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="rental_contract_id" readonly="1"/>
+                                <field name="company_id" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="start_date" readonly="1"/>
+                                <field name="end_date" readonly="1"/>
+                                <field name="product_ids" widget="many2many_tags" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <separator string="Contract parties" class="text-info text-medium"/>
+                        <group>
+                            <group>
+                                <field name="a_company_name" string="Đơn vị đi thuê (Bên A):" class="fw-bold" readonly="1"/>
+                                <field name="a_representative_name" string="Đại diện:" readonly="1"/>
+                                <field name="a_representative_function" string="Chức vụ:" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="b_company_name" string="Đơn vị cho thuê (Bên B):" class="fw-bold" readonly="1"/>
+                                <field name="b_representative_name" string="Đại diện:" readonly="1"/>
+                                <field name="b_representative_function" string="Chức vụ:" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <separator string="Confirmation table (preview)" class="text-info text-medium"/>
+                        <field name="matrix_html" nolabel="1"/>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_rental_transport_matrix" model="ir.actions.act_window">
+            <field name="name">Confirmation tables</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">rental.transport.matrix</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+    </data>
+</odoo>
+
