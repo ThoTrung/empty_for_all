@@ -178,6 +178,12 @@
                                     <field name="edit_unlocked" invisible="1"/>
                                     <field name="can_edit" invisible="1"/>
                                     <group>
+                                        <field name="include_start_day_bob"/>
+                                    </group>
+                                    <group>
+                                        <field name="include_start_day_current"/>
+                                    </group>
+                                    <group>
                                         <separator string="Bên A" class="text-danger text-medium"/>
                                         <field name="a_company_party" placeholder="Công ty Lộc Phát" options="{'no_create': True}" readonly="not can_edit"/>
                                         <field name="a_party" placeholder="Nguyễn văn A" readonly="not a_company_party or not can_edit" options="{'no_quick_create': True}" context="{'no_parent_prefix': True, 'default_parent_id': a_company_party, 'default_type': 'contact', 'rental_contact_quick': 1}"/>

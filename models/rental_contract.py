@@ -48,6 +48,18 @@ class RentalContract(models.Model):
         help="Ảnh hưởng bảng thanh toán / hóa đơn: theo ngày dùng Giá thuê/ngày trên sản phẩm; "
              "theo tháng: (Giá thuê tháng / số ngày trong tháng kỳ lập hóa đơn) × số ngày × SL.",
     )
+    include_start_day_bob = fields.Boolean(
+        string="Dư đầu kỳ: tính cả ngày thuê",
+        default=True,
+        tracking=True,
+        help="Khi bật, số ngày thuê của phần Dư đầu kỳ sẽ tính bao gồm cả Ngày thuê.",
+    )
+    include_start_day_current = fields.Boolean(
+        string="Thuê kỳ này: tính cả ngày thuê",
+        default=False,
+        tracking=True,
+        help="Khi bật, số ngày thuê của phần Thuê kỳ này sẽ tính bao gồm cả Ngày thuê.",
+    )
 
     company_partner_id = fields.Many2one(
         'res.partner',
@@ -463,6 +475,10 @@ class RentalContract(models.Model):
         start_row = 13
         max_row = 200
         count = 0
+        if self.rental_billing_mode == "month":
+            ws.cell(start_row - 1, 8).value = "Đơn giá thuê/\n1 tháng (chưa VAT)"
+        else:
+            ws.cell(start_row - 1, 8).value = "Đơn giá thuê/\n1 ngày (chưa VAT)"
         if bob_map:
             ws.cell(start_row + count, 4).value = "Dư đầu kỳ"
             ws.cell(start_row + count, 4).font = Font(bold=True)
@@ -477,7 +493,7 @@ class RentalContract(models.Model):
                     ws.cell(r, 5).value = line["uom_name"]
                     ws.cell(r, 6).value = line["qty"]
                     ws.cell(r, 7).value = line["rental_days"]
-                    ws.cell(r, 8).value = line["unit_price"]
+                    ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
                     ws.cell(r, 9).value = line["total_amount"]
                     count += 1
                 r = start_row + count
@@ -498,7 +514,7 @@ class RentalContract(models.Model):
                     ws.cell(r, 5).value = line["uom_name"]
                     ws.cell(r, 6).value = line["qty"]
                     ws.cell(r, 7).value = line["rental_days"]
-                    ws.cell(r, 8).value = line["unit_price"]
+                    ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
                     ws.cell(r, 9).value = line["total_amount"]
                     count += 1
                 r = start_row + count
