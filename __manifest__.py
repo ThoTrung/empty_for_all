@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Rental',
-    'version': '17.0.1.0.18',
+    'version': '17.0.1.0.19',
     'category': 'Rental',
     'summary': 'Rental service module.',
     'author': "Nguyễn Trung Thọ",
@@ -39,6 +39,7 @@
         'views/construction_extra_view.xml',
         'views/rental_template_view.xml',
         'views/rental_product_template_set_view.xml',
+        'views/rental_holiday_view.xml',
         'views/product_product_view.xml',
         'views/sale_order_views.xml',
         'views/product_template_attribute_value_view.xml',

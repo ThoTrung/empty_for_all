@@ -103,4 +103,10 @@
               action="action_rental_product_template_set"
               sequence="6"
               groups="rental.group_rental_staff"/>
+    <menuitem id="menu_rental_holiday"
+              name="Ngày nghỉ"
+              parent="menu_setting_master"
+              action="action_rental_holiday"
+              sequence="7"
+              groups="rental.group_rental_staff"/>
 </odoo>

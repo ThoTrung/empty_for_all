@@ -17,3 +17,4 @@ from . import rental_template
 from . import rental_product_template_set
 from . import construction_extra
 from . import res_users
+from . import rental_holiday

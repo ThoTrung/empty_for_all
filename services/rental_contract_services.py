@@ -2,7 +2,7 @@ import calendar
 import base64
 import io
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from odoo.modules.module import get_module_resource
 from docxtpl import DocxTemplate
@@ -137,7 +137,44 @@ def rental_days_between(start_date, end_date, include_start_day=False):
     days = (end_date - start_date).days
     if include_start_day:
         days += 1
-    return days
+    return max(days, 0)
+
+
+def _holiday_days_between(env, company, start_date, end_date):
+    """Đếm số ngày nghỉ giao nhau (tính theo lịch đã cấu hình, bao gồm 2 đầu mốc)."""
+    Holiday = env["rental.holiday"]
+    holidays = Holiday.search(
+        [
+            ("company_id", "=", company.id),
+            ("active", "=", True),
+            ("date_from", "<=", end_date),
+            ("date_to", ">=", start_date),
+        ]
+    )
+    total = 0
+    for holiday in holidays:
+        overlap_start = max(start_date, holiday.date_from)
+        overlap_end = min(end_date, holiday.date_to)
+        if overlap_start <= overlap_end:
+            total += (overlap_end - overlap_start).days + 1
+    return total
+
+
+def rental_days_between_with_holiday(env, company, start_date, end_date, include_start_day=False):
+    """
+    Số ngày thuê thực tế sau khi trừ ngày nghỉ.
+    - Mặc định: khoảng tính là (start_date, end_date]  => không tính ngày bắt đầu.
+    - include_start_day=True: khoảng tính là [start_date, end_date].
+    """
+    if include_start_day:
+        effective_start = start_date
+    else:
+        effective_start = start_date + timedelta(days=1)
+    if effective_start > end_date:
+        return 0
+    days = rental_days_between(effective_start, end_date, include_start_day=True)
+    holiday_days = _holiday_days_between(env, company, effective_start, end_date)
+    return max(days - holiday_days, 0)
 
 
 def _build_map_product_and_date_to_line(env, contract, start_date, end_date):
@@ -164,8 +201,12 @@ def _build_map_product_and_date_to_line(env, contract, start_date, end_date):
         include_start_day = (
             contract.include_start_day_bob if is_bob_line else contract.include_start_day_current
         )
-        rental_days = rental_days_between(
-            this_line_start_date, end_date, include_start_day=include_start_day
+        rental_days = rental_days_between_with_holiday(
+            env,
+            contract.company_id,
+            this_line_start_date,
+            end_date,
+            include_start_day=include_start_day,
         )
         tmpl_id = line.product_id.product_tmpl_id.id
         ratio = map_product_id_2_ratio_price.get(tmpl_id, 1.0)
