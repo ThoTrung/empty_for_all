@@ -1,0 +1,36 @@
+<odoo>
+    <template id="luxboat_destination_list_tpl" name="Luxboat Destination list">
+        <t t-call="website.layout">
+            <div id="id_luxboat_destination_list_tpl" class="luxboat_destination_list">
+                <div class="oe_structure"/>
+                <t t-call="luxboat.luxboat_destination_backup_1_tpl"/>
+                <div class="oe_structure"/>
+                <t t-call="luxboat.luxboat_destination_tpl"/>
+                <div class="oe_structure"/>
+                <t t-call="luxboat.luxboat_destination_backup_2_tpl"/>
+                <div class="oe_structure"/>
+            </div>
+        </t>
+    </template>
+
+    <template id="luxboat_destination_tpl" name="Luxboat Destinations">
+        <div class="luxboat_destination">
+            <t t-set="is_image_text" t-value="True"/>
+            <t t-foreach="records" t-as="r">
+                <t t-if="is_image_text">
+                    <t t-call="luxboat.luxboat_image_text"/>
+                </t>
+                <t t-else="">
+                    <t t-call="luxboat.luxboat_text_image"/>
+                </t>
+                <t t-set="is_image_text" t-value="not is_image_text"/>
+            </t>
+        </div>
+    </template>
+
+    <template id="luxboat_destination_backup_1_tpl" name="Luxboat Destinations">
+    </template>
+
+    <template id="luxboat_destination_backup_2_tpl" name="Luxboat Destinations">
+    </template>
+</odoo>

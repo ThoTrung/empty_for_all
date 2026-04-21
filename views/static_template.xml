@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Reusable tile component (static defaults, editor will overwrite per page) -->
+    <template id="s_luxboat_text_on_image" name="LuxBoat Text On Image">
+        <div class="o_record_cover_container d-flex flex-column h-100 cover_auto overflow-hidden rounded-1"
+             data-use_size="True"
+             data-use_filters="True">
+
+            <!-- Background image layer: editor will replace inline style -->
+            <!--            <div class="o_record_cover_component o_record_cover_image o_we_snippet_autofocus d-flex flex-column justify-content-end"-->
+            <!--                 style="background-image:url('/web/static/img/placeholder.png');">-->
+            <!--                &lt;!&ndash; Text overlay: mostly Bootstrap &ndash;&gt;-->
+            <!--                <div class="lux_tile__content p-2 p-lg-4 text-white o_editable">-->
+            <!--                    <h3 class="o_editable text-uppercase fw-bold mb-2 lux_tile__title">-->
+            <!--                        TILE TITLE-->
+            <!--                    </h3>-->
+            <!--                    <p class="o_editable mb-0 lux_tile__desc">-->
+            <!--                        Tile description goes here. Click to edit.-->
+            <!--                    </p>-->
+            <!--                </div>-->
+            <!--            </div>-->
+
+            <!-- Background image layer -->
+            <div class="o_record_cover_component o_record_cover_image o_we_snippet_autofocus"
+                 style="background-image:url('/web/static/img/placeholder.png');">
+            </div>
+
+            <!-- Filter overlay layer (THIS is what Filter Intensity controls) -->
+            <div class="o_record_cover_component o_record_cover_filter oe_black"
+                 style="opacity:0.25;">
+            </div>
+
+            <!-- Text overlay layer -->
+            <div class="position-relative d-flex flex-column justify-content-end h-100 p-2 p-lg-4 text-white">
+                <h3 class="o_editable text-uppercase fw-bold mb-2">
+                    TILE TITLE
+                </h3>
+                <p class="o_editable mb-0">
+                    Tile description goes here. Click to edit.
+                </p>
+            </div>
+        </div>
+    </template>
+
+
+    <!-- Main snippet: 4 tiles -->
+    <template id="s_luxboat_4_text_on_images_in_block" name="LuxBoat 2x2 Text On Image">
+        <section class="o_luxboat_4_text_on_images_in_block s_luxboat_tiles py-4"
+                 data-snippet="s_luxboat_tiles"
+                 data-name="LuxBoat Text On Block">
+            <div class="container">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
+                        <t t-call="luxboat.s_luxboat_text_on_image"/>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <t t-call="luxboat.s_luxboat_text_on_image"/>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <t t-call="luxboat.s_luxboat_text_on_image"/>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <t t-call="luxboat.s_luxboat_text_on_image"/>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </template>
+
+
+    <template id="s_luxboat_tiles_register" inherit_id="website.snippets" name="LuxBoat Tiles - Register">
+        <xpath expr="//div[@id='snippet_structure']//t[@t-snippet][last()]" position="after">
+            <t t-snippet="luxboat.s_luxboat_4_text_on_images_in_block"
+               t-thumbnail="/luxboat/static/src/img/snippets/products_with_intro.svg"/>
+        </xpath>
+    </template>
+
+    <!--    Stickey the right-->
+    <template id="ele_sticky_right_side_block_left" name="Left side of the block">
+        <div class="oe_structure oe_empty"/>
+    </template>
+    <template id="ele_sticky_right_side_block_right" name="Right side of the block">
+        <div class="sticky-image-column" style="height: calc(100vh - 92px);">
+            <div class="o_record_cover_container d-flex flex-column h-100 cover_auto overflow-hidden rounded-1"
+                 data-name="Sticky Right Cover"
+                 data-use_size="True"
+                 data-use_filters="True">
+                <div class="o_record_cover_component o_record_cover_image o_we_snippet_autofocus"
+                     style="background-image:url('/web/static/img/placeholder.png'); ">
+                </div>
+                <div class="o_record_cover_component o_record_cover_filter oe_black"
+                     style="opacity:0.25;">
+                </div>
+                <a id="o_wblog_post_content_jump" href="#id_wblog_post_title" class="o_editable btn justify-content-center align-items-center rounded-circle mx-auto bottom-50 text-decoration-none">
+                    <i class="fa fa-angle-down fa-3x text-white" aria-label="To content" title="To content"></i>
+                </a>
+            </div>
+        </div>
+    </template>
+
+    <template id="s_sticky_right_side_block" name="Sticky right side block">
+        <section class="s_sticky_column_section">
+            <div class="container-fluid pt16 pb16">
+                <div class="row">
+                    <div class="col-lg-8 sticky-content-wrapper">
+                        <t t-call="luxboat.ele_sticky_right_side_block_left"/>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <t t-call="luxboat.ele_sticky_right_side_block_right"/>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </template>
+
+    <template id="s_sticky_right_side_block_register" inherit_id="website.snippets" name="Stick on the right side Register">
+        <xpath expr="//div[@id='snippet_structure']//t[@t-snippet][last()]" position="after">
+            <t t-snippet="luxboat.s_sticky_right_side_block"
+               t-thumbnail="/luxboat/static/src/img/snippets/products_with_intro.svg"/>
+        </xpath>
+    </template>
+
+
+    <template id="s_luxboat_text_on_fullimage" name="LuxBoat Text On Image">
+        <section class="s_luxboat_text_on_fullimage_section">
+            <div class="o_record_cover_container d-flex flex-column h-100 cover_auto overflow-hidden rounded-1"
+                 data-use_size="True"
+                 data-use_filters="True">
+                <div class="o_record_cover_component o_record_cover_image o_we_snippet_autofocus"
+                     style="background-image:url('/web/static/img/placeholder.png');">
+                </div>
+                <!-- Filter overlay layer (THIS is what Filter Intensity controls) -->
+                <div class="o_record_cover_component o_record_cover_filter oe_black"
+                     style="opacity:0.25;">
+                </div>
+                <!-- Text overlay layer -->
+                <div class="position-relative d-flex flex-column justify-content-end h-100 p-2 p-lg-4 text-white">
+                    <h3 class="o_editable text-uppercase fw-bold mb-2">
+                        TILE TITLE
+                    </h3>
+                    <p class="o_editable mb-0">
+                        Tile description goes here. Click to edit.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </template>
+    <!-- Register snippet in the website builder panel -->
+    <template id="s_luxboat_text_on_image_snippet" inherit_id="website.snippets" name="Text On Image ">
+        <xpath expr="//div[@id='snippet_structure']//t[@t-snippet][last()]" position="after">
+            <t t-snippet="luxboat.s_luxboat_text_on_fullimage"
+               t-thumbnail="/luxboat/static/src/img/snippets/products_with_intro.svg"/>
+        </xpath>
+    </template>
+
+    <template id="s_img_banner" name="Image Banner (IMG)">
+        <section class="s_img_banner o_colored_level">
+            <div>
+                <img class="s_img_banner_img s_img_banner_img_desktop img-fluid w-100 d-none d-lg-block o_we_custom_image"
+                     src="/web/static/src/img/placeholder.png"
+                     alt="Banner Desktop"
+                     data-name="banner_desktop"/>
+
+                <!-- Mobile -->
+                <img class="s_img_banner_img s_img_banner_img_mobile img-fluid w-100 d-block d-lg-none o_we_custom_image"
+                     src="/web/static/src/img/placeholder.png"
+                     alt="Banner Mobile"
+                     data-name="banner_mobile"/>
+            </div>
+        </section>
+    </template>
+
+    <!-- Make it appear in the snippet panel -->
+    <template id="s_img_banner_snippet" inherit_id="website.snippets" name="LuxBoat Image banner">
+        <xpath expr="//div[@id='snippet_structure']//t[@t-snippet][last()]" position="after">
+            <t t-snippet="luxboat.s_img_banner"
+               t-thumbnail="/luxboat/static/src/img/snippets/products_with_intro.svg"/>
+        </xpath>
+    </template>
+</odoo>

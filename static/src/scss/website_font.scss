@@ -1,0 +1,105 @@
+/* ================================
+   Neue Haas Grotesk Display
+   ================================ */
+
+@font-face {
+  font-family: 'NeueHaas';
+  src: url('/luxboat/static/src/fonts/SVN-NeueHaasGroteskDisplay-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'NeueHaas';
+  src: url('/luxboat/static/src/fonts/SVN-NeueHaasGroteskDisplay-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+
+/* ================================
+   Denton Condensed (Italic only)
+   ================================ */
+
+@font-face {
+  font-family: 'DentonCondensed';
+  src: url('/luxboat/static/src/fonts/SVN-DentonCondensed-ThinItalic.ttf') format('truetype');
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DentonCondensed';
+  src: url('/luxboat/static/src/fonts/SVN-DentonCondensed-LightItalic.ttf') format('truetype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+
+/* ================================
+   2) Default website font (Requirement #3)
+   ================================ */
+.o_website,
+body {
+  font-family: 'NeueHaas', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 400;
+}
+h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
+  font-family: 'NeueHaas', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 500;
+}
+.navbar-brand, .navbar-text, .navbar .nav-link, .navbar a.js_change_lang span, .navbar a.o_add_language {
+  font-family: 'NeueHaas', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 400;
+}
+
+/* ================================
+   3) Utility classes (for devs + designers)
+   ================================ */
+
+/* NeueHaas variants */
+.o-font-neuehaas-regular {
+  font-family: 'NeueHaas', sans-serif !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+}
+.o-font-neuehaas-medium {
+  font-family: 'NeueHaas', sans-serif !important;
+  font-weight: 500 !important;
+  font-style: normal !important;
+}
+
+/* Denton variants (italic-only) */
+.o-font-denton-thin-italic {
+  font-family: 'DentonCondensed', serif !important;
+  font-weight: 200 !important;
+  font-style: italic !important;
+}
+.o-font-denton-light-italic {
+  font-family: 'DentonCondensed', serif !important;
+  font-weight: 300 !important;
+  font-style: italic !important;
+}
+
+b, strong {
+    font-weight: 500;
+}
+
+em {
+  font-family: 'DentonCondensed', serif;
+  font-style: italic;
+  font-weight: 200;
+}
+
+em strong,
+strong em,
+em b,
+b em{
+  font-family: 'DentonCondensed', serif;
+  font-style: italic;
+  font-weight: 300;
+}

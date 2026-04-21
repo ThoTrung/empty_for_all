@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="s_snippet_header_container" name="Snippet header container">
+        <section class="s_snippet_header_container py-5"
+                 data-snippet="s_snippet_header_container"
+                 data-name="Snippet header container">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 text-center mb-4">
+                        <h2 class="h3 mb-2">Tiêu đề</h2>
+                        <p class="text-muted mb-0">Mô tả.</p>
+                    </div>
+                </div>
+                <div class="oe_structure"/>
+<!--                <t t-call="website_sale.s_dynamic_snippet_products"/>-->
+            </div>
+        </section>
+    </template>
+
+    <template id="snippet_header_container_add_to_panel"
+              inherit_id="website.snippets"
+              name="Add Snippet header">
+        <xpath expr="//div[@id='snippet_structure']//t[@t-snippet][last()]" position="after">
+            <t t-snippet="luxboat.s_snippet_header_container"
+               t-thumbnail="/luxboat/static/src/img/snippets/products_with_intro.svg"/>
+        </xpath>
+    </template>
+</odoo>

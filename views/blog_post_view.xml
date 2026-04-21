@@ -1,0 +1,48 @@
+<odoo>
+  <record id="luxboat_inherit_view_blog_post_tree" model="ir.ui.view">
+    <field name="name">luxboat.inherit.view.blog.post.tree</field>
+    <field name="model">blog.post</field>
+    <field name="inherit_id" ref="website_blog.view_blog_post_list"/>
+    <field name="arch" type="xml">
+      <xpath expr="//tree/field[1]" position="before">
+        <field name="sequence" widget="handle"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="luxboat_inherit_view_blog_post_form" model="ir.ui.view">
+    <field name="name">luxboat.inherit.view.blog.post.form</field>
+    <field name="model">blog.post</field>
+    <field name="inherit_id" ref="website_blog.view_blog_post_form"/>
+    <field name="arch" type="xml">
+
+      <!-- Add under title or in a new group -->
+      <xpath expr="//sheet//group" position="inside">
+        <group>
+          <field name="post_type"/>
+          <field name="short_content"/>
+          <field name="tour_hero_image" widget="image"
+                 class="oe_avatar"
+                 options="{'preview_image': 'tour_hero_image'}"/>
+          <field name="banner_image_pc" widget="image"
+                 class="oe_avatar"
+                 options="{'preview_image': 'banner_image_pc'}"/>
+          <field name="banner_image_mb" widget="image"
+                 class="oe_avatar"
+                 options="{'preview_image': 'banner_image_mb'}"/>
+        </group>
+        <group string="Snippet Image">
+          <field name="snippet_image_1920" widget="image"
+                 class="oe_avatar"
+                 options="{'preview_image': 'snippet_image_1920'}"/>
+          <label for="snippet_image_1920" string="Recommended ratio: 4:3 or 1:1"/>
+        </group>
+      </xpath>
+
+    </field>
+  </record>
+
+  <template id="luxboat_remove_in_blog_line" inherit_id="website_blog.blog_post_content">
+    <xpath expr="//div[@t-if='len(blogs) &gt; 1']" position="replace"/>
+  </template>
+</odoo>

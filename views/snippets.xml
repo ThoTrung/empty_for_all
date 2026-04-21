@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!-- Add snippet to the snippet panel -->
+  <template id="add_snippet_dynamic_products_with_header"
+            inherit_id="website.snippets"
+            name="Add Dynamic Products + Header snippet">
+
+    <!-- Put it in a reasonable category. Adjust as you like. -->
+    <xpath expr="//div[@id='snippet_structure']/div" position="inside">
+      <t t-snippet="luxboat.s_dynamic_snippet_products_with_header"
+         t-thumbnail="/luxboat/static/src/img/snippets/products_with_intro.svg"/>
+    </xpath>
+  </template>
+</odoo>

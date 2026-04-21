@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!--          # Don't need to choose Font from here.-->
+  <!--  <template id="luxboat_snippet_options_fonts"-->
+  <!--            inherit_id="website.snippet_options"-->
+  <!--            name="Luxboat - Snippet Font Options">-->
+
+  <!--    &lt;!&ndash; website.snippet_options uses <xpath expr="." position="inside"> already,-->
+  <!--         so we can also safely insert at root. &ndash;&gt;-->
+  <!--    <xpath expr="." position="inside">-->
+
+  <!--      &lt;!&ndash; Font selector for typical content blocks/snippets &ndash;&gt;-->
+  <!--      <div data-js="LuxboatFont"-->
+  <!--           data-selector=".o_editable, [data-snippet], section, .s_text_block, .s_title, .s_text_image, .s_call_to_action, .s_features"-->
+  <!--           data-no-check="true">-->
+
+  <!--        <we-select string="Font" data-no-preview="true">-->
+  <!--          <we-button data-select-class="o-font-neuehaas-regular"-->
+  <!--                     data-select-class-2="o-font-neuehaas-medium o-font-denton-thin-italic o-font-denton-light-italic">-->
+  <!--            NeueHaas Regular (Default)-->
+  <!--          </we-button>-->
+
+  <!--          <we-button data-select-class="o-font-neuehaas-medium"-->
+  <!--                     data-select-class-2="o-font-neuehaas-regular o-font-denton-thin-italic o-font-denton-light-italic">-->
+  <!--            NeueHaas Medium-->
+  <!--          </we-button>-->
+
+  <!--          <we-button data-select-class="o-font-denton-thin-italic"-->
+  <!--                     data-select-class-2="o-font-neuehaas-regular o-font-neuehaas-medium o-font-denton-light-italic">-->
+  <!--            Denton Thin Italic-->
+  <!--          </we-button>-->
+
+  <!--          <we-button data-select-class="o-font-denton-light-italic"-->
+  <!--                     data-select-class-2="o-font-neuehaas-regular o-font-neuehaas-medium o-font-denton-thin-italic">-->
+  <!--            Denton Light Italic-->
+  <!--          </we-button>-->
+  <!--        </we-select>-->
+
+  <!--      </div>-->
+
+  <!--    </xpath>-->
+</odoo>

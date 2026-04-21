@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="dynamic_snippet_blog_post_filter_tour" model="ir.filters">
+            <field name="name">Bài blog - Tour</field>
+            <field name="model_id">blog.post</field>
+            <field name="user_id" eval="False"/>
+            <field name="domain">
+                [
+                    ('post_date', '&lt;=', context_today()),
+                    ('post_type', '=', 'daily_tour')
+                ]
+            </field>
+            <field name="sort">['sequence asc', 'id desc']</field>
+            <field name="action_id" ref="website.action_website"/>
+        </record>
+
+        <!-- Rental -->
+        <record id="dynamic_snippet_blog_post_filter_rental" model="ir.filters">
+            <field name="name">Bài blog - Rental</field>
+            <field name="model_id">blog.post</field>
+            <field name="user_id" eval="False"/>
+            <field name="domain">
+                [
+                    ('post_date', '&lt;=', context_today()),
+                    ('post_type', '=', 'boat_rental')
+                ]
+            </field>
+            <field name="sort">['sequence asc', 'id desc']</field>
+            <field name="action_id" ref="website.action_website"/>
+        </record>
+
+        <record id="dynamic_snippet_blog_post_filter_tour_and_rental" model="ir.filters">
+            <field name="name">Bài blog - Tour and Rental</field>
+            <field name="model_id">blog.post</field>
+            <field name="user_id" eval="False"/>
+            <field name="domain">
+                [
+                    ('post_date', '&lt;=', context_today()),
+                    ('post_type', 'in', ['boat_rental', 'daily_tour'])
+                ]
+            </field>
+            <field name="sort">['sequence asc', 'id desc']</field>
+            <field name="action_id" ref="website.action_website"/>
+        </record>
+
+        <!-- Gallery -->
+        <record id="dynamic_snippet_blog_post_filter_gallery" model="ir.filters">
+            <field name="name">Bài blog - Gallery</field>
+            <field name="model_id">blog.post</field>
+            <field name="user_id" eval="False"/>
+            <field name="domain">
+                [
+                    ('post_date', '&lt;=', context_today()),
+                    ('post_type', '=', 'gallery')
+                ]
+            </field>
+            <field name="sort">['sequence asc', 'id desc']</field>
+            <field name="action_id" ref="website.action_website"/>
+        </record>
+
+        <!-- Blog (optional) -->
+        <record id="dynamic_snippet_blog_post_filter_blog" model="ir.filters">
+            <field name="name">Bài blog - Blog</field>
+            <field name="model_id">blog.post</field>
+            <field name="user_id" eval="False"/>
+            <field name="domain">
+                [
+                    ('post_date', '&lt;=', context_today()),
+                    ('post_type', '=', 'blog')
+                ]
+            </field>
+            <field name="sort">['sequence asc', 'id desc']</field>
+            <field name="action_id" ref="website.action_website"/>
+        </record>
+
+
+        <!-- =========================================================
+             2) website.snippet.filter: registers the filters for snippets
+             This is what makes them appear in the editor dropdown.
+             ========================================================= -->
+
+        <record id="dynamic_filter__blog_post_tour" model="website.snippet.filter">
+            <field name="name">Blog - Daily tour</field>
+            <field name="filter_id" ref="luxboat.dynamic_snippet_blog_post_filter_tour"/>
+            <field name="field_names">name,subtitle,teaser</field>
+            <field name="limit" eval="16"/>
+        </record>
+
+        <record id="dynamic_filter__blog_post_rental" model="website.snippet.filter">
+            <field name="name">Blog - Boat rental</field>
+            <field name="filter_id" ref="luxboat.dynamic_snippet_blog_post_filter_rental"/>
+            <field name="field_names">name,subtitle,teaser</field>
+            <field name="limit" eval="16"/>
+        </record>
+        <record id="dynamic_filter__blog_post_tour_and_rental" model="website.snippet.filter">
+            <field name="name">Blog - Tour and rental</field>
+            <field name="filter_id" ref="luxboat.dynamic_snippet_blog_post_filter_tour_and_rental"/>
+            <field name="field_names">name,subtitle,teaser</field>
+            <field name="limit" eval="16"/>
+        </record>
+
+        <record id="dynamic_filter__blog_post_gallery" model="website.snippet.filter">
+            <field name="name">Blog - Gallery</field>
+            <field name="filter_id" ref="luxboat.dynamic_snippet_blog_post_filter_gallery"/>
+            <field name="field_names">name,subtitle,teaser</field>
+            <field name="limit" eval="16"/>
+        </record>
+
+        <record id="dynamic_filter__blog_post_blog" model="website.snippet.filter">
+            <field name="name">Blog - News</field>
+            <field name="filter_id" ref="luxboat.dynamic_snippet_blog_post_filter_blog"/>
+            <field name="field_names">name,subtitle,teaser</field>
+            <field name="limit" eval="16"/>
+        </record>
+
+    </data>
+</odoo>

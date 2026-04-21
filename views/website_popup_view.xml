@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+
+    <!-- Action -->
+    <record id="action_website_popup" model="ir.actions.act_window">
+      <field name="name">Website Popups</field>
+      <field name="res_model">website.popup</field>
+      <field name="view_mode">tree,form</field>
+      <field name="context">{}</field>
+    </record>
+
+    <!-- Menu (under Website) -->
+    <menuitem id="menu_website_popup_root"
+              name="Popups"
+              parent="website.menu_content"
+              sequence="220"/>
+    <menuitem id="menu_website_popup"
+              name="Website Popups"
+              parent="menu_website_popup_root"
+              action="action_website_popup"
+              sequence="10"/>
+
+    <!-- Tree -->
+    <record id="view_website_popup_tree" model="ir.ui.view">
+      <field name="name">website.popup.tree</field>
+      <field name="model">website.popup</field>
+      <field name="arch" type="xml">
+        <tree>
+          <field name="sequence" widget="handle"/>
+          <field name="name"/>
+          <field name="website_id"/>
+          <field name="active"/>
+          <field name="show_frequency"/>
+          <field name="date_start"/>
+          <field name="date_end"/>
+          <field name="url_mode"/>
+        </tree>
+      </field>
+    </record>
+
+    <!-- Form -->
+    <record id="view_website_popup_form" model="ir.ui.view">
+      <field name="name">website.popup.form</field>
+      <field name="model">website.popup</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <div class="oe_title">
+              <h1><field name="name"/></h1>
+            </div>
+
+            <group>
+              <group>
+                <field name="active"/>
+                <field name="sequence"/>
+                <field name="website_id"/>
+                <field name="title"/>
+              </group>
+              <group>
+                <field name="show_frequency"/>
+                <field name="frequency_days" invisible="show_frequency != 'days'"/>
+                <field name="delay_ms"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+              </group>
+            </group>
+
+            <group string="Where to show">
+              <field name="url_mode"/>
+              <field name="url_contains" invisible="url_mode != 'contains'"/>
+              <field name="url_regex" invisible="url_mode != 'regex'"/>
+            </group>
+
+            <group string="Cover">
+              <field name="cover_image" widget="image" class="oe_avatar"
+                     options="{'preview_image': 'cover_image'}"/>
+            </group>
+
+            <group string="Content">
+              <field name="body_html"/>
+            </group>
+
+            <group string="Primary button">
+              <field name="primary_button_label"/>
+              <field name="primary_button_url"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+  </data>
+</odoo>

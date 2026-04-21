@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_website_popup_manager,website.popup,model_website_popup,website.group_website_designer,1,1,1,1
+access_website_popup_system,website.popup,model_website_popup,base.group_system,1,1,1,1

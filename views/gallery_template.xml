@@ -1,0 +1,102 @@
+<odoo>
+    <template id="gallery_list_tpl" name="Boat rental list">
+        <t t-call="website.layout">
+            <div id="id_gallery_list_tpl" class="gallery_list">
+                <div class="oe_structure"/>
+                <t t-call="luxboat.gallery_backup_1_tpl"/>
+                <div class="oe_structure"/>
+                <t t-call="luxboat.gallery_tpl"/>
+                <div class="oe_structure"/>
+                <t t-call="luxboat.gallery_backup_2_tpl"/>
+                <div class="oe_structure"/>
+            </div>
+        </t>
+    </template>
+
+    <template id="gallery_tpl" name="Gallery">
+        <div class="gallery container pt32 o_snippet_blog_5_best_recs">
+            <div class="row">
+                <div t-foreach="records" t-as="data" class="s_blog_posts_post col-12 col-lg-6 col-xl-4">
+                    <t t-set="record" t-value="data"/>
+                    <div class="card">
+                        <a class="s_blog_posts_post_cover o_blog_card d-block" t-att-href="'/' + slug(record)">
+                            <div class="o_blog_card__img"
+                                 t-attf-style="background-image: url('/web/image/blog.post/#{record.id}/snippet_image_1920');">
+                            </div>
+                        </a>
+                        <div class="card-body">
+                            <a t-att-href="'/' + slug(record)"><h6 class="mb-0" t-field="record.name"/></a>
+                        </div>
+    <!--                    <div class="card-footer d-flex justify-content-between">-->
+    <!--                        <span class="text-muted mb-0" t-field="record.post_date" t-options='{"format": "MMM d, yyyy"}' />-->
+    <!--                        <span class="text-muted mb-0">In <a class="fw-bold" t-field="record.blog_id.name" t-att-href="'/blog/%s' % record.blog_id.id" />-->
+    <!--                            <a t-if="is_sample" class="fw-bold" href="#">Sample</a>-->
+    <!--                        </span>-->
+    <!--                    </div>-->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="gallery_backup_1_tpl" name="Gallery">
+    </template>
+
+    <template id="gallery_backup_2_tpl" name="Gallery">
+    </template>
+
+    <!-- Detail -->
+    <template id="gallery_detail_section_top_tpl">
+        <section id="o_wblog_post_top">
+            <t t-set="_record" t-value="blog_post"/>
+            <t t-set="snippet_autofocus" t-value="True"/>
+            <t t-set="use_filters" t-value="True"/>
+            <t t-set="use_size" t-value="True"/>
+            <t t-set="display_opt_name">Gallery Cover</t>
+            <t t-set="additionnal_classes" t-value="'o_wblog_post_page_cover'"/>
+            <div id="title" class="blog_header" t-ignore="True">
+                <t t-call="website.record_cover">
+                    <t t-set="resize_classes" t-value="set(json.loads(_record.cover_properties).get('resize_class', '').split(' '))"/>
+                    <div class="container text-center position-relative h-100 d-flex flex-column flex-grow-1 justify-content-around">
+                        <a t-if="{'o_full_screen_height', 'o_half_screen_height', 'cover_full', 'cover_mid'}.intersection(resize_classes)"
+                           id="o_wblog_post_content_jump" href="#id_wblog_post_title"
+                           class="css_editable_mode_hidden justify-content-center align-items-center rounded-circle mx-auto mb-5 text-decoration-none">
+                            <i class="fa fa-angle-down fa-3x text-white" aria-label="To content" title="To content"/>
+                        </a>
+                    </div>
+                </t>
+            </div>
+            <div id="id_wblog_post_title" class="container text-center position-relative h-100 d-flex flex-column flex-grow-1 justify-content-around">
+                <div t-attf-class="o_wblog_post_title #{opt_blog_post_select_to_tweet and 'js_tweet'} #{opt_blog_post_select_to_comment and 'js_comment'}">
+                    <h1 t-field="blog_post.name" id="o_wblog_post_name" class="o_editable_no_shadow" data-oe-expression="blog_post.name" t-att-data-blog-id="blog_post.id" placeholder="Blog Post Title"/>
+                    <div t-field="blog_post.subtitle" id="o_wblog_post_subtitle" class="o_editable_no_shadow" placeholder="Subtitle"/>
+                </div>
+            </div>
+        </section>
+    </template>
+
+    <template id="gallery_detail_section_content_tpl">
+        <t t-set="main_content_classes" t-value="'pt-4 pb-5'"/>
+        <t t-call="luxboat.blog_detail_section_content_tpl"/>
+    </template>
+
+    <template id="gallery_detail_tpl"
+              name="Gallery detail">
+
+        <t t-call="website_blog.index">
+            <!-- Check for active options: the stored value may be used in sub-templates too  -->
+            <t t-set="opt_blog_post_readable" t-value="is_view_active('website_blog.opt_blog_post_readable')"/>
+            <t t-set="opt_blog_post_sidebar" t-value="is_view_active('website_blog.opt_blog_post_sidebar')"/>
+            <t t-set="opt_blog_post_regular_cover" t-value="is_view_active('website_blog.opt_blog_post_regular_cover')"/>
+            <t t-set="opt_blog_post_breadcrumb" t-value="is_view_active('website_blog.opt_blog_post_breadcrumb')"/>
+            <t t-set="opt_blog_post_select_to_tweet" t-value="is_view_active('website_blog.opt_blog_post_select_to_tweet')"/>
+            <t t-set="opt_blog_post_select_to_comment" t-value="is_view_active('website_blog.opt_blog_post_select_to_comment')"/>
+
+            <t t-call="luxboat.gallery_detail_section_top_tpl"/>
+            <t t-call="luxboat.gallery_detail_section_content_tpl"/>
+
+            <section id="o_wblog_post_footer"/>
+        </t>
+    </template>
+
+</odoo>

@@ -1,0 +1,66 @@
+<odoo>
+    <template id="boat_rental_list_tpl" name="Boat rental list">
+        <t t-call="website.layout">
+            <div id="id_boat_rental_list_tpl" class="boat_rental_list">
+                <div class="oe_structure"/>
+                <t t-call="luxboat.boat_rental_backup_1_tpl"/>
+                <div class="oe_structure"/>
+                <t t-call="luxboat.boat_rental_tpl"/>
+                <div class="oe_structure"/>
+                <t t-call="luxboat.boat_rental_backup_2_tpl"/>
+                <div class="oe_structure"/>
+            </div>
+        </t>
+    </template>
+
+    <template id="boat_rental_tpl" name="Boat rentals">
+        <div class="boat_rental">
+            <t t-set="is_image_text" t-value="True"/>
+            <t t-foreach="records" t-as="r">
+                <t t-if="is_image_text">
+                    <t t-call="luxboat.luxboat_image_text"/>
+                </t>
+                <t t-else="">
+                    <t t-call="luxboat.luxboat_text_image"/>
+                </t>
+                <t t-set="is_image_text" t-value="not is_image_text"/>
+            </t>
+        </div>
+    </template>
+
+    <template id="boat_rental_backup_1_tpl" name="Boat rentals">
+    </template>
+
+    <template id="boat_rental_backup_2_tpl" name="Boat rentals">
+    </template>
+
+    <!-- Detail -->
+    <template id="boat_rental_detail_section_top_tpl">
+        <t t-set="display_opt_name" t-value="'Boat Rental Cover'"/>
+        <t t-call="luxboat.blog_detail_section_top_banner_tpl"/>
+    </template>
+
+    <template id="boat_rental_detail_section_content_tpl">
+        <t t-set="main_content_classes" t-value="'pb-5'"/>
+        <t t-call="luxboat.blog_detail_section_content_tpl"/>
+    </template>
+
+    <template id="boat_rental_detail_tpl"
+              name="Boat rental detail">
+
+        <t t-call="website_blog.index">
+            <!-- Check for active options: the stored value may be used in sub-templates too  -->
+            <t t-set="opt_blog_post_readable" t-value="is_view_active('website_blog.opt_blog_post_readable')"/>
+            <t t-set="opt_blog_post_sidebar" t-value="is_view_active('website_blog.opt_blog_post_sidebar')"/>
+            <t t-set="opt_blog_post_regular_cover" t-value="is_view_active('website_blog.opt_blog_post_regular_cover')"/>
+            <t t-set="opt_blog_post_breadcrumb" t-value="is_view_active('website_blog.opt_blog_post_breadcrumb')"/>
+            <t t-set="opt_blog_post_select_to_tweet" t-value="is_view_active('website_blog.opt_blog_post_select_to_tweet')"/>
+            <t t-set="opt_blog_post_select_to_comment" t-value="is_view_active('website_blog.opt_blog_post_select_to_comment')"/>
+
+            <t t-call="luxboat.boat_rental_detail_section_top_tpl"/>
+            <t t-call="luxboat.boat_rental_detail_section_content_tpl"/>
+
+            <section id="o_wblog_post_footer"/>
+        </t>
+    </template>
+</odoo>

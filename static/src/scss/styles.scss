@@ -1,0 +1,145 @@
+.o_snippet_blog_5_best_recs,
+.o_blog_post_card_2_cols{
+  .o_blog_featured,
+  .o_blog_card {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .o_blog_featured__img {
+    width: 100%;
+    height: 360px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 8px;
+    transition: transform .45s ease, filter .35s ease;
+    will-change: transform;
+  }
+
+  .o_blog_featured__body {
+    padding-top: 14px;
+  }
+
+  .o_blog_featured__title {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+
+  .o_blog_featured__meta {
+    font-size: 13px;
+    opacity: 0.8;
+    margin-bottom: 10px;
+  }
+
+  .o_blog_featured__subtitle {
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .o_blog_card__img {
+    width: 100%;
+    height: 180px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 8px;
+    transition: transform .45s ease, filter .35s ease;
+    will-change: transform;
+  }
+
+
+  .o_blog_card:hover .o_blog_card__img,
+   .o_blog_featured:hover .o_blog_featured__img {
+    transform: scale(1.04); /* zoom level */
+  }
+
+  .o_blog_card__body {
+    padding-top: 10px;
+  }
+
+  .o_blog_card__title {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.35;
+    margin: 0 0 6px 0;
+    text-transform: uppercase;
+  }
+
+  .o_blog_card__meta {
+    font-size: 12px;
+    opacity: 0.75;
+  }
+  .o_blog_featured__img,
+  .o_blog_card__img {
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+    text-align: center;
+  }
+  .o_blog_featured__body,
+  .o_blog_card__body {
+    background-color: rgba(0, 0, 0, .8);
+    color: white;
+    border-radius: 16px;
+  }
+
+  @media (min-width: 992px) {
+      .o_blog_featured__img {
+        height: 486px;
+      }
+      .o_blog_card__img {
+        height: 240px;
+      }
+    }
+}
+
+.o_blog_post_card_2_cols{
+  .o_blog_card__img {
+    height: 240px;
+  }
+  @media (min-width: 992px) {
+      .o_blog_card__img {
+        height: 320px;
+      }
+    }
+}
+
+
+/* Keep CSS minimal; Bootstrap does most of the work */
+.o_luxboat_4_text_on_images_in_block {
+  .o_record_cover_container {
+    min-height: 240px;
+  }
+  @media (min-width: 992px) {
+    .o_record_cover_container {
+      min-height: 360px;
+    }
+  }
+}
+
+.s_sticky_column_section {
+    /* Ensure the parent section is a positioning context */
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .sticky-image-column {
+        /* Apply sticky positioning only on large screens and up */
+        @media (min-width: 992px) {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 100px; /* Adjust this value based on your header height */
+            align-self: flex-start; /* Important: makes sticky work within the flex row */
+            height: fit-content;
+        }
+    }
+}
+
+.daily_tour_list .tours,
+.boat_rental_list .boat_rental,
+.luxboat_destination_list .luxboat_destination{
+    padding-top: 48px;
+    padding-bottom: 24px;
+  }

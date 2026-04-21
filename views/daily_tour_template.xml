@@ -1,0 +1,161 @@
+<odoo>
+    <template id="daily_tour_list_tpl" name="Daily tour list">
+        <t t-call="website.layout">
+            <div id="id_daily_tour_list_tpl" class="daily_tour_list">
+                <div class="oe_structure"/>
+                <t t-call="luxboat.tours_backup_1_tpl"/>
+                <div class="oe_structure"/>
+                <t t-call="luxboat.tours_tpl"/>
+                <div class="oe_structure"/>
+                <t t-call="luxboat.tours_backup_2_tpl"/>
+                <div class="oe_structure"/>
+            </div>
+        </t>
+    </template>
+
+    <template id="tours_tpl" name="Tours">
+        <div class="tours">
+            <t t-set="is_image_text" t-value="True"/>
+            <t t-foreach="records" t-as="r">
+                <t t-if="is_image_text">
+                    <t t-call="luxboat.luxboat_image_text"/>
+                </t>
+                <t t-else="">
+                    <t t-call="luxboat.luxboat_text_image"/>
+                </t>
+                <t t-set="is_image_text" t-value="not is_image_text"/>
+            </t>
+        </div>
+    </template>
+
+    <template id="tours_backup_1_tpl" name="Tours">
+
+    </template>
+
+    <template id="tours_backup_2_tpl" name="Tours">
+
+    </template>
+
+    <template id="luxboat_text_image" name="Text - Image">
+        <section class="s_text_image">
+            <div class="container">
+                <div class="row align-items-center ">
+                    <div class="col-lg-6 order-2 order-lg-1 pt8 pb16">
+                        <h4 class="text-uppercase"><t t-esc="r.name"/> </h4>
+                        <t t-esc="r.short_content"/>
+                        <p><a t-att-href="'/' + slug(r)" class="btn btn-secondary">View detail</a></p>
+                    </div>
+                    <div class="col-lg-6 order-1 order-lg-2 p-0">
+                        <img t-att-src="'/web/image/blog.post/%s/snippet_image_1920' % r.id" class="img img-fluid mx-auto" alt=""/>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </template>
+
+    <template id="luxboat_image_text" name="Image - Text">
+        <section class="s_text_image">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-6 p-0">
+                        <img t-att-src="'/web/image/blog.post/%s/snippet_image_1920' % r.id" class="img img-fluid mx-auto" alt=""/>
+                    </div>
+                    <div class="col-lg-6 pt8 pb16">
+                        <h4 class="text-uppercase"><t t-esc="r.name"/> </h4>
+                        <t t-esc="r.short_content"/>
+                        <p><a t-att-href="'/' + slug(r)" class="btn btn-secondary">View detail</a></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </template>
+
+    <!-- Detail -->
+    <template id="blog_detail_section_top_banner_tpl">
+        <section id="o_wblog_post_top">
+            <t t-set="_record" t-value="blog_post"/>
+            <t t-set="snippet_autofocus" t-value="True"/>
+            <t t-set="use_filters" t-value="True"/>
+            <t t-set="use_size" t-value="True"/>
+            <t t-set="display_opt_name" t-value="display_opt_name or 'Post Cover'"/>
+            <t t-set="additionnal_classes" t-value="'o_wblog_post_page_cover'"/>
+            <t t-if="blog_post.banner_image_pc">
+                <div class="d-none d-lg-block">
+                    <span t-field="blog_post.banner_image_pc"
+                          t-options="{'widget': 'image', 'class': 'img-fluid w-100', 'alt': 'Blog banner desktop'}"/>
+                </div>
+            </t>
+            <t t-if="blog_post.banner_image_mb">
+                <div class="d-block d-lg-none">
+                    <span t-field="blog_post.banner_image_mb"
+                          t-options="{'widget': 'image', 'class': 'img-fluid w-100', 'alt': 'Blog banner mobile'}"/>
+                </div>
+            </t>
+            <div id="id_wblog_post_title" class="container text-center position-relative h-100 d-flex flex-column flex-grow-1 justify-content-around p-4 p-lg-5">
+                <div t-attf-class="o_wblog_post_title">
+                    <h1 t-field="blog_post.name" id="o_wblog_post_name" class="o_editable_no_shadow" data-oe-expression="blog_post.name" t-att-data-blog-id="blog_post.id" placeholder="Blog Post Title"/>
+                    <div t-field="blog_post.subtitle" id="o_wblog_post_subtitle" class="o_editable_no_shadow" placeholder="Subtitle"/>
+                </div>
+            </div>
+            <div t-if="blog_post.tour_hero_image">
+                <img
+                        t-att-src="'/web/image/blog.post/%s/tour_hero_image' % blog_post.id"
+                        class="img img-fluid o_we_custom_image o_animate o_anim_zoom_in o_visible o_animated"
+                        alt=""
+                />
+            </div>
+        </section>
+    </template>
+
+    <template id="blog_detail_section_content_tpl">
+        <section id="o_wblog_post_main" t-attf-class="container #{main_content_classes or 'pb-5'} #{'anim' in request.params and 'o_wblog_post_main_transition'}">
+            <div t-if="opt_blog_post_sidebar" t-attf-class="mx-auto #{opt_blog_post_readable and 'o_wblog_read_with_sidebar'}">
+                <div t-attf-class="d-flex flex-column flex-lg-row #{opt_blog_post_readable and 'justify-content-between'}">
+                    <div id="o_wblog_post_content" t-attf-class="#{opt_blog_post_readable and 'o_container_small mx-0 w-100 flex-shrink-0' or 'w-lg-75'}">
+                        <t t-call="website_blog.blog_post_content"/>
+                    </div>
+                    <div id="o_wblog_post_sidebar_col" t-attf-class="ps-lg-5 #{not opt_blog_post_readable and 'flex-grow-1 w-lg-25'}">
+                        <t t-call="website_blog.blog_post_sidebar"/>
+                    </div>
+                </div>
+            </div>
+            <div t-if="not opt_blog_post_sidebar" t-attf-class="#{opt_blog_post_readable and 'o_container_small'}">
+                <div class="d-flex flex-column flex-lg-row">
+                    <div id="o_wblog_post_content" t-attf-class=" #{opt_blog_post_readable and 'o_container_small w-100 flex-shrink-0'}">
+                        <t t-call="website_blog.blog_post_content"/>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </template>
+
+    <template id="daily_tour_detail_section_top_tpl">
+        <t t-set="display_opt_name" t-value="'Daily Tour Cover'"/>
+        <t t-call="luxboat.blog_detail_section_top_banner_tpl"/>
+    </template>
+
+    <template id="daily_tour_detail_section_content_tpl">
+        <t t-set="main_content_classes" t-value="'pb-5'"/>
+        <t t-call="luxboat.blog_detail_section_content_tpl"/>
+    </template>
+
+    <template id="daily_tour_detail_tpl"
+              name="Daily tour detail">
+
+        <t t-call="website_blog.index">
+            <!-- Check for active options: the stored value may be used in sub-templates too  -->
+            <t t-set="opt_blog_post_readable" t-value="is_view_active('website_blog.opt_blog_post_readable')"/>
+            <t t-set="opt_blog_post_sidebar" t-value="is_view_active('website_blog.opt_blog_post_sidebar')"/>
+            <t t-set="opt_blog_post_regular_cover" t-value="is_view_active('website_blog.opt_blog_post_regular_cover')"/>
+            <t t-set="opt_blog_post_breadcrumb" t-value="is_view_active('website_blog.opt_blog_post_breadcrumb')"/>
+            <t t-set="opt_blog_post_select_to_tweet" t-value="is_view_active('website_blog.opt_blog_post_select_to_tweet')"/>
+            <t t-set="opt_blog_post_select_to_comment" t-value="is_view_active('website_blog.opt_blog_post_select_to_comment')"/>
+
+            <t t-call="luxboat.daily_tour_detail_section_top_tpl"/>
+            <t t-call="luxboat.daily_tour_detail_section_content_tpl"/>
+
+            <section id="o_wblog_post_footer"/>
+        </t>
+    </template>
+
+</odoo>
