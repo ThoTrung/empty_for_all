@@ -24,6 +24,7 @@
         'views/templates_replace_odoo_default.xml',
 
         'views/blog_post_view.xml',
+        'views/blog_options.xml',
 
         # Don't need to choose Font from here.
         # Static snippet

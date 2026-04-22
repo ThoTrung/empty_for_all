@@ -72,7 +72,7 @@
 
     <!-- Detail -->
     <template id="blog_detail_section_top_banner_tpl">
-        <section id="o_wblog_post_top">
+        <section id="o_wblog_post_top" t-if="not opt_blog_post_hide_top_banner">
             <t t-set="_record" t-value="blog_post"/>
             <t t-set="snippet_autofocus" t-value="True"/>
             <t t-set="use_filters" t-value="True"/>
@@ -150,6 +150,7 @@
             <t t-set="opt_blog_post_breadcrumb" t-value="is_view_active('website_blog.opt_blog_post_breadcrumb')"/>
             <t t-set="opt_blog_post_select_to_tweet" t-value="is_view_active('website_blog.opt_blog_post_select_to_tweet')"/>
             <t t-set="opt_blog_post_select_to_comment" t-value="is_view_active('website_blog.opt_blog_post_select_to_comment')"/>
+            <t t-set="opt_blog_post_hide_top_banner" t-value="is_view_active('luxboat.opt_blog_post_hide_top_banner')"/>
 
             <t t-call="luxboat.daily_tour_detail_section_top_tpl"/>
             <t t-call="luxboat.daily_tour_detail_section_content_tpl"/>

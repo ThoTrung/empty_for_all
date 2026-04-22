@@ -39,3 +39,16 @@ class TestLuxboatBlogRoutes(HttpCase):
         self._assert_ok(f"/{slug(self.posts['daily_tour'])}", "Daily Tour Cover")
         self._assert_ok(f"/{slug(self.posts['boat_rental'])}", "Boat Rental Cover")
         self._assert_ok(f"/{slug(self.posts['gallery'])}", "Gallery Cover")
+
+    def test_hide_top_banner_option(self):
+        option_view = self.env.ref("luxboat.opt_blog_post_hide_top_banner")
+        option_view.active = True
+        self.env["ir.ui.view"].clear_caches()
+        try:
+            for post in self.posts.values():
+                response = self.url_open(f"/{slug(post)}")
+                self.assertEqual(response.status_code, 200)
+                self.assertNotIn('id="o_wblog_post_top"', response.text)
+        finally:
+            option_view.active = False
+            self.env["ir.ui.view"].clear_caches()

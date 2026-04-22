@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Optional toggle shown in Blog page Customize panel -->
+    <template id="opt_blog_post_hide_top_banner"
+              name="Hide Top Banner"
+              inherit_id="website_blog.blog_post_complete"
+              customize_show="True"
+              active="False">
+        <xpath expr="//section[@id='o_wblog_post_top']" position="replace"/>
+    </template>
+</odoo>
