@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extra window actions for KGara-style menus (parity mapping to Odoo models). -->
+    <record id="action_gara_workshop_case_receivable" model="ir.actions.act_window">
+        <field name="name">Công nợ vụ việc</field>
+        <field name="res_model">gara.workshop.case</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('amount_due_estimate', '&gt;', 0)]</field>
+    </record>
+
+    <record id="action_gara_workshop_case_service_report" model="ir.actions.act_window">
+        <field name="name">Báo cáo dịch vụ (vụ việc)</field>
+        <field name="res_model">gara.workshop.case</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+    </record>
+
+    <record id="action_gara_sale_order_line_quotation_detail" model="ir.actions.act_window">
+        <field name="name">Sổ chi tiết báo giá</field>
+        <field name="res_model">sale.order.line</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="view_id" ref="sale.view_order_line_tree"/>
+        <field name="search_view_id" ref="sale.view_sales_order_line_filter"/>
+        <field name="domain">[('display_type', '=', False), ('gara_case_id', '!=', False)]</field>
+        <field name="context">{'group_by': 'gara_quote_state'}</field>
+    </record>
+
+    <record id="action_gara_product_service_templates" model="ir.actions.act_window">
+        <field name="name">Dịch vụ / combo (sản phẩm dịch vụ)</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('type', '=', 'service')]</field>
+        <field name="context">{'default_type': 'service', 'search_default_filter_to_sell': 1}</field>
+    </record>
+
+    <record id="action_gara_stock_quant_inventory" model="ir.actions.act_window">
+        <field name="name">Tổng hợp tồn kho</field>
+        <field name="res_model">stock.quant</field>
+        <field name="view_mode">tree,pivot,graph,form</field>
+        <field name="view_id" ref="stock.view_stock_quant_tree"/>
+        <field name="search_view_id" ref="stock.quant_search_view"/>
+        <field name="context">{'search_default_internal_loc': 1, 'search_default_productgroup': 1}</field>
+    </record>
+
+    <record id="action_gara_account_income_accounts" model="ir.actions.act_window">
+        <field name="name">Tài khoản doanh thu</field>
+        <field name="res_model">account.account</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('internal_group', '=', 'income')]</field>
+    </record>
+
+    <record id="action_gara_res_groups" model="ir.actions.act_window">
+        <field name="name">Nhóm người dùng</field>
+        <field name="res_model">res.groups</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

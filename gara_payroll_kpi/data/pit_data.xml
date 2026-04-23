@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="gara_pit_config_vn_2026" model="gara.pit.config">
+        <field name="name">Thuế TNCN Việt Nam 2026</field>
+        <field name="date_from">2026-01-01</field>
+        <field name="personal_deduction">15500000</field>
+        <field name="dependent_deduction">6200000</field>
+    </record>
+
+    <record id="gara_pit_bracket_vn_2026_01" model="gara.pit.bracket">
+        <field name="config_id" ref="gara_pit_config_vn_2026"/>
+        <field name="sequence">10</field>
+        <field name="name">Đến 10 triệu</field>
+        <field name="lower_limit">0</field>
+        <field name="upper_limit">10000000</field>
+        <field name="rate">5</field>
+    </record>
+    <record id="gara_pit_bracket_vn_2026_02" model="gara.pit.bracket">
+        <field name="config_id" ref="gara_pit_config_vn_2026"/>
+        <field name="sequence">20</field>
+        <field name="name">Trên 10 đến 30 triệu</field>
+        <field name="lower_limit">10000000</field>
+        <field name="upper_limit">30000000</field>
+        <field name="rate">10</field>
+    </record>
+    <record id="gara_pit_bracket_vn_2026_03" model="gara.pit.bracket">
+        <field name="config_id" ref="gara_pit_config_vn_2026"/>
+        <field name="sequence">30</field>
+        <field name="name">Trên 30 đến 60 triệu</field>
+        <field name="lower_limit">30000000</field>
+        <field name="upper_limit">60000000</field>
+        <field name="rate">20</field>
+    </record>
+    <record id="gara_pit_bracket_vn_2026_04" model="gara.pit.bracket">
+        <field name="config_id" ref="gara_pit_config_vn_2026"/>
+        <field name="sequence">40</field>
+        <field name="name">Trên 60 đến 100 triệu</field>
+        <field name="lower_limit">60000000</field>
+        <field name="upper_limit">100000000</field>
+        <field name="rate">30</field>
+    </record>
+    <record id="gara_pit_bracket_vn_2026_05" model="gara.pit.bracket">
+        <field name="config_id" ref="gara_pit_config_vn_2026"/>
+        <field name="sequence">50</field>
+        <field name="name">Trên 100 triệu</field>
+        <field name="lower_limit">100000000</field>
+        <field name="upper_limit">0</field>
+        <field name="rate">35</field>
+    </record>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_gara_bi_management_summary"
+              name="Báo cáo quản trị"
+              parent="gara_workshop.menu_gara_grp_reporting"
+              action="action_gara_bi_management_summary"
+              sequence="88"/>
+    <menuitem id="menu_gara_bi_monthly_kpi"
+              name="BI tổng hợp gara"
+              parent="gara_workshop.menu_gara_grp_reporting"
+              action="action_gara_bi_monthly_kpi"
+              sequence="90"/>
+</odoo>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_member_ledger_tree" model="ir.ui.view">
+        <field name="name">gara.member.ledger.tree</field>
+        <field name="model">gara.member.ledger</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state == 'cancel'">
+                <field name="entry_date"/>
+                <field name="partner_id"/>
+                <field name="membership_name"/>
+                <field name="case_id"/>
+                <field name="payment_id"/>
+                <field name="entry_type"/>
+                <field name="points" sum="Points"/>
+                <field name="balance_after"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_member_ledger_form" model="ir.ui.view">
+        <field name="name">gara.member.ledger.form</field>
+        <field name="model">gara.member.ledger</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_post" type="object" string="Post" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state == 'cancel'"/>
+                    <button name="action_reset_draft" type="object" string="Reset Draft" invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted,cancel"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="entry_date"/>
+                            <field name="partner_id"/>
+                            <field name="membership_name"/>
+                            <field name="case_id"/>
+                            <field name="payment_id"/>
+                        </group>
+                        <group>
+                            <field name="entry_type"/>
+                            <field name="points"/>
+                            <field name="balance_after" readonly="1"/>
+                            <field name="amount_base"/>
+                            <field name="company_id"/>
+                        </group>
+                    </group>
+                    <field name="note"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gara_member_ledger_search" model="ir.ui.view">
+        <field name="name">gara.member.ledger.search</field>
+        <field name="model">gara.member.ledger</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="case_id"/>
+                <field name="entry_type"/>
+                <filter name="posted" string="Posted" domain="[('state', '=', 'posted')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_partner" string="Customer" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by': 'entry_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_member_ledger" model="ir.actions.act_window">
+        <field name="name">So diem thanh vien</field>
+        <field name="res_model">gara.member.ledger</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="search_view_id" ref="view_gara_member_ledger_search"/>
+        <field name="context">{'search_default_group_partner': 1}</field>
+    </record>
+</odoo>

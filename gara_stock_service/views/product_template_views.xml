@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_gara_stock_service" model="ir.ui.view">
+        <field name="name">product.template.form.gara.stock.service</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='categ_id']" position="after">
+                <field name="gara_min_qty"/>
+                <field name="gara_max_qty"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_gara_stock_reordering_products" model="ir.actions.act_window">
+        <field name="name">Định mức tồn kho</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('type', 'in', ('product', 'consu')), '|', ('gara_min_qty', '&gt;', 0), ('gara_max_qty', '&gt;', 0)]</field>
+        <field name="context">{'default_type': 'product'}</field>
+    </record>
+
+    <record id="action_gara_stock_low_products" model="ir.actions.act_window">
+        <field name="name">Sản phẩm dưới định mức</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('gara_below_min_qty', '=', True)]</field>
+        <field name="context">{'default_type': 'product'}</field>
+    </record>
+</odoo>

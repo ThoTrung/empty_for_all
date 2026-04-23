@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_survey_template_tree" model="ir.ui.view">
+        <field name="name">gara.survey.template.tree</field>
+        <field name="model">gara.survey.template</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_survey_template_form" model="ir.ui.view">
+        <field name="name">gara.survey.template.form</field>
+        <field name="model">gara.survey.template</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="active"/>
+                    </group>
+                    <separator string="Question Groups"/>
+                    <field name="group_ids">
+                        <tree editable="bottom">
+                            <field name="sequence"/>
+                            <field name="name"/>
+                            <field name="active"/>
+                        </tree>
+                    </field>
+                    <separator string="Questions"/>
+                    <field name="question_ids">
+                        <tree editable="bottom">
+                            <field name="sequence"/>
+                            <field name="template_id" column_invisible="1"/>
+                            <field name="group_id"/>
+                            <field name="text"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_gara_survey_question_group_tree" model="ir.ui.view">
+        <field name="name">gara.survey.question.group.tree</field>
+        <field name="model">gara.survey.question.group</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="template_id"/>
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_survey_question_group_form" model="ir.ui.view">
+        <field name="name">gara.survey.question.group.form</field>
+        <field name="model">gara.survey.question.group</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="template_id"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="question_ids">
+                        <tree editable="bottom">
+                            <field name="sequence"/>
+                            <field name="template_id"/>
+                            <field name="group_id" column_invisible="1"/>
+                            <field name="text"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_gara_survey_response_tree" model="ir.ui.view">
+        <field name="name">gara.survey.response.tree</field>
+        <field name="model">gara.survey.response</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="case_id"/>
+                <field name="template_id"/>
+                <field name="score_avg"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_survey_response_form" model="ir.ui.view">
+        <field name="name">gara.survey.response.form</field>
+        <field name="model">gara.survey.response</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="partner_id"/>
+                        <field name="case_id"/>
+                        <field name="template_id"/>
+                        <field name="score_avg" readonly="1"/>
+                    </group>
+                    <field name="line_ids">
+                        <tree editable="bottom">
+                            <field name="question_id"/>
+                            <field name="score"/>
+                            <field name="answer_text"/>
+                        </tree>
+                    </field>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_survey_template" model="ir.actions.act_window">
+        <field name="name">Survey templates</field>
+        <field name="res_model">gara.survey.template</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_gara_survey_question_group" model="ir.actions.act_window">
+        <field name="name">Survey question groups</field>
+        <field name="res_model">gara.survey.question.group</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_gara_survey_response" model="ir.actions.act_window">
+        <field name="name">Survey responses</field>
+        <field name="res_model">gara.survey.response</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

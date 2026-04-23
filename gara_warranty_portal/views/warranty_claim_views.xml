@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_warranty_claim_form_lookup_fields" model="ir.ui.view">
+        <field name="name">gara.warranty.claim.form.lookup.fields</field>
+        <field name="model">gara.warranty.claim</field>
+        <field name="inherit_id" ref="gara_workshop.view_gara_warranty_claim_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="serial_number"/>
+                <field name="warranty_start_date"/>
+                <field name="warranty_end_date"/>
+                <field name="lookup_note"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_gara_warranty_claim_tree_lookup_fields" model="ir.ui.view">
+        <field name="name">gara.warranty.claim.tree.lookup.fields</field>
+        <field name="model">gara.warranty.claim</field>
+        <field name="inherit_id" ref="gara_workshop.view_gara_warranty_claim_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vehicle_id']" position="after">
+                <field name="serial_number" optional="show"/>
+                <field name="warranty_end_date" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

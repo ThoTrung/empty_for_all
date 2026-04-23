@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_period_rollover_wizard_form" model="ir.ui.view">
+        <field name="name">gara.period.rollover.wizard.form</field>
+        <field name="model">gara.period.rollover.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Chuyển kỳ dữ liệu">
+                <group>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="closing_date"/>
+                        <field name="opening_date"/>
+                        <field name="journal_id"/>
+                    </group>
+                    <group>
+                        <field name="ref"/>
+                        <field name="include_partner_details"/>
+                        <field name="lock_previous_period"/>
+                        <field name="post_move"/>
+                    </group>
+                </group>
+                <field name="line_ids">
+                    <tree editable="bottom">
+                        <field name="company_id" invisible="1"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="account_id"/>
+                        <field name="partner_id"/>
+                        <field name="name"/>
+                        <field name="balance"/>
+                        <field name="debit" sum="Debit"/>
+                        <field name="credit" sum="Credit"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_prepare_lines" type="object" string="Tải số dư chuyển kỳ" class="btn-secondary"/>
+                    <button name="action_create_move" type="object" string="Tạo bút toán đầu kỳ" class="btn-primary"/>
+                    <button string="Hủy" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_period_rollover_wizard" model="ir.actions.act_window">
+        <field name="name">Chuyển kỳ dữ liệu</field>
+        <field name="res_model">gara.period.rollover.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_work_assignment_tree" model="ir.ui.view">
+        <field name="name">gara.work.assignment.tree</field>
+        <field name="model">gara.work.assignment</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'done'" decoration-muted="state == 'cancel'">
+                <field name="deadline"/>
+                <field name="case_id"/>
+                <field name="name"/>
+                <field name="assigned_to_id"/>
+                <field name="assigned_by_id"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_work_assignment_form" model="ir.ui.view">
+        <field name="name">gara.work.assignment.form</field>
+        <field name="model">gara.work.assignment</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_assign" type="object" string="Assign" invisible="state != 'draft'"/>
+                    <button name="action_start" type="object" string="Start" invisible="state != 'assigned'"/>
+                    <button name="action_done" type="object" string="Done" invisible="state not in ('assigned', 'in_progress')"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state in ('done', 'cancel')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,assigned,in_progress,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="case_id"/>
+                        <field name="assigned_by_id"/>
+                        <field name="assigned_to_id"/>
+                        <field name="deadline"/>
+                    </group>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_work_assignment" model="ir.actions.act_window">
+        <field name="name">Nhật ký giao việc</field>
+        <field name="res_model">gara.work.assignment</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

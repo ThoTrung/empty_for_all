@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_account_summary_report_tree" model="ir.ui.view">
+        <field name="name">gara.account.summary.report.tree</field>
+        <field name="model">gara.account.summary.report</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="report_date"/>
+                <field name="account_id"/>
+                <field name="account_code"/>
+                <field name="account_name"/>
+                <field name="account_type"/>
+                <field name="debit" sum="Debit"/>
+                <field name="credit" sum="Credit"/>
+                <field name="balance" sum="Balance"/>
+                <field name="move_line_count" sum="Lines"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_account_summary_report_pivot" model="ir.ui.view">
+        <field name="name">gara.account.summary.report.pivot</field>
+        <field name="model">gara.account.summary.report</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="report_date" type="row" interval="month"/>
+                <field name="account_id" type="row"/>
+                <field name="debit" type="measure"/>
+                <field name="credit" type="measure"/>
+                <field name="balance" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_account_summary_report_search" model="ir.ui.view">
+        <field name="name">gara.account.summary.report.search</field>
+        <field name="model">gara.account.summary.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="account_id"/>
+                <field name="account_code"/>
+                <field name="account_type"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_date" string="Month" context="{'group_by': 'report_date:month'}"/>
+                    <filter name="group_account" string="Account" context="{'group_by': 'account_id'}"/>
+                    <filter name="group_type" string="Account Type" context="{'group_by': 'account_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_account_summary_report" model="ir.actions.act_window">
+        <field name="name">Tổng hợp tài khoản</field>
+        <field name="res_model">gara.account.summary.report</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="search_view_id" ref="view_gara_account_summary_report_search"/>
+        <field name="context">{'search_default_group_date': 1}</field>
+    </record>
+
+    <record id="view_gara_partner_balance_report_tree" model="ir.ui.view">
+        <field name="name">gara.partner.balance.report.tree</field>
+        <field name="model">gara.partner.balance.report</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="report_date"/>
+                <field name="partner_id"/>
+                <field name="account_id"/>
+                <field name="account_type"/>
+                <field name="debit" sum="Debit"/>
+                <field name="credit" sum="Credit"/>
+                <field name="balance" sum="Balance"/>
+                <field name="residual" sum="Residual"/>
+                <field name="receivable_amount" sum="Receivable"/>
+                <field name="payable_amount" sum="Payable"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_partner_balance_report_pivot" model="ir.ui.view">
+        <field name="name">gara.partner.balance.report.pivot</field>
+        <field name="model">gara.partner.balance.report</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="report_date" type="row" interval="month"/>
+                <field name="partner_id" type="row"/>
+                <field name="residual" type="measure"/>
+                <field name="receivable_amount" type="measure"/>
+                <field name="payable_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_partner_balance_report_search" model="ir.ui.view">
+        <field name="name">gara.partner.balance.report.search</field>
+        <field name="model">gara.partner.balance.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="account_id"/>
+                <filter name="receivable" string="Receivable" domain="[('account_type', '=', 'asset_receivable')]"/>
+                <filter name="payable" string="Payable" domain="[('account_type', '=', 'liability_payable')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_date" string="Month" context="{'group_by': 'report_date:month'}"/>
+                    <filter name="group_partner" string="Partner" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_account_type" string="Account Type" context="{'group_by': 'account_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_partner_balance_report" model="ir.actions.act_window">
+        <field name="name">Tổng hợp công nợ</field>
+        <field name="res_model">gara.partner.balance.report</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="search_view_id" ref="view_gara_partner_balance_report_search"/>
+        <field name="context">{'search_default_group_partner': 1}</field>
+    </record>
+
+    <record id="view_gara_bank_cash_report_tree" model="ir.ui.view">
+        <field name="name">gara.bank.cash.report.tree</field>
+        <field name="model">gara.bank.cash.report</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="date"/>
+                <field name="journal_id"/>
+                <field name="move_id"/>
+                <field name="ref"/>
+                <field name="partner_id"/>
+                <field name="account_id"/>
+                <field name="name"/>
+                <field name="debit" sum="Debit"/>
+                <field name="credit" sum="Credit"/>
+                <field name="balance" sum="Balance"/>
+                <field name="amount_currency" sum="Currency Amount"/>
+                <field name="transaction_currency_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_bank_cash_report_pivot" model="ir.ui.view">
+        <field name="name">gara.bank.cash.report.pivot</field>
+        <field name="model">gara.bank.cash.report</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="date" type="row" interval="month"/>
+                <field name="journal_id" type="row"/>
+                <field name="debit" type="measure"/>
+                <field name="credit" type="measure"/>
+                <field name="balance" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_bank_cash_report_search" model="ir.ui.view">
+        <field name="name">gara.bank.cash.report.search</field>
+        <field name="model">gara.bank.cash.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="journal_id"/>
+                <field name="move_id"/>
+                <field name="partner_id"/>
+                <filter name="bank" string="Bank" domain="[('journal_type', '=', 'bank')]"/>
+                <filter name="cash" string="Cash" domain="[('journal_type', '=', 'cash')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_date" string="Month" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_journal" string="Journal" context="{'group_by': 'journal_id'}"/>
+                    <filter name="group_partner" string="Partner" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_bank_cash_report" model="ir.actions.act_window">
+        <field name="name">Tổng hợp tiền gửi NH / tiền mặt</field>
+        <field name="res_model">gara.bank.cash.report</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="search_view_id" ref="view_gara_bank_cash_report_search"/>
+        <field name="context">{'search_default_group_journal': 1}</field>
+    </record>
+
+    <record id="view_gara_t_account_report_tree" model="ir.ui.view">
+        <field name="name">gara.t.account.report.tree</field>
+        <field name="model">gara.t.account.report</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="date"/>
+                <field name="account_id"/>
+                <field name="move_id"/>
+                <field name="journal_id"/>
+                <field name="partner_id"/>
+                <field name="name"/>
+                <field name="ref"/>
+                <field name="debit_side" sum="Debit"/>
+                <field name="credit_side" sum="Credit"/>
+                <field name="balance" sum="Balance"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_t_account_report_pivot" model="ir.ui.view">
+        <field name="name">gara.t.account.report.pivot</field>
+        <field name="model">gara.t.account.report</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="date" type="row" interval="month"/>
+                <field name="account_id" type="row"/>
+                <field name="debit_side" type="measure"/>
+                <field name="credit_side" type="measure"/>
+                <field name="balance" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_t_account_report_search" model="ir.ui.view">
+        <field name="name">gara.t.account.report.search</field>
+        <field name="model">gara.t.account.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="account_id"/>
+                <field name="account_code"/>
+                <field name="move_id"/>
+                <field name="partner_id"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_account" string="Account" context="{'group_by': 'account_id'}"/>
+                    <filter name="group_date" string="Month" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_partner" string="Partner" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_t_account_report" model="ir.actions.act_window">
+        <field name="name">Sổ tài khoản chữ T</field>
+        <field name="res_model">gara.t.account.report</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="search_view_id" ref="view_gara_t_account_report_search"/>
+        <field name="context">{'search_default_group_account': 1}</field>
+    </record>
+
+    <record id="view_gara_product_price_report_tree" model="ir.ui.view">
+        <field name="name">gara.product.price.report.tree</field>
+        <field name="model">gara.product.price.report</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="product_id"/>
+                <field name="default_code"/>
+                <field name="barcode"/>
+                <field name="detailed_type"/>
+                <field name="categ_id"/>
+                <field name="uom_id"/>
+                <field name="list_price"/>
+                <field name="variant_count" sum="Variants"/>
+                <field name="pricelist_rule_count" sum="Rules"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_product_price_report_pivot" model="ir.ui.view">
+        <field name="name">gara.product.price.report.pivot</field>
+        <field name="model">gara.product.price.report</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="categ_id" type="row"/>
+                <field name="detailed_type" type="row"/>
+                <field name="list_price" type="measure"/>
+                <field name="pricelist_rule_count" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_product_price_report_search" model="ir.ui.view">
+        <field name="name">gara.product.price.report.search</field>
+        <field name="model">gara.product.price.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="default_code"/>
+                <field name="barcode"/>
+                <field name="categ_id"/>
+                <filter name="services" string="Services" domain="[('detailed_type', '=', 'service')]"/>
+                <filter name="products" string="Products" domain="[('detailed_type', '=', 'consu')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_category" string="Category" context="{'group_by': 'categ_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by': 'detailed_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_product_price_report" model="ir.actions.act_window">
+        <field name="name">Bảng giá sản phẩm</field>
+        <field name="res_model">gara.product.price.report</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="search_view_id" ref="view_gara_product_price_report_search"/>
+    </record>
+
+    <record id="view_gara_financial_statement_line_tree" model="ir.ui.view">
+        <field name="name">gara.financial.statement.line.tree</field>
+        <field name="model">gara.financial.statement.line</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="statement_type"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="sign"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_financial_statement_line_form" model="ir.ui.view">
+        <field name="name">gara.financial.statement.line.form</field>
+        <field name="model">gara.financial.statement.line</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="statement_type"/>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="sign"/>
+                        <field name="active"/>
+                    </group>
+                    <notebook>
+                        <page string="Accounts">
+                            <field name="account_ids" widget="many2many_tags"/>
+                        </page>
+                        <page string="Notes">
+                            <field name="note" nolabel="1" placeholder="Notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_financial_statement_line" model="ir.actions.act_window">
+        <field name="name">Chỉ tiêu BCTC</field>
+        <field name="res_model">gara.financial.statement.line</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_financial_statement_report_tree" model="ir.ui.view">
+        <field name="name">gara.financial.statement.report.tree</field>
+        <field name="model">gara.financial.statement.report</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="report_date"/>
+                <field name="statement_type"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="debit" sum="Debit"/>
+                <field name="credit" sum="Credit"/>
+                <field name="balance" sum="Balance"/>
+                <field name="amount" sum="Amount"/>
+                <field name="move_line_count" sum="Lines"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_financial_statement_report_pivot" model="ir.ui.view">
+        <field name="name">gara.financial.statement.report.pivot</field>
+        <field name="model">gara.financial.statement.report</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="report_date" type="row" interval="month"/>
+                <field name="statement_type" type="row"/>
+                <field name="statement_line_id" type="row"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_financial_statement_report_search" model="ir.ui.view">
+        <field name="name">gara.financial.statement.report.search</field>
+        <field name="model">gara.financial.statement.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="statement_line_id"/>
+                <field name="code"/>
+                <filter name="balance_sheet" string="Balance Sheet" domain="[('statement_type', '=', 'balance_sheet')]"/>
+                <filter name="income_statement" string="Income Statement" domain="[('statement_type', '=', 'income_statement')]"/>
+                <filter name="cash_flow" string="Cash Flow" domain="[('statement_type', '=', 'cash_flow')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_date" string="Month" context="{'group_by': 'report_date:month'}"/>
+                    <filter name="group_statement" string="Statement" context="{'group_by': 'statement_type'}"/>
+                    <filter name="group_line" string="Line" context="{'group_by': 'statement_line_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_financial_statement_report" model="ir.actions.act_window">
+        <field name="name">Báo cáo tài chính</field>
+        <field name="res_model">gara.financial.statement.report</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="search_view_id" ref="view_gara_financial_statement_report_search"/>
+        <field name="context">{'search_default_group_statement': 1}</field>
+    </record>
+</odoo>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_member_card_tree" model="ir.ui.view">
+        <field name="name">gara.member.card.tree</field>
+        <field name="model">gara.member.card</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="membership_type_id"/>
+                <field name="state"/>
+                <field name="issue_date"/>
+                <field name="expiry_date"/>
+                <field name="point_balance" sum="Point Balance"/>
+                <field name="company_id" optional="hide"/>
+                <field name="active" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_member_card_form" model="ir.ui.view">
+        <field name="name">gara.member.card.form</field>
+        <field name="model">gara.member.card</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_activate" type="object" string="Activate" class="btn-primary" invisible="state == 'active'"/>
+                    <button name="action_block" type="object" string="Block" invisible="state not in ('active', 'draft')"/>
+                    <button name="action_expire" type="object" string="Expire" invisible="state in ('expired', 'cancel')"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state == 'cancel'"/>
+                    <button name="action_reset_draft" type="object" string="Reset Draft" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,blocked,expired,cancel"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="partner_id"/>
+                            <field name="membership_type_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="issue_date"/>
+                            <field name="expiry_date"/>
+                            <field name="points_earned" readonly="1"/>
+                            <field name="points_redeemed" readonly="1"/>
+                            <field name="point_balance" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Ledger">
+                            <field name="ledger_entry_ids" readonly="1">
+                                <tree>
+                                    <field name="entry_date"/>
+                                    <field name="partner_id"/>
+                                    <field name="entry_type"/>
+                                    <field name="points"/>
+                                    <field name="amount_base"/>
+                                    <field name="state"/>
+                                    <field name="payment_id"/>
+                                    <field name="case_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Note">
+                            <field name="note" placeholder="Notes..." nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gara_member_card_search" model="ir.ui.view">
+        <field name="name">gara.member.card.search</field>
+        <field name="model">gara.member.card</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="membership_type_id"/>
+                <filter string="Active" name="active_cards" domain="[('state', '=', 'active')]"/>
+                <filter string="Expired" name="expired_cards" domain="[('state', '=', 'expired')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Membership Type" name="group_membership_type" context="{'group_by': 'membership_type_id'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_member_card" model="ir.actions.act_window">
+        <field name="name">Thẻ thành viên</field>
+        <field name="res_model">gara.member.card</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_gara_member_card_search"/>
+    </record>
+
+    <record id="view_gara_member_ledger_tree_inherit_member_card" model="ir.ui.view">
+        <field name="name">gara.member.ledger.tree.member.card</field>
+        <field name="model">gara.member.ledger</field>
+        <field name="inherit_id" ref="gara_workshop.view_gara_member_ledger_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="card_id" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_gara_member_ledger_form_inherit_member_card" model="ir.ui.view">
+        <field name="name">gara.member.ledger.form.member.card</field>
+        <field name="model">gara.member.ledger</field>
+        <field name="inherit_id" ref="gara_workshop.view_gara_member_ledger_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="card_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

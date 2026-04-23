@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_care_activity_tree_master_data" model="ir.ui.view">
+        <field name="name">gara.care.activity.tree.master.data</field>
+        <field name="model">gara.care.activity</field>
+        <field name="inherit_id" ref="gara_workshop.view_gara_care_activity_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='channel']" position="after">
+                <field name="care_type_id"/>
+                <field name="result_id"/>
+                <field name="result_detail_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_gara_care_activity_form_master_data" model="ir.ui.view">
+        <field name="name">gara.care.activity.form.master.data</field>
+        <field name="model">gara.care.activity</field>
+        <field name="inherit_id" ref="gara_workshop.view_gara_care_activity_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='outcome']" position="after">
+                <field name="care_type_id"/>
+                <field name="result_id"/>
+                <field name="result_detail_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

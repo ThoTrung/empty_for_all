@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_approval_request_tree" model="ir.ui.view">
+        <field name="name">gara.approval.request.tree</field>
+        <field name="model">gara.approval.request</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'approved'" decoration-danger="state == 'rejected'">
+                <field name="name"/>
+                <field name="request_type"/>
+                <field name="case_id"/>
+                <field name="insurance_claim_id"/>
+                <field name="sale_order_id"/>
+                <field name="requester_id"/>
+                <field name="approver_id"/>
+                <field name="approval_progress"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_approval_request_form" model="ir.ui.view">
+        <field name="name">gara.approval.request.form</field>
+        <field name="model">gara.approval.request</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit" type="object" string="Submit" invisible="state != 'draft'" class="btn-primary"/>
+                    <button name="action_approve" type="object" string="Approve" invisible="state != 'submitted'" class="btn-primary"/>
+                    <button name="action_reject" type="object" string="Reject" invisible="state != 'submitted'" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,rejected"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="request_type"/>
+                        <field name="case_id"/>
+                        <field name="insurance_claim_id"/>
+                        <field name="sale_order_id"/>
+                    </group>
+                    <group>
+                        <field name="requester_id"/>
+                        <field name="approver_id"/>
+                        <field name="approval_progress" readonly="1"/>
+                        <field name="amount_total" readonly="1"/>
+                    </group>
+                    <field name="step_ids" nolabel="1" readonly="1">
+                        <tree>
+                            <field name="sequence"/>
+                            <field name="approver_id"/>
+                            <field name="state"/>
+                        </tree>
+                    </field>
+                    <field name="reason"/>
+                    <field name="decision_note"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_approval_request" model="ir.actions.act_window">
+        <field name="name">Approval requests</field>
+        <field name="res_model">gara.approval.request</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

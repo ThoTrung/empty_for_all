@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="access_gara_service_stock_request_user" model="ir.model.access">
+        <field name="name">gara.service.stock.request stock user</field>
+        <field name="model_id" ref="model_gara_service_stock_request"/>
+        <field name="group_id" ref="stock.group_stock_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_service_stock_request_manager" model="ir.model.access">
+        <field name="name">gara.service.stock.request stock manager</field>
+        <field name="model_id" ref="model_gara_service_stock_request"/>
+        <field name="group_id" ref="stock.group_stock_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_service_stock_request_line_user" model="ir.model.access">
+        <field name="name">gara.service.stock.request.line stock user</field>
+        <field name="model_id" ref="model_gara_service_stock_request_line"/>
+        <field name="group_id" ref="stock.group_stock_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_service_stock_request_line_manager" model="ir.model.access">
+        <field name="name">gara.service.stock.request.line stock manager</field>
+        <field name="model_id" ref="model_gara_service_stock_request_line"/>
+        <field name="group_id" ref="stock.group_stock_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_stock_inventory_batch_user" model="ir.model.access">
+        <field name="name">gara.stock.inventory.batch stock user</field>
+        <field name="model_id" ref="model_gara_stock_inventory_batch"/>
+        <field name="group_id" ref="stock.group_stock_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_stock_inventory_batch_manager" model="ir.model.access">
+        <field name="name">gara.stock.inventory.batch stock manager</field>
+        <field name="model_id" ref="model_gara_stock_inventory_batch"/>
+        <field name="group_id" ref="stock.group_stock_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_stock_inventory_batch_line_user" model="ir.model.access">
+        <field name="name">gara.stock.inventory.batch.line stock user</field>
+        <field name="model_id" ref="model_gara_stock_inventory_batch_line"/>
+        <field name="group_id" ref="stock.group_stock_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_stock_inventory_batch_line_manager" model="ir.model.access">
+        <field name="name">gara.stock.inventory.batch.line stock manager</field>
+        <field name="model_id" ref="model_gara_stock_inventory_batch_line"/>
+        <field name="group_id" ref="stock.group_stock_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_stock_opening_wizard_manager" model="ir.model.access">
+        <field name="name">gara.stock.opening.wizard stock manager</field>
+        <field name="model_id" ref="model_gara_stock_opening_wizard"/>
+        <field name="group_id" ref="stock.group_stock_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_stock_opening_wizard_line_manager" model="ir.model.access">
+        <field name="name">gara.stock.opening.wizard.line stock manager</field>
+        <field name="model_id" ref="model_gara_stock_opening_wizard_line"/>
+        <field name="group_id" ref="stock.group_stock_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+</odoo>

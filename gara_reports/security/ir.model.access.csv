@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gara_service_case_report_user,gara.service.case.report user,model_gara_service_case_report,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_stock_ledger_report_user,gara.stock.ledger.report user,model_gara_stock_ledger_report,stock.group_stock_user,1,0,0,0
+access_gara_account_summary_report_user,gara.account.summary.report user,model_gara_account_summary_report,account.group_account_readonly,1,0,0,0
+access_gara_partner_balance_report_user,gara.partner.balance.report user,model_gara_partner_balance_report,account.group_account_readonly,1,0,0,0
+access_gara_bank_cash_report_user,gara.bank.cash.report user,model_gara_bank_cash_report,account.group_account_readonly,1,0,0,0
+access_gara_foreign_currency_report_user,gara.foreign.currency.report user,model_gara_foreign_currency_report,account.group_account_readonly,1,0,0,0
+access_gara_t_account_report_user,gara.t.account.report user,model_gara_t_account_report,account.group_account_readonly,1,0,0,0
+access_gara_product_price_report_user,gara.product.price.report user,model_gara_product_price_report,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_financial_statement_line_user,gara.financial.statement.line user,model_gara_financial_statement_line,account.group_account_readonly,1,0,0,0
+access_gara_financial_statement_line_manager,gara.financial.statement.line manager,model_gara_financial_statement_line,account.group_account_manager,1,1,1,1
+access_gara_financial_statement_report_user,gara.financial.statement.report user,model_gara_financial_statement_report,account.group_account_readonly,1,0,0,0

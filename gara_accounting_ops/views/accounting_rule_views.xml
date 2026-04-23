@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_accounting_rule_tree" model="ir.ui.view">
+        <field name="name">gara.accounting.rule.tree</field>
+        <field name="model">gara.accounting.rule</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="move_type"/>
+                <field name="business_type"/>
+                <field name="partner_scope"/>
+                <field name="payment_channel"/>
+                <field name="tax_scope"/>
+                <field name="output_journal_id"/>
+                <field name="output_document_group_id"/>
+                <field name="output_document_reason_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_accounting_rule_form" model="ir.ui.view">
+        <field name="name">gara.accounting.rule.form</field>
+        <field name="model">gara.accounting.rule</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="company_id"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="move_type"/>
+                            <field name="business_type"/>
+                            <field name="partner_scope"/>
+                            <field name="payment_channel"/>
+                            <field name="tax_scope"/>
+                        </group>
+                    </group>
+                    <group string="Outputs">
+                        <group>
+                            <field name="output_journal_id"/>
+                            <field name="output_document_group_id"/>
+                            <field name="output_document_reason_id"
+                                   domain="['|', ('group_id', '=', False), ('group_id', '=', output_document_group_id)]"/>
+                        </group>
+                        <group>
+                            <field name="output_income_account_id"/>
+                            <field name="output_expense_account_id"/>
+                        </group>
+                    </group>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gara_accounting_rule_search" model="ir.ui.view">
+        <field name="name">gara.accounting.rule.search</field>
+        <field name="model">gara.accounting.rule</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="output_journal_id"/>
+                <filter name="active" string="Active" domain="[('active', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="Company" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_move_type" string="Move Type" context="{'group_by': 'move_type'}"/>
+                    <filter name="group_business_type" string="Business Type" context="{'group_by': 'business_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_accounting_rule" model="ir.actions.act_window">
+        <field name="name">Quy tắc hạch toán</field>
+        <field name="res_model">gara.accounting.rule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_gara_accounting_rule_search"/>
+    </record>
+
+    <record id="view_gara_document_sequence_rule_tree" model="ir.ui.view">
+        <field name="name">gara.document.sequence.rule.tree</field>
+        <field name="model">gara.document.sequence.rule</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="move_type"/>
+                <field name="document_group_id"/>
+                <field name="document_reason_id"/>
+                <field name="prefix"/>
+                <field name="padding"/>
+                <field name="number_next"/>
+                <field name="reset_yearly"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_document_sequence_rule_form" model="ir.ui.view">
+        <field name="name">gara.document.sequence.rule.form</field>
+        <field name="model">gara.document.sequence.rule</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="company_id"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="move_type"/>
+                            <field name="document_group_id"/>
+                            <field name="document_reason_id"
+                                   domain="['|', ('group_id', '=', False), ('group_id', '=', document_group_id)]"/>
+                            <field name="reset_yearly"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="prefix"/>
+                        <field name="padding"/>
+                        <field name="number_next"/>
+                        <field name="current_year"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_document_sequence_rule" model="ir.actions.act_window">
+        <field name="name">Quy tắc đánh số chứng từ</field>
+        <field name="res_model">gara.document.sequence.rule</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

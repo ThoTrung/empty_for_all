@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_service_stock_request_tree" model="ir.ui.view">
+        <field name="name">gara.service.stock.request.tree</field>
+        <field name="model">gara.service.stock.request</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state == 'cancel'" decoration-success="state == 'done'">
+                <field name="name"/>
+                <field name="request_date"/>
+                <field name="case_id"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="warehouse_id"/>
+                <field name="picking_id"/>
+                <field name="state"/>
+                <field name="company_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_service_stock_request_form" model="ir.ui.view">
+        <field name="name">gara.service.stock.request.form</field>
+        <field name="model">gara.service.stock.request</field>
+        <field name="arch" type="xml">
+            <form string="Service Stock Request">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" invisible="state != 'draft'"/>
+                    <button name="action_create_picking" type="object" string="Create Picking" invisible="state not in ('draft','confirmed')"/>
+                    <button name="action_view_picking" type="object" string="Open Picking" invisible="not picking_id"/>
+                    <button name="action_mark_done" type="object" string="Mark Done" invisible="state != 'picking'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state in ('done','cancel')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,picking,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="case_id" readonly="state != 'draft'"/>
+                            <field name="partner_id"/>
+                            <field name="vehicle_id"/>
+                            <field name="requested_by_id" readonly="state != 'draft'"/>
+                            <field name="request_date" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="company_id" readonly="state != 'draft'"/>
+                            <field name="warehouse_id" readonly="state != 'draft'"/>
+                            <field name="picking_type_id" readonly="state != 'draft'"/>
+                            <field name="location_id" readonly="state != 'draft'"/>
+                            <field name="location_dest_id" readonly="state != 'draft'"/>
+                            <field name="picking_id" readonly="1"/>
+                            <field name="picking_state" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Parts" name="parts">
+                            <field name="line_ids" readonly="state not in ('draft','confirmed')">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id"/>
+                                    <field name="name"/>
+                                    <field name="product_uom_qty"/>
+                                    <field name="product_uom"/>
+                                    <field name="note"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="note" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gara_service_stock_request_search" model="ir.ui.view">
+        <field name="name">gara.service.stock.request.search</field>
+        <field name="model">gara.service.stock.request</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="case_id"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="picking_id"/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="to_pick" string="To Pick" domain="[('state', 'in', ('confirmed', 'picking'))]"/>
+                <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_case" string="Case" context="{'group_by': 'case_id'}"/>
+                    <filter name="group_warehouse" string="Warehouse" context="{'group_by': 'warehouse_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_service_stock_request" model="ir.actions.act_window">
+        <field name="name">Yêu cầu xuất kho dịch vụ</field>
+        <field name="res_model">gara.service.stock.request</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="action_gara_service_stock_issue_book" model="ir.actions.act_window">
+        <field name="name">Sổ tổng hợp phiếu xuất kho</field>
+        <field name="res_model">gara.service.stock.request</field>
+        <field name="view_mode">tree,pivot,graph,form</field>
+        <field name="domain">[('state', 'in', ('picking', 'done'))]</field>
+        <field name="context">{'search_default_group_warehouse': 1}</field>
+    </record>
+</odoo>

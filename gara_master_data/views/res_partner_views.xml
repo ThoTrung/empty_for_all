@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_gara_master_data" model="ir.ui.view">
+        <field name="name">res.partner.form.gara.master.data</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="gara_customer_type_id"/>
+                <field name="gara_customer_source_id"/>
+                <field name="gara_customer_status_id"/>
+                <field name="gara_membership_type_id"/>
+                <field name="gara_active_member_card_id" readonly="1"/>
+                <field name="gara_member_point_balance" readonly="1"/>
+                <field name="gara_member_card_count" readonly="1"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Thẻ thành viên">
+                    <field name="gara_member_card_ids">
+                        <tree editable="bottom">
+                            <field name="name" readonly="1"/>
+                            <field name="membership_type_id"/>
+                            <field name="state"/>
+                            <field name="issue_date"/>
+                            <field name="expiry_date"/>
+                            <field name="point_balance" readonly="1"/>
+                            <field name="company_id" optional="hide"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,20 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gara_salary_minimum_hr,gara.salary.minimum hr,model_gara_salary_minimum,hr.group_hr_user,1,1,1,1
+access_gara_salary_grade_group_hr,gara.salary.grade.group hr,model_gara_salary_grade_group,hr.group_hr_user,1,1,1,1
+access_gara_salary_grade_hr,gara.salary.grade hr,model_gara_salary_grade,hr.group_hr_user,1,1,1,1
+access_gara_allowance_type_hr,gara.allowance.type hr,model_gara_allowance_type,hr.group_hr_user,1,1,1,1
+access_gara_employee_allowance_hr,gara.employee.allowance hr,model_gara_employee_allowance,hr.group_hr_user,1,1,1,1
+access_gara_bonus_penalty_hr,gara.bonus.penalty hr,model_gara_bonus_penalty,hr.group_hr_user,1,1,1,1
+access_gara_attendance_code_hr,gara.attendance.code hr,model_gara_attendance_code,hr.group_hr_user,1,1,1,1
+access_gara_work_shift_hr,gara.work.shift hr,model_gara_work_shift,hr.group_hr_user,1,1,1,1
+access_gara_pit_config_hr,gara.pit.config hr,model_gara_pit_config,hr.group_hr_user,1,1,1,1
+access_gara_pit_bracket_hr,gara.pit.bracket hr,model_gara_pit_bracket,hr.group_hr_user,1,1,1,1
+access_gara_daily_attendance_hr,gara.daily.attendance hr,model_gara_daily_attendance,hr.group_hr_user,1,1,1,1
+access_gara_leave_request_hr,gara.leave.request hr,model_gara_leave_request,hr.group_hr_user,1,1,1,1
+access_gara_work_summary_hr,gara.work.summary hr,model_gara_work_summary,hr.group_hr_user,1,1,1,1
+access_gara_kpi_indicator_hr,gara.kpi.indicator hr,model_gara_kpi_indicator,hr.group_hr_user,1,1,1,1
+access_gara_kpi_template_hr,gara.kpi.template hr,model_gara_kpi_template,hr.group_hr_user,1,1,1,1
+access_gara_kpi_template_line_hr,gara.kpi.template.line hr,model_gara_kpi_template_line,hr.group_hr_user,1,1,1,1
+access_gara_employee_kpi_hr,gara.employee.kpi hr,model_gara_employee_kpi,hr.group_hr_user,1,1,1,1
+access_gara_employee_kpi_line_hr,gara.employee.kpi.line hr,model_gara_employee_kpi_line,hr.group_hr_user,1,1,1,1
+access_gara_payroll_summary_hr,gara.payroll.summary hr,model_gara_payroll_summary,hr.group_hr_user,1,1,1,1

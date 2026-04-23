@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_gara_costing_root"
+              name="Giá thành / sản xuất"
+              parent="gara_workshop.menu_gara_grp_accounting"
+              groups="account.group_account_readonly,gara_workshop.group_gara_workshop_manager"
+              sequence="78"/>
+    <menuitem id="menu_gara_cost_elements"
+              name="Yếu tố chi phí"
+              parent="menu_gara_costing_root"
+              action="action_gara_cost_element"
+              sequence="10"/>
+    <menuitem id="menu_gara_product_norms"
+              name="Định mức sản phẩm"
+              parent="menu_gara_costing_root"
+              action="action_gara_product_norm"
+              sequence="20"/>
+    <menuitem id="menu_gara_production_orders"
+              name="Lệnh sản xuất"
+              parent="menu_gara_costing_root"
+              action="action_gara_production_order"
+              sequence="30"/>
+    <menuitem id="menu_gara_wip_openings"
+              name="Chi phí dở dang đầu kỳ"
+              parent="menu_gara_costing_root"
+              action="action_gara_wip_opening"
+              sequence="40"/>
+</odoo>

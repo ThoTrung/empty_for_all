@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_workshop_case_form_stock_service" model="ir.ui.view">
+        <field name="name">gara.workshop.case.form.stock.service</field>
+        <field name="model">gara.workshop.case</field>
+        <field name="inherit_id" ref="gara_workshop.view_gara_workshop_case_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group[1]" position="before">
+                <div class="oe_button_box" name="button_box">
+                    <button name="action_view_service_stock_requests"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-cubes">
+                        <field name="service_stock_request_count" widget="statinfo" string="Stock Requests"/>
+                    </button>
+                </div>
+            </xpath>
+            <xpath expr="//page[@name='docs']/field[@name='invoice_ids']" position="after">
+                <separator string="Service Stock Requests"/>
+                <field name="service_stock_request_ids" readonly="1">
+                    <tree>
+                        <field name="name"/>
+                        <field name="request_date"/>
+                        <field name="warehouse_id"/>
+                        <field name="picking_id"/>
+                        <field name="state"/>
+                    </tree>
+                </field>
+            </xpath>
+        </field>
+    </record>
+</odoo>

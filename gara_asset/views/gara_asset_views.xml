@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_asset_category_tree" model="ir.ui.view">
+        <field name="name">gara.asset.category.tree</field>
+        <field name="model">gara.asset.category</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="asset_account_id"/>
+                <field name="depreciation_account_id"/>
+                <field name="expense_account_id"/>
+                <field name="default_method_number"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_asset_category_form" model="ir.ui.view">
+        <field name="name">gara.asset.category.form</field>
+        <field name="model">gara.asset.category</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="sequence"/>
+                            <field name="company_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="default_method_number"/>
+                            <field name="default_period_months"/>
+                            <field name="journal_id"/>
+                        </group>
+                    </group>
+                    <group string="Accounting">
+                        <field name="asset_account_id"/>
+                        <field name="depreciation_account_id"/>
+                        <field name="expense_account_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_asset_category" model="ir.actions.act_window">
+        <field name="name">Nhóm tài sản</field>
+        <field name="res_model">gara.asset.category</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_asset_tree" model="ir.ui.view">
+        <field name="name">gara.asset.tree</field>
+        <field name="model">gara.asset</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state == 'cancel'" decoration-success="state == 'running'">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="acquisition_date"/>
+                <field name="original_value"/>
+                <field name="accumulated_depreciation"/>
+                <field name="residual_value"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_asset_form" model="ir.ui.view">
+        <field name="name">gara.asset.form</field>
+        <field name="model">gara.asset</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" string="Xác nhận" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_create_depreciation_moves" string="Tạo bút toán khấu hao" type="object" invisible="state != 'running'"/>
+                    <button name="action_close" string="Đóng" type="object" invisible="state != 'running'"/>
+                    <button name="action_reset_draft" string="Đưa về nháp" type="object" invisible="state != 'running'"/>
+                    <button name="action_cancel" string="Hủy" type="object" invisible="state in ('closed', 'cancel')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,running,closed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code" readonly="1"/>
+                            <field name="name"/>
+                            <field name="category_id"/>
+                            <field name="company_id"/>
+                            <field name="acquisition_date"/>
+                            <field name="first_depreciation_date"/>
+                        </group>
+                        <group>
+                            <field name="original_value"/>
+                            <field name="salvage_value"/>
+                            <field name="method_number"/>
+                            <field name="period_months"/>
+                            <field name="accumulated_depreciation" readonly="1"/>
+                            <field name="residual_value" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Lịch khấu hao">
+                            <field name="schedule_ids" readonly="state != 'draft'">
+                                <tree>
+                                    <field name="sequence"/>
+                                    <field name="depreciation_date"/>
+                                    <field name="amount"/>
+                                    <field name="move_id"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Ghi chú">
+                            <field name="note" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_asset" model="ir.actions.act_window">
+        <field name="name">Tài sản</field>
+        <field name="res_model">gara.asset</field>
+        <field name="view_mode">tree,form,pivot</field>
+    </record>
+
+    <record id="view_gara_asset_depreciation_line_tree" model="ir.ui.view">
+        <field name="name">gara.asset.depreciation.line.tree</field>
+        <field name="model">gara.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="asset_id"/>
+                <field name="sequence"/>
+                <field name="depreciation_date"/>
+                <field name="amount"/>
+                <field name="move_id"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_gara_asset_depreciation_line" model="ir.actions.act_window">
+        <field name="name">Lịch khấu hao</field>
+        <field name="res_model">gara.asset.depreciation.line</field>
+        <field name="view_mode">tree,pivot</field>
+    </record>
+
+</odoo>

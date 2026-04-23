@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_workshop_case_tree" model="ir.ui.view">
+        <field name="name">gara.workshop.case.tree</field>
+        <field name="model">gara.workshop.case</field>
+        <field name="arch" type="xml">
+            <tree string="Workshop cases" decoration-muted="state=='cancel'" decoration-success="state=='closed'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="state"/>
+                <field name="amount_due_estimate" sum="Total due"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_workshop_case_form" model="ir.ui.view">
+        <field name="name">gara.workshop.case.form</field>
+        <field name="model">gara.workshop.case</field>
+        <field name="arch" type="xml">
+            <form string="Workshop case">
+                <header>
+                    <button name="action_set_intake" type="object" string="Intake" invisible="state != 'draft'"/>
+                    <button name="action_create_quotation" type="object" string="Create quotation" invisible="state in ('cancel','closed') or sale_order_id"/>
+                    <button name="action_confirm_sale" type="object" string="Confirm SO" invisible="not sale_order_id or state in ('cancel','closed')"/>
+                    <button name="action_create_repair_order" type="object" string="Create repair order" invisible="repair_order_id or state in ('cancel','closed')"/>
+                    <button name="action_create_invoice" type="object" string="Invoice" invisible="not sale_order_id or state in ('cancel','closed')"/>
+                    <button name="action_request_close_approval" type="object" string="Request Close Approval" invisible="state in ('closed','cancel','draft')"/>
+                    <button name="action_close" type="object" string="Close" invisible="state in ('closed','cancel','draft')"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state in ('closed','cancel')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,intake,quoted,repair,done,invoiced,closed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="partner_id"/>
+                            <field name="vehicle_id"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="intake_date"/>
+                            <field name="odometer_in"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Intake" name="intake">
+                            <field name="intake_notes" nolabel="1"/>
+                        </page>
+                        <page string="Documents" name="docs">
+                            <group>
+                                <field name="sale_order_id" readonly="1"/>
+                                <field name="repair_order_id" readonly="1"/>
+                            </group>
+                            <field name="invoice_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="invoice_date"/>
+                                    <field name="amount_total"/>
+                                    <field name="amount_residual"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Payments" name="payments">
+                            <field name="payment_line_ids">
+                                <tree editable="bottom">
+                                    <field name="payment_date"/>
+                                    <field name="amount"/>
+                                    <field name="account_payment_id" optional="show" groups="account.group_account_invoice"/>
+                                    <field name="note"/>
+                                </tree>
+                            </field>
+                            <group class="oe_subtotal_footer">
+                                <field name="amount_sale_total"/>
+                                <field name="amount_invoiced_total"/>
+                                <field name="amount_residual_invoices"/>
+                                <field name="amount_payment_registered"/>
+                                <field name="amount_due_estimate" class="oe_subtotal_footer_separator"/>
+                            </group>
+                        </page>
+                        <page string="Care" name="care">
+                            <field name="care_activity_ids">
+                                <tree>
+                                    <field name="activity_date"/>
+                                    <field name="name"/>
+                                    <field name="channel"/>
+                                    <field name="outcome"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Warranty" name="warranty">
+                            <field name="warranty_claim_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="state"/>
+                                    <field name="product_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Insurance" name="insurance">
+                            <field name="insurance_claim_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="claim_date"/>
+                                    <field name="insurer_partner_id"/>
+                                    <field name="approved_amount"/>
+                                    <field name="paid_amount"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Reminders" name="reminders">
+                            <field name="reminder_ids">
+                                <tree editable="bottom">
+                                    <field name="name"/>
+                                    <field name="reminder_type"/>
+                                    <field name="due_date"/>
+                                    <field name="channel"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Survey" name="survey">
+                            <field name="survey_response_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="template_id"/>
+                                    <field name="score_avg"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Approvals" name="approvals">
+                            <field name="approval_request_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="request_type"/>
+                                    <field name="requester_id"/>
+                                    <field name="approver_id"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Audit" name="audit">
+                            <field name="audit_log_ids" readonly="1">
+                                <tree>
+                                    <field name="create_date"/>
+                                    <field name="user_id"/>
+                                    <field name="action"/>
+                                    <field name="detail"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_workshop_case" model="ir.actions.act_window">
+        <field name="name">Workshop cases</field>
+        <field name="res_model">gara.workshop.case</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{}</field>
+    </record>
+
+</odoo>

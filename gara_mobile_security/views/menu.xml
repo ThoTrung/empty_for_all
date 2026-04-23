@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_gara_mobile_security_root"
+              name="App &amp; hệ thống"
+              parent="gara_workshop.menu_gara_workshop_root"
+              groups="gara_workshop.group_gara_workshop_manager,base.group_system"
+              sequence="95"/>
+    <menuitem id="menu_gara_mobile_role_features"
+              name="Vai trò - chức năng App"
+              parent="menu_gara_mobile_security_root"
+              action="action_gara_mobile_role_feature"
+              sequence="10"/>
+    <menuitem id="menu_gara_mobile_display_settings"
+              name="Cấu hình hiển thị App"
+              parent="menu_gara_mobile_security_root"
+              action="action_gara_mobile_display_setting"
+              sequence="20"/>
+    <menuitem id="menu_gara_mobile_status_colors"
+              name="Màu trạng thái"
+              parent="menu_gara_mobile_security_root"
+              action="action_gara_mobile_status_color"
+              sequence="30"/>
+</odoo>

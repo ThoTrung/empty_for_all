@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Service advisor can only see own assigned cases unless manager -->
+    <record id="rule_gara_case_service_advisor_own" model="ir.rule">
+        <field name="name">Gara case advisor own</field>
+        <field name="model_id" ref="gara_workshop.model_gara_workshop_case"/>
+        <field name="domain_force">['|', ('user_id', '=', user.id), ('create_uid', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('gara_workshop.group_gara_role_service_advisor'))]"/>
+    </record>
+
+    <!-- Cashier can only create/read payment lines, not edit case -->
+    <record id="rule_gara_payment_cashier_company" model="ir.rule">
+        <field name="name">Gara payment cashier company</field>
+        <field name="model_id" ref="gara_workshop.model_gara_workshop_payment"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('gara_workshop.group_gara_role_cashier'))]"/>
+    </record>
+</odoo>

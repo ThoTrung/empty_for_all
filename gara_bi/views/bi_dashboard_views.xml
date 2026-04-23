@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_bi_monthly_kpi_tree" model="ir.ui.view">
+        <field name="name">gara.bi.monthly.kpi.tree</field>
+        <field name="model">gara.bi.monthly.kpi</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="report_date"/>
+                <field name="case_count" sum="Cases"/>
+                <field name="closed_case_count" sum="Closed"/>
+                <field name="cancelled_case_count" sum="Cancelled"/>
+                <field name="quotation_amount" sum="Quotation"/>
+                <field name="invoiced_amount" sum="Invoiced"/>
+                <field name="payment_amount" sum="Payments"/>
+                <field name="residual_amount" sum="Residual"/>
+                <field name="stock_request_count" sum="Stock Requests"/>
+                <field name="part_quantity" sum="Parts"/>
+                <field name="avg_duration_days" avg="Average Duration"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_bi_monthly_kpi_pivot" model="ir.ui.view">
+        <field name="name">gara.bi.monthly.kpi.pivot</field>
+        <field name="model">gara.bi.monthly.kpi</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="report_date" type="row" interval="month"/>
+                <field name="case_count" type="measure"/>
+                <field name="closed_case_count" type="measure"/>
+                <field name="quotation_amount" type="measure"/>
+                <field name="invoiced_amount" type="measure"/>
+                <field name="payment_amount" type="measure"/>
+                <field name="residual_amount" type="measure"/>
+                <field name="stock_request_count" type="measure"/>
+                <field name="part_quantity" type="measure"/>
+                <field name="avg_duration_days" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_bi_monthly_kpi_graph" model="ir.ui.view">
+        <field name="name">gara.bi.monthly.kpi.graph</field>
+        <field name="model">gara.bi.monthly.kpi</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="report_date" interval="month"/>
+                <field name="invoiced_amount" type="measure"/>
+                <field name="payment_amount" type="measure"/>
+                <field name="residual_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_gara_bi_monthly_kpi_search" model="ir.ui.view">
+        <field name="name">gara.bi.monthly.kpi.search</field>
+        <field name="model">gara.bi.monthly.kpi</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="report_date"/>
+                <field name="company_id"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_date" string="Month" context="{'group_by': 'report_date:month'}"/>
+                    <filter name="group_company" string="Company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_bi_monthly_kpi" model="ir.actions.act_window">
+        <field name="name">BI tổng hợp gara</field>
+        <field name="res_model">gara.bi.monthly.kpi</field>
+        <field name="view_mode">graph,pivot,tree</field>
+        <field name="search_view_id" ref="view_gara_bi_monthly_kpi_search"/>
+        <field name="context">{'search_default_group_date': 1}</field>
+    </record>
+
+    <record id="view_gara_bi_management_summary_tree" model="ir.ui.view">
+        <field name="name">gara.bi.management.summary.tree</field>
+        <field name="model">gara.bi.management.summary</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0" decoration-danger="cancel_rate &gt; 20" decoration-warning="collection_rate &lt; 80">
+                <field name="report_date"/>
+                <field name="case_count" sum="Cases"/>
+                <field name="open_case_count" sum="Open"/>
+                <field name="closed_case_count" sum="Closed"/>
+                <field name="cancelled_case_count" sum="Cancelled"/>
+                <field name="invoiced_amount" sum="Invoiced"/>
+                <field name="payment_amount" sum="Payment"/>
+                <field name="residual_amount" sum="Residual"/>
+                <field name="revenue_per_case" avg="Revenue/Case"/>
+                <field name="collection_rate" avg="Collection %"/>
+                <field name="close_rate" avg="Close %"/>
+                <field name="cancel_rate" avg="Cancel %"/>
+                <field name="avg_duration_days" avg="Duration"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_bi_management_summary_pivot" model="ir.ui.view">
+        <field name="name">gara.bi.management.summary.pivot</field>
+        <field name="model">gara.bi.management.summary</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="report_date" type="row" interval="month"/>
+                <field name="case_count" type="measure"/>
+                <field name="open_case_count" type="measure"/>
+                <field name="closed_case_count" type="measure"/>
+                <field name="invoiced_amount" type="measure"/>
+                <field name="payment_amount" type="measure"/>
+                <field name="residual_amount" type="measure"/>
+                <field name="revenue_per_case" type="measure"/>
+                <field name="collection_rate" type="measure"/>
+                <field name="close_rate" type="measure"/>
+                <field name="cancel_rate" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_bi_management_summary_graph" model="ir.ui.view">
+        <field name="name">gara.bi.management.summary.graph</field>
+        <field name="model">gara.bi.management.summary</field>
+        <field name="arch" type="xml">
+            <graph type="line">
+                <field name="report_date" interval="month"/>
+                <field name="invoiced_amount" type="measure"/>
+                <field name="payment_amount" type="measure"/>
+                <field name="residual_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_gara_bi_management_summary_search" model="ir.ui.view">
+        <field name="name">gara.bi.management.summary.search</field>
+        <field name="model">gara.bi.management.summary</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="report_date"/>
+                <field name="company_id"/>
+                <filter name="low_collection" string="Collection &lt; 80%" domain="[('collection_rate', '&lt;', 80)]"/>
+                <filter name="high_cancel" string="Cancel &gt; 20%" domain="[('cancel_rate', '&gt;', 20)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_date" string="Month" context="{'group_by': 'report_date:month'}"/>
+                    <filter name="group_company" string="Company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_bi_management_summary" model="ir.actions.act_window">
+        <field name="name">Báo cáo quản trị</field>
+        <field name="res_model">gara.bi.management.summary</field>
+        <field name="view_mode">tree,graph,pivot</field>
+        <field name="search_view_id" ref="view_gara_bi_management_summary_search"/>
+        <field name="context">{'search_default_group_date': 1}</field>
+    </record>
+</odoo>

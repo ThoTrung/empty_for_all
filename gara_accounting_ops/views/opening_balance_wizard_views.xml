@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_opening_balance_wizard_form" model="ir.ui.view">
+        <field name="name">gara.opening.balance.wizard.form</field>
+        <field name="model">gara.opening.balance.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Nhập số dư đầu kỳ">
+                <group>
+                    <field name="company_id"/>
+                    <field name="date"/>
+                    <field name="journal_id"/>
+                    <field name="ref"/>
+                    <field name="post_move"/>
+                </group>
+                <field name="line_ids">
+                    <tree editable="bottom">
+                        <field name="company_id" invisible="1"/>
+                        <field name="account_id"/>
+                        <field name="partner_id"/>
+                        <field name="name"/>
+                        <field name="debit" sum="Debit"/>
+                        <field name="credit" sum="Credit"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_create_move" string="Tạo bút toán đầu kỳ" type="object" class="btn-primary"/>
+                    <button string="Hủy" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_opening_balance_wizard" model="ir.actions.act_window">
+        <field name="name">Nhập số dư đầu kỳ</field>
+        <field name="res_model">gara.opening.balance.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

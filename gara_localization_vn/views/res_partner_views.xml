@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_gara_localization_vn" model="ir.ui.view">
+        <field name="name">res.partner.form.gara.localization.vn</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='city']" position="after">
+                <field name="gara_vn_province_id" placeholder="Province/City"/>
+                <field name="gara_vn_district_id" placeholder="District"/>
+                <field name="gara_vn_ward_id" placeholder="Ward"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_partner_tree_gara_localization_vn" model="ir.ui.view">
+        <field name="name">res.partner.tree.gara.localization.vn</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='city']" position="after">
+                <field name="gara_vn_province_id" optional="hide"/>
+                <field name="gara_vn_district_id" optional="hide"/>
+                <field name="gara_vn_ward_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

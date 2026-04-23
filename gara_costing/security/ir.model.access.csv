@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gara_cost_element_user,gara.cost.element user,model_gara_cost_element,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_cost_element_manager,gara.cost.element manager,model_gara_cost_element,gara_workshop.group_gara_workshop_manager,1,1,1,1
+access_gara_product_norm_user,gara.product.norm user,model_gara_product_norm,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_product_norm_manager,gara.product.norm manager,model_gara_product_norm,gara_workshop.group_gara_workshop_manager,1,1,1,1
+access_gara_product_norm_line_user,gara.product.norm.line user,model_gara_product_norm_line,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_product_norm_line_manager,gara.product.norm.line manager,model_gara_product_norm_line,gara_workshop.group_gara_workshop_manager,1,1,1,1
+access_gara_production_order_user,gara.production.order user,model_gara_production_order,gara_workshop.group_gara_workshop_user,1,1,1,0
+access_gara_production_order_manager,gara.production.order manager,model_gara_production_order,gara_workshop.group_gara_workshop_manager,1,1,1,1
+access_gara_production_cost_line_user,gara.production.cost.line user,model_gara_production_cost_line,gara_workshop.group_gara_workshop_user,1,1,1,0
+access_gara_production_cost_line_manager,gara.production.cost.line manager,model_gara_production_cost_line,gara_workshop.group_gara_workshop_manager,1,1,1,1
+access_gara_wip_opening_user,gara.wip.opening user,model_gara_wip_opening,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_wip_opening_manager,gara.wip.opening manager,model_gara_wip_opening,gara_workshop.group_gara_workshop_manager,1,1,1,1

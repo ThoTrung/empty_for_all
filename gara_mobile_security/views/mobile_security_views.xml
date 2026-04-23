@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_mobile_role_feature_tree" model="ir.ui.view">
+        <field name="name">gara.mobile.role.feature.tree</field>
+        <field name="model">gara.mobile.role.feature</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="app_scope"/>
+                <field name="group_id"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="can_read"/>
+                <field name="can_create"/>
+                <field name="can_write"/>
+                <field name="can_unlink"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_mobile_role_feature_form" model="ir.ui.view">
+        <field name="name">gara.mobile.role.feature.form</field>
+        <field name="model">gara.mobile.role.feature</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="app_scope"/>
+                        <field name="group_id"/>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <group string="Permissions">
+                        <field name="can_read"/>
+                        <field name="can_create"/>
+                        <field name="can_write"/>
+                        <field name="can_unlink"/>
+                    </group>
+                    <field name="note" nolabel="1" placeholder="Notes..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gara_mobile_role_feature_search" model="ir.ui.view">
+        <field name="name">gara.mobile.role.feature.search</field>
+        <field name="model">gara.mobile.role.feature</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="group_id"/>
+                <filter name="mobile" string="Mobile" domain="[('app_scope', '=', 'mobile')]"/>
+                <filter name="web" string="Web" domain="[('app_scope', '=', 'web')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_scope" string="Scope" context="{'group_by': 'app_scope'}"/>
+                    <filter name="group_role" string="Role" context="{'group_by': 'group_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_mobile_role_feature" model="ir.actions.act_window">
+        <field name="name">Vai trò - chức năng App</field>
+        <field name="res_model">gara.mobile.role.feature</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_gara_mobile_role_feature_search"/>
+        <field name="context">{'search_default_group_role': 1}</field>
+    </record>
+
+    <record id="view_gara_mobile_display_setting_tree" model="ir.ui.view">
+        <field name="name">gara.mobile.display.setting.tree</field>
+        <field name="model">gara.mobile.display.setting</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="app_scope"/>
+                <field name="model_name"/>
+                <field name="field_name"/>
+                <field name="user_id"/>
+                <field name="group_id"/>
+                <field name="visible"/>
+                <field name="is_readonly"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_mobile_display_setting_form" model="ir.ui.view">
+        <field name="name">gara.mobile.display.setting.form</field>
+        <field name="model">gara.mobile.display.setting</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="app_scope"/>
+                        <field name="model_name"/>
+                        <field name="field_name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <group>
+                        <field name="user_id"/>
+                        <field name="group_id"/>
+                        <field name="visible"/>
+                        <field name="is_readonly"/>
+                    </group>
+                    <field name="note" nolabel="1" placeholder="Notes..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gara_mobile_display_setting_search" model="ir.ui.view">
+        <field name="name">gara.mobile.display.setting.search</field>
+        <field name="model">gara.mobile.display.setting</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="model_name"/>
+                <field name="field_name"/>
+                <field name="user_id"/>
+                <field name="group_id"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_model" string="Model" context="{'group_by': 'model_name'}"/>
+                    <filter name="group_scope" string="Scope" context="{'group_by': 'app_scope'}"/>
+                    <filter name="group_role" string="Role" context="{'group_by': 'group_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_mobile_display_setting" model="ir.actions.act_window">
+        <field name="name">Cấu hình hiển thị App</field>
+        <field name="res_model">gara.mobile.display.setting</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_gara_mobile_display_setting_search"/>
+        <field name="context">{'search_default_group_model': 1}</field>
+    </record>
+
+    <record id="view_gara_mobile_status_color_tree" model="ir.ui.view">
+        <field name="name">gara.mobile.status.color.tree</field>
+        <field name="model">gara.mobile.status.color</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="model_name"/>
+                <field name="state_value"/>
+                <field name="label"/>
+                <field name="color" widget="color_picker"/>
+                <field name="hex_color"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_mobile_status_color_form" model="ir.ui.view">
+        <field name="name">gara.mobile.status.color.form</field>
+        <field name="model">gara.mobile.status.color</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="model_name"/>
+                        <field name="state_value"/>
+                        <field name="label"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <group>
+                        <field name="color" widget="color_picker"/>
+                        <field name="hex_color"/>
+                    </group>
+                    <field name="note" nolabel="1" placeholder="Notes..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gara_mobile_status_color_search" model="ir.ui.view">
+        <field name="name">gara.mobile.status.color.search</field>
+        <field name="model">gara.mobile.status.color</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="model_name"/>
+                <field name="state_value"/>
+                <field name="label"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_model" string="Model" context="{'group_by': 'model_name'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_mobile_status_color" model="ir.actions.act_window">
+        <field name="name">Màu trạng thái</field>
+        <field name="res_model">gara.mobile.status.color</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_gara_mobile_status_color_search"/>
+        <field name="context">{'search_default_group_model': 1}</field>
+    </record>
+</odoo>

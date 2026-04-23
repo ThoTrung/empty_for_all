@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_stock_opening_wizard_form" model="ir.ui.view">
+        <field name="name">gara.stock.opening.wizard.form</field>
+        <field name="model">gara.stock.opening.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Tồn kho đầu kỳ">
+                <group>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="opening_date"/>
+                        <field name="location_id"/>
+                    </group>
+                    <group>
+                        <field name="set_standard_cost"/>
+                        <field name="note"/>
+                    </group>
+                </group>
+                <field name="line_ids">
+                    <tree editable="bottom">
+                        <field name="company_id" invisible="1"/>
+                        <field name="product_id"/>
+                        <field name="uom_id"/>
+                        <field name="current_qty"/>
+                        <field name="opening_qty"/>
+                        <field name="difference_qty"/>
+                        <field name="unit_cost"/>
+                        <field name="note"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_load_current_stock" type="object" string="Tải tồn hiện tại" class="btn-secondary"/>
+                    <button name="action_apply" type="object" string="Cập nhật tồn kho đầu kỳ" class="btn-primary"/>
+                    <button string="Hủy" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_stock_opening_wizard" model="ir.actions.act_window">
+        <field name="name">Tồn kho đầu kỳ</field>
+        <field name="res_model">gara.stock.opening.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

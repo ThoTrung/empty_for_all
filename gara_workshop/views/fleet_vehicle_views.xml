@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fleet_vehicle_view_form_inherit_gara" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.gara</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Gara" name="gara_extra">
+                    <group>
+                        <field name="gara_engine_no"/>
+                        <field name="gara_insurance_policy"/>
+                        <field name="gara_insurance_expiry"/>
+                        <field name="gara_registration_expiry"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

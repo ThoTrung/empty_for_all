@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_service_case_report_tree" model="ir.ui.view">
+        <field name="name">gara.service.case.report.tree</field>
+        <field name="model">gara.service.case.report</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="report_date"/>
+                <field name="case_id"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="user_id"/>
+                <field name="state"/>
+                <field name="quotation_amount" sum="Quotation"/>
+                <field name="invoiced_amount" sum="Invoiced"/>
+                <field name="residual_amount" sum="Residual"/>
+                <field name="payment_amount" sum="Payment"/>
+                <field name="stock_request_count" sum="Requests"/>
+                <field name="part_quantity" sum="Part Qty"/>
+                <field name="duration_days"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_service_case_report_pivot" model="ir.ui.view">
+        <field name="name">gara.service.case.report.pivot</field>
+        <field name="model">gara.service.case.report</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="report_date" type="row" interval="month"/>
+                <field name="user_id" type="col"/>
+                <field name="quotation_amount" type="measure"/>
+                <field name="invoiced_amount" type="measure"/>
+                <field name="residual_amount" type="measure"/>
+                <field name="payment_amount" type="measure"/>
+                <field name="stock_request_count" type="measure"/>
+                <field name="part_quantity" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_service_case_report_graph" model="ir.ui.view">
+        <field name="name">gara.service.case.report.graph</field>
+        <field name="model">gara.service.case.report</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="report_date" interval="month"/>
+                <field name="invoiced_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_gara_service_case_report_search" model="ir.ui.view">
+        <field name="name">gara.service.case.report.search</field>
+        <field name="model">gara.service.case.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="case_id"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="user_id"/>
+                <filter name="open_cases" string="Open" domain="[('state', 'not in', ('closed', 'cancel'))]"/>
+                <filter name="done_cases" string="Done/Closed" domain="[('state', 'in', ('done', 'invoiced', 'closed'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_date" string="Month" context="{'group_by': 'report_date:month'}"/>
+                    <filter name="group_advisor" string="Service Advisor" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_customer" string="Customer" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_service_case_report" model="ir.actions.act_window">
+        <field name="name">Báo cáo dịch vụ</field>
+        <field name="res_model">gara.service.case.report</field>
+        <field name="view_mode">tree,pivot,graph</field>
+        <field name="search_view_id" ref="view_gara_service_case_report_search"/>
+        <field name="context">{'search_default_group_date': 1}</field>
+    </record>
+</odoo>

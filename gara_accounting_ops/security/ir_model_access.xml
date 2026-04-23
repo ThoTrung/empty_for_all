@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="access_gara_invoice_import_wizard_accountant" model="ir.model.access">
+        <field name="name">gara.invoice.import.wizard accountant</field>
+        <field name="model_id" ref="model_gara_invoice_import_wizard"/>
+        <field name="group_id" ref="gara_workshop.group_gara_role_accountant"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_invoice_import_wizard_account_manager" model="ir.model.access">
+        <field name="name">gara.invoice.import.wizard account manager</field>
+        <field name="model_id" ref="model_gara_invoice_import_wizard"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_journal_entry_import_wizard_accountant" model="ir.model.access">
+        <field name="name">gara.journal.entry.import.wizard accountant</field>
+        <field name="model_id" ref="model_gara_journal_entry_import_wizard"/>
+        <field name="group_id" ref="gara_workshop.group_gara_role_accountant"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_journal_entry_import_wizard_account_manager" model="ir.model.access">
+        <field name="name">gara.journal.entry.import.wizard account manager</field>
+        <field name="model_id" ref="model_gara_journal_entry_import_wizard"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_closing_lock_wizard_account_manager" model="ir.model.access">
+        <field name="name">gara.closing.lock.wizard account manager</field>
+        <field name="model_id" ref="model_gara_closing_lock_wizard"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_opening_balance_wizard_account_manager" model="ir.model.access">
+        <field name="name">gara.opening.balance.wizard account manager</field>
+        <field name="model_id" ref="model_gara_opening_balance_wizard"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_opening_balance_wizard_line_account_manager" model="ir.model.access">
+        <field name="name">gara.opening.balance.wizard.line account manager</field>
+        <field name="model_id" ref="model_gara_opening_balance_wizard_line"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_period_rollover_wizard_account_manager" model="ir.model.access">
+        <field name="name">gara.period.rollover.wizard account manager</field>
+        <field name="model_id" ref="model_gara_period_rollover_wizard"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_period_rollover_wizard_line_account_manager" model="ir.model.access">
+        <field name="name">gara.period.rollover.wizard.line account manager</field>
+        <field name="model_id" ref="model_gara_period_rollover_wizard_line"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_closing_config_account_manager" model="ir.model.access">
+        <field name="name">gara.closing.config account manager</field>
+        <field name="model_id" ref="model_gara_closing_config"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_document_renumber_wizard_account_manager" model="ir.model.access">
+        <field name="name">gara.document.renumber.wizard account manager</field>
+        <field name="model_id" ref="model_gara_document_renumber_wizard"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_product_cost_recompute_wizard_account_manager" model="ir.model.access">
+        <field name="name">gara.product.cost.recompute.wizard account manager</field>
+        <field name="model_id" ref="model_gara_product_cost_recompute_wizard"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_product_cost_recompute_line_account_manager" model="ir.model.access">
+        <field name="name">gara.product.cost.recompute.line account manager</field>
+        <field name="model_id" ref="model_gara_product_cost_recompute_line"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_closing_entry_wizard_account_manager" model="ir.model.access">
+        <field name="name">gara.closing.entry.wizard account manager</field>
+        <field name="model_id" ref="model_gara_closing_entry_wizard"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_accounting_rule_accountant" model="ir.model.access">
+        <field name="name">gara.accounting.rule accountant</field>
+        <field name="model_id" ref="model_gara_accounting_rule"/>
+        <field name="group_id" ref="gara_workshop.group_gara_role_accountant"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_accounting_rule_account_manager" model="ir.model.access">
+        <field name="name">gara.accounting.rule account manager</field>
+        <field name="model_id" ref="model_gara_accounting_rule"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_document_sequence_rule_accountant" model="ir.model.access">
+        <field name="name">gara.document.sequence.rule accountant</field>
+        <field name="model_id" ref="model_gara_document_sequence_rule"/>
+        <field name="group_id" ref="gara_workshop.group_gara_role_accountant"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_document_sequence_rule_account_manager" model="ir.model.access">
+        <field name="name">gara.document.sequence.rule account manager</field>
+        <field name="model_id" ref="model_gara_document_sequence_rule"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_allocation_plan_account_manager" model="ir.model.access">
+        <field name="name">gara.allocation.plan account manager</field>
+        <field name="model_id" ref="model_gara_allocation_plan"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_allocation_plan_line_account_manager" model="ir.model.access">
+        <field name="name">gara.allocation.plan.line account manager</field>
+        <field name="model_id" ref="model_gara_allocation_plan_line"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_allocation_execution_account_manager" model="ir.model.access">
+        <field name="name">gara.allocation.execution account manager</field>
+        <field name="model_id" ref="model_gara_allocation_execution"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_allocation_execution_line_account_manager" model="ir.model.access">
+        <field name="name">gara.allocation.execution.line account manager</field>
+        <field name="model_id" ref="model_gara_allocation_execution_line"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_allocation_run_wizard_account_manager" model="ir.model.access">
+        <field name="name">gara.allocation.run.wizard account manager</field>
+        <field name="model_id" ref="model_gara_allocation_run_wizard"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_allocation_run_wizard_line_account_manager" model="ir.model.access">
+        <field name="name">gara.allocation.run.wizard.line account manager</field>
+        <field name="model_id" ref="model_gara_allocation_run_wizard_line"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_account_document_group_accountant" model="ir.model.access">
+        <field name="name">gara.account.document.group accountant</field>
+        <field name="model_id" ref="model_gara_account_document_group"/>
+        <field name="group_id" ref="gara_workshop.group_gara_role_accountant"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_account_document_group_manager" model="ir.model.access">
+        <field name="name">gara.account.document.group manager</field>
+        <field name="model_id" ref="model_gara_account_document_group"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_account_document_reason_accountant" model="ir.model.access">
+        <field name="name">gara.account.document.reason accountant</field>
+        <field name="model_id" ref="model_gara_account_document_reason"/>
+        <field name="group_id" ref="gara_workshop.group_gara_role_accountant"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_account_document_reason_manager" model="ir.model.access">
+        <field name="name">gara.account.document.reason manager</field>
+        <field name="model_id" ref="model_gara_account_document_reason"/>
+        <field name="group_id" ref="account.group_account_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+</odoo>

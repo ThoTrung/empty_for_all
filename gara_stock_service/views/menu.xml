@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_gara_stock_service_requests"
+              name="Yêu cầu xuất kho dịch vụ"
+              parent="gara_workshop.menu_gara_grp_stock"
+              action="action_gara_service_stock_request"
+              groups="stock.group_stock_user"
+              sequence="18"/>
+    <menuitem id="menu_gara_stock_service_issue_book"
+              name="Sổ tổng hợp phiếu xuất kho"
+              parent="gara_workshop.menu_gara_grp_stock"
+              action="action_gara_service_stock_issue_book"
+              groups="stock.group_stock_user"
+              sequence="22"/>
+    <menuitem id="menu_gara_stock_opening"
+              name="Tồn kho đầu kỳ"
+              parent="gara_workshop.menu_gara_grp_stock"
+              action="action_gara_stock_opening_wizard"
+              groups="stock.group_stock_manager"
+              sequence="30"/>
+    <menuitem id="menu_gara_stock_inventory_batches"
+              name="Đợt kiểm kê"
+              parent="gara_workshop.menu_gara_grp_stock"
+              action="action_gara_stock_inventory_batch"
+              groups="stock.group_stock_user"
+              sequence="32"/>
+    <menuitem id="menu_gara_stock_inventory_summary"
+              name="Tổng hợp kiểm kê"
+              parent="gara_workshop.menu_gara_grp_stock"
+              action="action_gara_stock_inventory_summary"
+              groups="stock.group_stock_user"
+              sequence="34"/>
+    <menuitem id="menu_gara_stock_reordering_products"
+              name="Định mức tồn kho"
+              parent="gara_workshop.menu_gara_grp_stock"
+              action="action_gara_stock_reordering_products"
+              groups="stock.group_stock_user"
+              sequence="36"/>
+    <menuitem id="menu_gara_stock_low_products"
+              name="Sản phẩm dưới định mức"
+              parent="gara_workshop.menu_gara_grp_stock"
+              action="action_gara_stock_low_products"
+              groups="stock.group_stock_user"
+              sequence="38"/>
+</odoo>

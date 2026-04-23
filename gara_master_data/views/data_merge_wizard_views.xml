@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_partner_merge_wizard_form" model="ir.ui.view">
+        <field name="name">gara.partner.merge.wizard.form</field>
+        <field name="model">gara.partner.merge.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Gộp mã khách hàng">
+                <group>
+                    <field name="target_partner_id"/>
+                    <field name="source_partner_ids" widget="many2many_tags"
+                           domain="[('id', '!=', target_partner_id)]"/>
+                    <field name="archive_sources"/>
+                    <field name="confirm"/>
+                    <field name="updated_reference_count" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_merge" string="Gộp mã" type="object" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_partner_merge_wizard" model="ir.actions.act_window">
+        <field name="name">Gộp mã khách hàng</field>
+        <field name="res_model">gara.partner.merge.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_gara_product_merge_wizard_form" model="ir.ui.view">
+        <field name="name">gara.product.merge.wizard.form</field>
+        <field name="model">gara.product.merge.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Gộp mã sản phẩm">
+                <group>
+                    <field name="target_product_id"/>
+                    <field name="source_product_ids" widget="many2many_tags"
+                           domain="[('id', '!=', target_product_id)]"/>
+                    <field name="archive_sources"/>
+                    <field name="confirm"/>
+                    <field name="updated_reference_count" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_merge" string="Gộp mã" type="object" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_product_merge_wizard" model="ir.actions.act_window">
+        <field name="name">Gộp mã sản phẩm</field>
+        <field name="res_model">gara.product.merge.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

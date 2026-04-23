@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gara_vn_province_user,gara.vn.province user,model_gara_vn_province,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_vn_province_manager,gara.vn.province manager,model_gara_vn_province,gara_workshop.group_gara_workshop_manager,1,1,1,1
+access_gara_vn_district_user,gara.vn.district user,model_gara_vn_district,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_vn_district_manager,gara.vn.district manager,model_gara_vn_district,gara_workshop.group_gara_workshop_manager,1,1,1,1
+access_gara_vn_ward_user,gara.vn.ward user,model_gara_vn_ward,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_vn_ward_manager,gara.vn.ward manager,model_gara_vn_ward,gara_workshop.group_gara_workshop_manager,1,1,1,1

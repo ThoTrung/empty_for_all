@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="revenue_type_service" model="gara.revenue.type">
+        <field name="code">DTDV</field>
+        <field name="name">Doanh thu dịch vụ</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="revenue_type_repair_labor" model="gara.revenue.type">
+        <field name="code">DTNCSC</field>
+        <field name="name">Doanh thu nhân công sửa chữa</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="revenue_type_parts" model="gara.revenue.type">
+        <field name="code">DTVTPT</field>
+        <field name="name">Doanh thu vật tư phụ tùng</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="membership_standard" model="gara.membership.type">
+        <field name="code">STANDARD</field>
+        <field name="name">Thành viên thường</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="membership_vip" model="gara.membership.type">
+        <field name="code">VIP</field>
+        <field name="name">Thành viên VIP</field>
+        <field name="discount_percent">5.0</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="product_type_service" model="gara.product.type">
+        <field name="code">SERVICE</field>
+        <field name="name">Dịch vụ</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="product_type_part" model="gara.product.type">
+        <field name="code">PART</field>
+        <field name="name">Phụ tùng</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="product_type_consumable" model="gara.product.type">
+        <field name="code">CONSUMABLE</field>
+        <field name="name">Vật tư tiêu hao</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="customer_source_walkin" model="gara.customer.source">
+        <field name="code">WALKIN</field>
+        <field name="name">Khách đến trực tiếp</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="customer_source_referral" model="gara.customer.source">
+        <field name="code">REFERRAL</field>
+        <field name="name">Giới thiệu</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="customer_source_online" model="gara.customer.source">
+        <field name="code">ONLINE</field>
+        <field name="name">Online</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="customer_status_new" model="gara.customer.status">
+        <field name="code">NEW</field>
+        <field name="name">Khách mới</field>
+        <field name="color">3</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="customer_status_active" model="gara.customer.status">
+        <field name="code">ACTIVE</field>
+        <field name="name">Đang chăm sóc</field>
+        <field name="color">10</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="customer_status_inactive" model="gara.customer.status">
+        <field name="code">INACTIVE</field>
+        <field name="name">Ngừng chăm sóc</field>
+        <field name="color">1</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="customer_type_personal" model="gara.customer.type">
+        <field name="code">PERSONAL</field>
+        <field name="name">Cá nhân</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="customer_type_company" model="gara.customer.type">
+        <field name="code">COMPANY</field>
+        <field name="name">Doanh nghiệp</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="customer_type_insurance" model="gara.customer.type">
+        <field name="code">INSURANCE</field>
+        <field name="name">Bảo hiểm</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="care_type_after_service" model="gara.care.type">
+        <field name="code">AFTER_SERVICE</field>
+        <field name="name">Chăm sóc sau dịch vụ</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="care_type_reminder" model="gara.care.type">
+        <field name="code">REMINDER</field>
+        <field name="name">Nhắc lịch bảo dưỡng</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="care_type_complaint" model="gara.care.type">
+        <field name="code">COMPLAINT</field>
+        <field name="name">Xử lý phản hồi</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="care_result_success" model="gara.care.result">
+        <field name="code">SUCCESS</field>
+        <field name="name">Thành công</field>
+        <field name="color">10</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="care_result_no_answer" model="gara.care.result">
+        <field name="code">NO_ANSWER</field>
+        <field name="name">Không nghe máy</field>
+        <field name="color">2</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="care_result_callback" model="gara.care.result">
+        <field name="code">CALLBACK</field>
+        <field name="name">Hẹn gọi lại</field>
+        <field name="color">4</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="care_result_reject" model="gara.care.result">
+        <field name="code">REJECT</field>
+        <field name="name">Từ chối</field>
+        <field name="color">1</field>
+        <field name="sequence">40</field>
+    </record>
+
+    <record id="care_result_detail_satisfied" model="gara.care.result.detail">
+        <field name="code">SATISFIED</field>
+        <field name="name">Khách hài lòng</field>
+        <field name="result_id" ref="care_result_success"/>
+        <field name="sequence">10</field>
+    </record>
+    <record id="care_result_detail_need_followup" model="gara.care.result.detail">
+        <field name="code">NEED_FOLLOWUP</field>
+        <field name="name">Cần theo dõi thêm</field>
+        <field name="result_id" ref="care_result_callback"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="print_group_service" model="gara.print.group">
+        <field name="code">SERVICE</field>
+        <field name="name">Chứng từ dịch vụ</field>
+        <field name="model_name">gara.workshop.case</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="print_group_sale" model="gara.print.group">
+        <field name="code">SALE</field>
+        <field name="name">Báo giá / đơn hàng</field>
+        <field name="model_name">sale.order</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="print_group_invoice" model="gara.print.group">
+        <field name="code">INVOICE</field>
+        <field name="name">Hóa đơn</field>
+        <field name="model_name">account.move</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="seq_gara_member_card" model="ir.sequence">
+        <field name="name">Gara Member Card</field>
+        <field name="code">gara.member.card</field>
+        <field name="prefix">MC/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="number_increment">1</field>
+        <field name="number_next">1</field>
+        <field name="implementation">no_gap</field>
+    </record>
+</odoo>

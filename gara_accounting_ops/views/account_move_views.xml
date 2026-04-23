@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_gara_accounting_ops" model="ir.ui.view">
+        <field name="name">account.move.form.gara.accounting.ops</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='journal_id']" position="after">
+                <field name="gara_document_number" readonly="1"/>
+                <field name="gara_business_type"/>
+                <field name="gara_payment_channel"/>
+                <field name="gara_tax_scope" readonly="1"/>
+                <field name="gara_document_group_id"/>
+                <field name="gara_document_reason_id"
+                       domain="['|', ('group_id', '=', False), ('group_id', '=', gara_document_group_id)]"/>
+                <field name="gara_accounting_rule_id" readonly="1" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='ref']" position="after">
+                <field name="gara_document_note"/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="action_gara_apply_accounting_policy"
+                        type="object"
+                        string="Apply Gara Policy"
+                        class="btn-secondary"
+                        invisible="state != 'draft'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_move_tree_gara_accounting_ops" model="ir.ui.view">
+        <field name="name">account.move.tree.gara.accounting.ops</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='journal_id']" position="after">
+                <field name="gara_document_number" optional="show"/>
+                <field name="gara_document_group_id" optional="show"/>
+                <field name="gara_document_reason_id" optional="hide"/>
+                <field name="gara_business_type" optional="hide"/>
+                <field name="gara_payment_channel" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_account_move_filter_gara_accounting_ops" model="ir.ui.view">
+        <field name="name">account.move.search.gara.accounting.ops</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_move_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group" position="inside">
+                <filter name="group_gara_document_group"
+                        string="Gara Document Group"
+                        context="{'group_by': 'gara_document_group_id'}"/>
+                <filter name="group_gara_document_reason"
+                        string="Gara Document Reason"
+                        context="{'group_by': 'gara_document_reason_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_gara_account_document_book" model="ir.actions.act_window">
+        <field name="name">Sổ chứng từ</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="domain">[('state', '!=', 'cancel')]</field>
+        <field name="context">{'search_default_group_gara_document_group': 1}</field>
+    </record>
+
+    <record id="action_gara_receipt_documents" model="ir.actions.act_window">
+        <field name="name">Phiếu thu</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '!=', 'cancel'), ('gara_document_group_id.code', '=', 'PT')]</field>
+        <field name="context" eval="{
+            'default_move_type': 'entry',
+            'default_gara_business_type': 'service',
+            'default_gara_payment_channel': 'cash',
+            'default_gara_document_group_id': ref('gara_accounting_ops.document_group_receipt'),
+            'default_gara_document_reason_id': ref('gara_accounting_ops.document_reason_service_payment'),
+        }"/>
+    </record>
+
+    <record id="action_gara_payment_documents" model="ir.actions.act_window">
+        <field name="name">Phiếu chi</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '!=', 'cancel'), ('gara_document_group_id.code', '=', 'PC')]</field>
+        <field name="context" eval="{
+            'default_move_type': 'entry',
+            'default_gara_business_type': 'parts',
+            'default_gara_payment_channel': 'bank',
+            'default_gara_document_group_id': ref('gara_accounting_ops.document_group_payment'),
+            'default_gara_document_reason_id': ref('gara_accounting_ops.document_reason_supplier_payment'),
+        }"/>
+    </record>
+
+    <record id="action_gara_sale_invoice_documents" model="ir.actions.act_window">
+        <field name="name">Hóa đơn bán hàng</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '!=', 'cancel'), ('gara_document_group_id.code', '=', 'HDBH')]</field>
+        <field name="context" eval="{
+            'default_move_type': 'out_invoice',
+            'default_gara_business_type': 'service',
+            'default_gara_payment_channel': 'other',
+            'default_gara_document_group_id': ref('gara_accounting_ops.document_group_sale_invoice'),
+            'default_gara_document_reason_id': ref('gara_accounting_ops.document_reason_service_invoice'),
+        }"/>
+    </record>
+
+    <record id="action_gara_purchase_invoice_documents" model="ir.actions.act_window">
+        <field name="name">Hóa đơn mua hàng</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '!=', 'cancel'), ('gara_document_group_id.code', '=', 'HDMH')]</field>
+        <field name="context" eval="{
+            'default_move_type': 'in_invoice',
+            'default_gara_business_type': 'parts',
+            'default_gara_payment_channel': 'other',
+            'default_gara_document_group_id': ref('gara_accounting_ops.document_group_purchase_invoice'),
+            'default_gara_document_reason_id': ref('gara_accounting_ops.document_reason_purchase_parts'),
+        }"/>
+    </record>
+
+    <record id="action_gara_journal_documents" model="ir.actions.act_window">
+        <field name="name">Phiếu kế toán</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '!=', 'cancel'), ('gara_document_group_id.code', '=', 'PKT')]</field>
+        <field name="context" eval="{
+            'default_move_type': 'entry',
+            'default_gara_business_type': 'other',
+            'default_gara_payment_channel': 'other',
+            'default_gara_document_group_id': ref('gara_accounting_ops.document_group_journal'),
+            'default_gara_document_reason_id': ref('gara_accounting_ops.document_reason_adjustment'),
+        }"/>
+    </record>
+</odoo>

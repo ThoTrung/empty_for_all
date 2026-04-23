@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_closing_lock_wizard_form" model="ir.ui.view">
+        <field name="name">gara.closing.lock.wizard.form</field>
+        <field name="model">gara.closing.lock.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Khóa sổ kế toán">
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="period_lock_date"/>
+                    <field name="fiscalyear_lock_date"/>
+                    <field name="tax_lock_date"/>
+                    <field name="allow_backward"/>
+                    <field name="note" placeholder="Ghi chú kỳ khóa sổ, lý do điều chỉnh hoặc tham chiếu biên bản."/>
+                </group>
+                <p class="text-muted">
+                    Wizard này dùng cơ chế lock date chuẩn của Odoo. Khóa năm tài chính có thể bị chặn nếu còn bút toán nháp hoặc sao kê chưa đối soát trước ngày khóa.
+                </p>
+                <footer>
+                    <button name="action_apply" string="Áp dụng khóa sổ" type="object" class="btn-primary"/>
+                    <button string="Hủy" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_closing_lock_wizard" model="ir.actions.act_window">
+        <field name="name">Khóa sổ / khóa kỳ</field>
+        <field name="res_model">gara.closing.lock.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gara_mobile_role_feature_user,gara.mobile.role.feature user,model_gara_mobile_role_feature,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_mobile_role_feature_manager,gara.mobile.role.feature manager,model_gara_mobile_role_feature,gara_workshop.group_gara_workshop_manager,1,1,1,1
+access_gara_mobile_display_setting_user,gara.mobile.display.setting user,model_gara_mobile_display_setting,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_mobile_display_setting_manager,gara.mobile.display.setting manager,model_gara_mobile_display_setting,gara_workshop.group_gara_workshop_manager,1,1,1,1
+access_gara_mobile_status_color_user,gara.mobile.status.color user,model_gara_mobile_status_color,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_mobile_status_color_manager,gara.mobile.status.color manager,model_gara_mobile_status_color,gara_workshop.group_gara_workshop_manager,1,1,1,1

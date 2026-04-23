@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_salary_grade_tree" model="ir.ui.view">
+        <field name="name">gara.salary.grade.tree</field>
+        <field name="model">gara.salary.grade</field>
+        <field name="arch" type="xml">
+            <tree><field name="sequence" widget="handle"/><field name="group_id"/><field name="code"/><field name="name"/><field name="base_salary"/><field name="active"/></tree>
+        </field>
+    </record>
+    <record id="view_gara_salary_grade_form" model="ir.ui.view">
+        <field name="name">gara.salary.grade.form</field>
+        <field name="model">gara.salary.grade</field>
+        <field name="arch" type="xml">
+            <form><sheet><group><field name="group_id"/><field name="code"/><field name="name"/><field name="base_salary"/><field name="sequence"/><field name="active"/></group></sheet></form>
+        </field>
+    </record>
+    <record id="action_gara_salary_grade" model="ir.actions.act_window">
+        <field name="name">Ngạch bậc lương</field><field name="res_model">gara.salary.grade</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_salary_grade_group_tree" model="ir.ui.view">
+        <field name="name">gara.salary.grade.group.tree</field><field name="model">gara.salary.grade.group</field>
+        <field name="arch" type="xml"><tree><field name="sequence" widget="handle"/><field name="code"/><field name="name"/><field name="active"/></tree></field>
+    </record>
+    <record id="action_gara_salary_grade_group" model="ir.actions.act_window">
+        <field name="name">Nhóm ngạch bậc</field><field name="res_model">gara.salary.grade.group</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_salary_minimum_tree" model="ir.ui.view">
+        <field name="name">gara.salary.minimum.tree</field><field name="model">gara.salary.minimum</field>
+        <field name="arch" type="xml"><tree><field name="date_from"/><field name="name"/><field name="amount"/><field name="active"/></tree></field>
+    </record>
+    <record id="action_gara_salary_minimum" model="ir.actions.act_window">
+        <field name="name">Lương tối thiểu</field><field name="res_model">gara.salary.minimum</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_allowance_type_tree" model="ir.ui.view">
+        <field name="name">gara.allowance.type.tree</field><field name="model">gara.allowance.type</field>
+        <field name="arch" type="xml"><tree><field name="sequence" widget="handle"/><field name="code"/><field name="name"/><field name="taxable"/><field name="active"/></tree></field>
+    </record>
+    <record id="action_gara_allowance_type" model="ir.actions.act_window">
+        <field name="name">Khai báo phụ cấp</field><field name="res_model">gara.allowance.type</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_employee_allowance_tree" model="ir.ui.view">
+        <field name="name">gara.employee.allowance.tree</field><field name="model">gara.employee.allowance</field>
+        <field name="arch" type="xml"><tree><field name="employee_id"/><field name="allowance_type_id"/><field name="amount"/><field name="active"/></tree></field>
+    </record>
+    <record id="action_gara_employee_allowance" model="ir.actions.act_window">
+        <field name="name">PC nhân viên được hưởng</field><field name="res_model">gara.employee.allowance</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_bonus_penalty_tree" model="ir.ui.view">
+        <field name="name">gara.bonus.penalty.tree</field><field name="model">gara.bonus.penalty</field>
+        <field name="arch" type="xml"><tree><field name="date"/><field name="employee_id"/><field name="type"/><field name="name"/><field name="amount"/></tree></field>
+    </record>
+    <record id="action_gara_bonus_penalty" model="ir.actions.act_window">
+        <field name="name">Thưởng phạt</field><field name="res_model">gara.bonus.penalty</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_attendance_code_tree" model="ir.ui.view">
+        <field name="name">gara.attendance.code.tree</field><field name="model">gara.attendance.code</field>
+        <field name="arch" type="xml"><tree><field name="sequence" widget="handle"/><field name="code"/><field name="name"/><field name="paid"/><field name="workday_factor"/><field name="active"/></tree></field>
+    </record>
+    <record id="action_gara_attendance_code" model="ir.actions.act_window">
+        <field name="name">Ký hiệu công</field><field name="res_model">gara.attendance.code</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_pit_config_tree" model="ir.ui.view">
+        <field name="name">gara.pit.config.tree</field><field name="model">gara.pit.config</field>
+        <field name="arch" type="xml"><tree><field name="date_from"/><field name="name"/><field name="personal_deduction"/><field name="dependent_deduction"/><field name="active"/></tree></field>
+    </record>
+    <record id="view_gara_pit_config_form" model="ir.ui.view">
+        <field name="name">gara.pit.config.form</field><field name="model">gara.pit.config</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id"/>
+                        <field name="date_from"/>
+                        <field name="personal_deduction"/>
+                        <field name="dependent_deduction"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="bracket_ids">
+                        <tree editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="lower_limit"/>
+                            <field name="upper_limit"/>
+                            <field name="rate"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_pit_config" model="ir.actions.act_window">
+        <field name="name">Thuế TNCN</field><field name="res_model">gara.pit.config</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_daily_attendance_tree" model="ir.ui.view">
+        <field name="name">gara.daily.attendance.tree</field><field name="model">gara.daily.attendance</field>
+        <field name="arch" type="xml"><tree><field name="date"/><field name="employee_id"/><field name="attendance_code_id"/><field name="work_days"/><field name="overtime_hours"/><field name="state"/></tree></field>
+    </record>
+    <record id="view_gara_daily_attendance_form" model="ir.ui.view">
+        <field name="name">gara.daily.attendance.form</field><field name="model">gara.daily.attendance</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" string="Xác nhận" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_cancel" string="Hủy" type="object" invisible="state == 'cancel'"/>
+                    <button name="action_reset_draft" string="Đưa về nháp" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,cancel"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="employee_id"/>
+                        <field name="company_id"/>
+                        <field name="date"/>
+                        <field name="attendance_code_id"/>
+                        <field name="check_in"/>
+                        <field name="check_out"/>
+                        <field name="work_days" readonly="1"/>
+                        <field name="overtime_hours"/>
+                    </group>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_daily_attendance" model="ir.actions.act_window">
+        <field name="name">Chấm công ngày</field><field name="res_model">gara.daily.attendance</field><field name="view_mode">tree,form,pivot</field>
+    </record>
+
+    <record id="view_gara_leave_request_tree" model="ir.ui.view">
+        <field name="name">gara.leave.request.tree</field><field name="model">gara.leave.request</field>
+        <field name="arch" type="xml"><tree><field name="date_from"/><field name="date_to"/><field name="employee_id"/><field name="leave_type"/><field name="day_count"/><field name="state"/></tree></field>
+    </record>
+    <record id="view_gara_leave_request_form" model="ir.ui.view">
+        <field name="name">gara.leave.request.form</field><field name="model">gara.leave.request</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_approve" string="Duyệt" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_refuse" string="Từ chối" type="object" invisible="state != 'draft'"/>
+                    <button name="action_cancel" string="Hủy" type="object" invisible="state == 'cancel'"/>
+                    <button name="action_reset_draft" string="Đưa về nháp" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,approved,refused,cancel"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="employee_id"/>
+                        <field name="company_id"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="leave_type"/>
+                        <field name="day_count"/>
+                    </group>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_leave_request" model="ir.actions.act_window">
+        <field name="name">Báo phép</field><field name="res_model">gara.leave.request</field><field name="view_mode">tree,form,pivot</field>
+    </record>
+
+    <record id="view_gara_work_summary_tree" model="ir.ui.view">
+        <field name="name">gara.work.summary.tree</field><field name="model">gara.work.summary</field>
+        <field name="arch" type="xml"><tree><field name="period"/><field name="employee_id"/><field name="attendance_code_id"/><field name="work_days"/><field name="leave_days"/><field name="overtime_hours"/></tree></field>
+    </record>
+    <record id="action_gara_work_summary" model="ir.actions.act_window">
+        <field name="name">Tổng hợp công</field><field name="res_model">gara.work.summary</field><field name="view_mode">tree,form,pivot</field>
+    </record>
+
+    <record id="view_gara_kpi_indicator_tree" model="ir.ui.view">
+        <field name="name">gara.kpi.indicator.tree</field><field name="model">gara.kpi.indicator</field>
+        <field name="arch" type="xml"><tree><field name="sequence" widget="handle"/><field name="code"/><field name="name"/><field name="measure_type"/><field name="active"/></tree></field>
+    </record>
+    <record id="action_gara_kpi_indicator" model="ir.actions.act_window">
+        <field name="name">Chỉ tiêu KPI</field><field name="res_model">gara.kpi.indicator</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_kpi_template_form" model="ir.ui.view">
+        <field name="name">gara.kpi.template.form</field><field name="model">gara.kpi.template</field>
+        <field name="arch" type="xml"><form><sheet><group><field name="name"/><field name="sequence"/><field name="active"/></group><field name="line_ids"><tree editable="bottom"><field name="sequence" widget="handle"/><field name="indicator_id"/><field name="target_value"/><field name="weight"/></tree></field></sheet></form></field>
+    </record>
+    <record id="action_gara_kpi_template" model="ir.actions.act_window">
+        <field name="name">Bộ chỉ tiêu KPI</field><field name="res_model">gara.kpi.template</field><field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_employee_kpi_form" model="ir.ui.view">
+        <field name="name">gara.employee.kpi.form</field><field name="model">gara.employee.kpi</field>
+        <field name="arch" type="xml"><form><sheet><group><field name="employee_id"/><field name="period"/><field name="template_id"/><field name="score"/><field name="state"/></group><field name="line_ids"><tree editable="bottom"><field name="sequence" widget="handle"/><field name="indicator_id"/><field name="target_value"/><field name="actual_value"/><field name="weight"/><field name="score"/></tree></field></sheet></form></field>
+    </record>
+    <record id="action_gara_employee_kpi" model="ir.actions.act_window">
+        <field name="name">Áp KPI nhân viên</field><field name="res_model">gara.employee.kpi</field><field name="view_mode">tree,form,pivot</field>
+    </record>
+
+    <record id="view_gara_payroll_summary_tree" model="ir.ui.view">
+        <field name="name">gara.payroll.summary.tree</field><field name="model">gara.payroll.summary</field>
+        <field name="arch" type="xml"><tree><field name="period"/><field name="employee_id"/><field name="grade_id"/><field name="base_salary"/><field name="work_days"/><field name="gross_amount"/><field name="taxable_income"/><field name="pit_amount"/><field name="net_amount"/></tree></field>
+    </record>
+    <record id="view_gara_payroll_summary_form" model="ir.ui.view">
+        <field name="name">gara.payroll.summary.form</field><field name="model">gara.payroll.summary</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="period"/>
+                            <field name="company_id"/>
+                            <field name="grade_id"/>
+                            <field name="base_salary"/>
+                            <field name="work_days"/>
+                            <field name="standard_days"/>
+                        </group>
+                        <group>
+                            <field name="allowance_amount"/>
+                            <field name="bonus_amount"/>
+                            <field name="penalty_amount"/>
+                            <field name="gross_amount" readonly="1"/>
+                            <field name="net_amount" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Thuế TNCN">
+                        <field name="pit_config_id" readonly="1"/>
+                        <field name="insurance_deduction"/>
+                        <field name="other_tax_deduction"/>
+                        <field name="dependent_count"/>
+                        <field name="taxable_income" readonly="1"/>
+                        <field name="pit_manual_override"/>
+                        <field name="pit_override_amount" invisible="not pit_manual_override"/>
+                        <field name="pit_amount" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_payroll_summary" model="ir.actions.act_window">
+        <field name="name">Tổng hợp lương</field><field name="res_model">gara.payroll.summary</field><field name="view_mode">tree,form,pivot</field>
+    </record>
+</odoo>

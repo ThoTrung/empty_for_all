@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_stock_ledger_report_tree" model="ir.ui.view">
+        <field name="name">gara.stock.ledger.report.tree</field>
+        <field name="model">gara.stock.ledger.report</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="date"/>
+                <field name="reference"/>
+                <field name="origin"/>
+                <field name="product_id"/>
+                <field name="categ_id"/>
+                <field name="location_id"/>
+                <field name="location_dest_id"/>
+                <field name="picking_id"/>
+                <field name="partner_id"/>
+                <field name="quantity_in" sum="In"/>
+                <field name="quantity_out" sum="Out"/>
+                <field name="quantity_internal" sum="Internal"/>
+                <field name="quantity_balance_delta" sum="Delta"/>
+                <field name="product_uom_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_stock_ledger_report_pivot" model="ir.ui.view">
+        <field name="name">gara.stock.ledger.report.pivot</field>
+        <field name="model">gara.stock.ledger.report</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="date" type="row" interval="month"/>
+                <field name="product_id" type="row"/>
+                <field name="quantity_in" type="measure"/>
+                <field name="quantity_out" type="measure"/>
+                <field name="quantity_balance_delta" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gara_stock_ledger_report_graph" model="ir.ui.view">
+        <field name="name">gara.stock.ledger.report.graph</field>
+        <field name="model">gara.stock.ledger.report</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="date" interval="month"/>
+                <field name="quantity_out" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_gara_stock_ledger_report_search" model="ir.ui.view">
+        <field name="name">gara.stock.ledger.report.search</field>
+        <field name="model">gara.stock.ledger.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="categ_id"/>
+                <field name="picking_id"/>
+                <field name="partner_id"/>
+                <field name="location_id"/>
+                <field name="location_dest_id"/>
+                <filter name="incoming" string="Incoming" domain="[('quantity_in', '&gt;', 0)]"/>
+                <filter name="outgoing" string="Outgoing" domain="[('quantity_out', '&gt;', 0)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_date" string="Month" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_product" string="Product" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_category" string="Category" context="{'group_by': 'categ_id'}"/>
+                    <filter name="group_source" string="Source Location" context="{'group_by': 'location_id'}"/>
+                    <filter name="group_dest" string="Destination Location" context="{'group_by': 'location_dest_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_stock_ledger_report" model="ir.actions.act_window">
+        <field name="name">Sổ kho</field>
+        <field name="res_model">gara.stock.ledger.report</field>
+        <field name="view_mode">tree,pivot,graph</field>
+        <field name="search_view_id" ref="view_gara_stock_ledger_report_search"/>
+        <field name="context">{'search_default_group_product': 1}</field>
+    </record>
+</odoo>

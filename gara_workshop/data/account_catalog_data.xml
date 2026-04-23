@@ -1,0 +1,1080 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="gara_account_catalog_111" model="gara.account.catalog">
+    <field name="code">111</field>
+    <field name="name">Tiền mặt</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_112" model="gara.account.catalog">
+    <field name="code">112</field>
+    <field name="name">Tiền gửi Ngân hàng</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_121" model="gara.account.catalog">
+    <field name="code">121</field>
+    <field name="name">Chứng khoán kinh doanh</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_128" model="gara.account.catalog">
+    <field name="code">128</field>
+    <field name="name">Đầu tư nắm giữ đến ngày đáo hạn</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_131" model="gara.account.catalog">
+    <field name="code">131</field>
+    <field name="name">Phải thu khách hàng</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CNVV</field>
+    <field name="nature_name">Công nợ theo vụ việc</field>
+  </record>
+  <record id="gara_account_catalog_133" model="gara.account.catalog">
+    <field name="code">133</field>
+    <field name="name">Thuế GTGT được khấu trừ</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_136" model="gara.account.catalog">
+    <field name="code">136</field>
+    <field name="name">Phải thu nội bộ</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_138" model="gara.account.catalog">
+    <field name="code">138</field>
+    <field name="name">Phải thu khác</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_141" model="gara.account.catalog">
+    <field name="code">141</field>
+    <field name="name">Tạm ứng</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_151" model="gara.account.catalog">
+    <field name="code">151</field>
+    <field name="name">Hàng mua đang đi đường</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">VT</field>
+    <field name="nature_name">Tài khoản vật tư - SP</field>
+  </record>
+  <record id="gara_account_catalog_152" model="gara.account.catalog">
+    <field name="code">152</field>
+    <field name="name">Nguyên liệu, vật liệu</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">VT</field>
+    <field name="nature_name">Tài khoản vật tư - SP</field>
+  </record>
+  <record id="gara_account_catalog_153" model="gara.account.catalog">
+    <field name="code">153</field>
+    <field name="name">Công cụ, dụng cụ</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">VT</field>
+    <field name="nature_name">Tài khoản vật tư - SP</field>
+  </record>
+  <record id="gara_account_catalog_154" model="gara.account.catalog">
+    <field name="code">154</field>
+    <field name="name">Chi phí sản xuất, kinh doanh dở dang</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KTVV</field>
+    <field name="nature_name">Tài khoản thông thường theo vụ việc</field>
+  </record>
+  <record id="gara_account_catalog_155" model="gara.account.catalog">
+    <field name="code">155</field>
+    <field name="name">Thành phẩm</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">VT</field>
+    <field name="nature_name">Tài khoản vật tư - SP</field>
+  </record>
+  <record id="gara_account_catalog_156" model="gara.account.catalog">
+    <field name="code">156</field>
+    <field name="name">Hàng hóa</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">VT</field>
+    <field name="nature_name">Tài khoản vật tư - SP</field>
+  </record>
+  <record id="gara_account_catalog_157" model="gara.account.catalog">
+    <field name="code">157</field>
+    <field name="name">Hàng gửi đi bán</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">VT</field>
+    <field name="nature_name">Tài khoản vật tư - SP</field>
+  </record>
+  <record id="gara_account_catalog_211" model="gara.account.catalog">
+    <field name="code">211</field>
+    <field name="name">Tài sản cố định</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_214" model="gara.account.catalog">
+    <field name="code">214</field>
+    <field name="name">Hao mòn tài sản cố định</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_217" model="gara.account.catalog">
+    <field name="code">217</field>
+    <field name="name">Bất động sản đầu tư</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_228" model="gara.account.catalog">
+    <field name="code">228</field>
+    <field name="name">Đầu tư góp vốn vào đơn vị khác</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_229" model="gara.account.catalog">
+    <field name="code">229</field>
+    <field name="name">Dự phòng tổn thất tài sản</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_241" model="gara.account.catalog">
+    <field name="code">241</field>
+    <field name="name">Xây dựng cơ bản dở dang</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_242" model="gara.account.catalog">
+    <field name="code">242</field>
+    <field name="name">Chi phí trả trước</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_331" model="gara.account.catalog">
+    <field name="code">331</field>
+    <field name="name">Phải trả cho người bán</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_333" model="gara.account.catalog">
+    <field name="code">333</field>
+    <field name="name">Thuế và các khoản phải nộp Nhà nước</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_334" model="gara.account.catalog">
+    <field name="code">334</field>
+    <field name="name">Phải trả người lao động</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_335" model="gara.account.catalog">
+    <field name="code">335</field>
+    <field name="name">Chi phí phải trả</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CNVV</field>
+    <field name="nature_name">Công nợ theo vụ việc</field>
+  </record>
+  <record id="gara_account_catalog_336" model="gara.account.catalog">
+    <field name="code">336</field>
+    <field name="name">Phải trả nội bộ</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_338" model="gara.account.catalog">
+    <field name="code">338</field>
+    <field name="name">Phải trả, phải nộp khác</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_341" model="gara.account.catalog">
+    <field name="code">341</field>
+    <field name="name">Vay và nợ thuê tài chính</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_352" model="gara.account.catalog">
+    <field name="code">352</field>
+    <field name="name">Dự phòng phải trả</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_353" model="gara.account.catalog">
+    <field name="code">353</field>
+    <field name="name">Quỹ khen thưởng phúc lợi</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_356" model="gara.account.catalog">
+    <field name="code">356</field>
+    <field name="name">Quỹ phát triển khoa học và công nghệ</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_411" model="gara.account.catalog">
+    <field name="code">411</field>
+    <field name="name">Vốn đầu tư của chủ sở hữu</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_413" model="gara.account.catalog">
+    <field name="code">413</field>
+    <field name="name">Chênh lệch tỷ giá hối đoái</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_418" model="gara.account.catalog">
+    <field name="code">418</field>
+    <field name="name">Các quỹ thuộc vốn chủ sở hữu</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_419" model="gara.account.catalog">
+    <field name="code">419</field>
+    <field name="name">Cổ phiếu quỹ</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_421" model="gara.account.catalog">
+    <field name="code">421</field>
+    <field name="name">Lợi nhuận sau thuế chưa phân phối</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_511" model="gara.account.catalog">
+    <field name="code">511</field>
+    <field name="name">Doanh thu bán hàng và cung cấp dịch vụ</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_515" model="gara.account.catalog">
+    <field name="code">515</field>
+    <field name="name">Doanh thu hoạt động tài chính</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_521" model="gara.account.catalog">
+    <field name="code">521</field>
+    <field name="name">Chiết khấu thương mại</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_611" model="gara.account.catalog">
+    <field name="code">611</field>
+    <field name="name">Mua hàng</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_622" model="gara.account.catalog">
+    <field name="code">622</field>
+    <field name="name">Chi phí nhân công</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_631" model="gara.account.catalog">
+    <field name="code">631</field>
+    <field name="name">Giá thành sản xuất</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_632" model="gara.account.catalog">
+    <field name="code">632</field>
+    <field name="name">Giá vốn hàng bán</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_635" model="gara.account.catalog">
+    <field name="code">635</field>
+    <field name="name">Chi phí tài chính</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_642" model="gara.account.catalog">
+    <field name="code">642</field>
+    <field name="name">Chi phí quản lý kinh doanh</field>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_711" model="gara.account.catalog">
+    <field name="code">711</field>
+    <field name="name">Thu nhập khác</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_811" model="gara.account.catalog">
+    <field name="code">811</field>
+    <field name="name">Chi phí khác</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_821" model="gara.account.catalog">
+    <field name="code">821</field>
+    <field name="name">Chi phí thuế thu nhập doanh nghiệp</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_911" model="gara.account.catalog">
+    <field name="code">911</field>
+    <field name="name">Xác định kết quả kinh doanh</field>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1111" model="gara.account.catalog">
+    <field name="code">1111</field>
+    <field name="name">Quỹ Hào</field>
+    <field name="parent_id" ref="gara_account_catalog_111"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1112" model="gara.account.catalog">
+    <field name="code">1112</field>
+    <field name="name">Ngoại tệ</field>
+    <field name="parent_id" ref="gara_account_catalog_111"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1113" model="gara.account.catalog">
+    <field name="code">1113</field>
+    <field name="name">Quỹ anh Sơn giữ</field>
+    <field name="parent_id" ref="gara_account_catalog_111"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1121" model="gara.account.catalog">
+    <field name="code">1121</field>
+    <field name="name">Tiền Việt Nam</field>
+    <field name="parent_id" ref="gara_account_catalog_112"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">QY</field>
+    <field name="nature_name">Tiền mặt &amp; Tiền gửi</field>
+  </record>
+  <record id="gara_account_catalog_1122" model="gara.account.catalog">
+    <field name="code">1122</field>
+    <field name="name">Ngoại tệ</field>
+    <field name="parent_id" ref="gara_account_catalog_112"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">QY</field>
+    <field name="nature_name">Tiền mặt &amp; Tiền gửi</field>
+  </record>
+  <record id="gara_account_catalog_1281" model="gara.account.catalog">
+    <field name="code">1281</field>
+    <field name="name">Tiền gửi có kỳ hạn</field>
+    <field name="parent_id" ref="gara_account_catalog_128"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1288" model="gara.account.catalog">
+    <field name="code">1288</field>
+    <field name="name">Các khoản đầu tư khác nắm giữ đến ngày đáo hạn</field>
+    <field name="parent_id" ref="gara_account_catalog_128"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1331" model="gara.account.catalog">
+    <field name="code">1331</field>
+    <field name="name">Thuế GTGT được khấu trừ của hàng hóa, dịch vụ</field>
+    <field name="parent_id" ref="gara_account_catalog_133"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1332" model="gara.account.catalog">
+    <field name="code">1332</field>
+    <field name="name">Thuế GTGT được khấu trừ của TSCĐ</field>
+    <field name="parent_id" ref="gara_account_catalog_133"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1361" model="gara.account.catalog">
+    <field name="code">1361</field>
+    <field name="name">Vốn kinh doanh ở đơn vị trực thuộc</field>
+    <field name="parent_id" ref="gara_account_catalog_136"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_1368" model="gara.account.catalog">
+    <field name="code">1368</field>
+    <field name="name">Phải thu nội bộ khác</field>
+    <field name="parent_id" ref="gara_account_catalog_136"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_1381" model="gara.account.catalog">
+    <field name="code">1381</field>
+    <field name="name">Tài sản thiếu chờ xử lý</field>
+    <field name="parent_id" ref="gara_account_catalog_138"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1386" model="gara.account.catalog">
+    <field name="code">1386</field>
+    <field name="name">Cầm cố, thế chấp, ký quỹ, ký cược</field>
+    <field name="parent_id" ref="gara_account_catalog_138"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_1388" model="gara.account.catalog">
+    <field name="code">1388</field>
+    <field name="name">Phải thu khác</field>
+    <field name="parent_id" ref="gara_account_catalog_138"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_1541" model="gara.account.catalog">
+    <field name="code">1541</field>
+    <field name="name">Chi phí phụ tùng</field>
+    <field name="parent_id" ref="gara_account_catalog_154"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KTVVKM</field>
+    <field name="nature_name">Tài khoản thông thường theo vụ việc, khoản mục</field>
+  </record>
+  <record id="gara_account_catalog_1542" model="gara.account.catalog">
+    <field name="code">1542</field>
+    <field name="name">Chi phí thuê ngoài</field>
+    <field name="parent_id" ref="gara_account_catalog_154"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KTVVKM</field>
+    <field name="nature_name">Tài khoản thông thường theo vụ việc, khoản mục</field>
+  </record>
+  <record id="gara_account_catalog_1543" model="gara.account.catalog">
+    <field name="code">1543</field>
+    <field name="name">Chi phí hoa hồng theo lệnh</field>
+    <field name="parent_id" ref="gara_account_catalog_154"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KTVV</field>
+    <field name="nature_name">Tài khoản thông thường theo vụ việc</field>
+  </record>
+  <record id="gara_account_catalog_1544" model="gara.account.catalog">
+    <field name="code">1544</field>
+    <field name="name">Chi phí chiết khấu theo lệnh</field>
+    <field name="parent_id" ref="gara_account_catalog_154"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KTVV</field>
+    <field name="nature_name">Tài khoản thông thường theo vụ việc</field>
+  </record>
+  <record id="gara_account_catalog_1545" model="gara.account.catalog">
+    <field name="code">1545</field>
+    <field name="name">Chi phí sơn</field>
+    <field name="parent_id" ref="gara_account_catalog_154"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KTVVKM</field>
+    <field name="nature_name">Tài khoản thông thường theo vụ việc, khoản mục</field>
+  </record>
+  <record id="gara_account_catalog_1546" model="gara.account.catalog">
+    <field name="code">1546</field>
+    <field name="name">CP GIA CÔNG SƠN</field>
+    <field name="parent_id" ref="gara_account_catalog_154"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KTVVKM</field>
+    <field name="nature_name">Tài khoản thông thường theo vụ việc, khoản mục</field>
+  </record>
+  <record id="gara_account_catalog_1561" model="gara.account.catalog">
+    <field name="code">1561</field>
+    <field name="name">Hàng hóa</field>
+    <field name="parent_id" ref="gara_account_catalog_156"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">VT</field>
+    <field name="nature_name">Tài khoản vật tư - SP</field>
+  </record>
+  <record id="gara_account_catalog_1562" model="gara.account.catalog">
+    <field name="code">1562</field>
+    <field name="name">Hàng hóa theo lô</field>
+    <field name="parent_id" ref="gara_account_catalog_156"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">VT</field>
+    <field name="nature_name">Tài khoản vật tư - SP</field>
+  </record>
+  <record id="gara_account_catalog_2111" model="gara.account.catalog">
+    <field name="code">2111</field>
+    <field name="name">TSCĐ hữu hình</field>
+    <field name="parent_id" ref="gara_account_catalog_211"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2112" model="gara.account.catalog">
+    <field name="code">2112</field>
+    <field name="name">TSCĐ thuê tài chính</field>
+    <field name="parent_id" ref="gara_account_catalog_211"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2113" model="gara.account.catalog">
+    <field name="code">2113</field>
+    <field name="name">TSCĐ vô hình</field>
+    <field name="parent_id" ref="gara_account_catalog_211"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2141" model="gara.account.catalog">
+    <field name="code">2141</field>
+    <field name="name">Hao mòn TSCĐ hữu hình</field>
+    <field name="parent_id" ref="gara_account_catalog_214"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2142" model="gara.account.catalog">
+    <field name="code">2142</field>
+    <field name="name">Hao mòn TSCĐ thuê tài chính</field>
+    <field name="parent_id" ref="gara_account_catalog_214"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2143" model="gara.account.catalog">
+    <field name="code">2143</field>
+    <field name="name">Hao mòn TSCĐ vô hình</field>
+    <field name="parent_id" ref="gara_account_catalog_214"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2147" model="gara.account.catalog">
+    <field name="code">2147</field>
+    <field name="name">Hao mòn bất động sản đầu tư</field>
+    <field name="parent_id" ref="gara_account_catalog_214"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2281" model="gara.account.catalog">
+    <field name="code">2281</field>
+    <field name="name">Đầu tư vào công ty liên doanh, liên kết</field>
+    <field name="parent_id" ref="gara_account_catalog_228"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2288" model="gara.account.catalog">
+    <field name="code">2288</field>
+    <field name="name">Đầu tư khác</field>
+    <field name="parent_id" ref="gara_account_catalog_228"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2291" model="gara.account.catalog">
+    <field name="code">2291</field>
+    <field name="name">Dự phòng giảm giá chứng khoán kinh doanh</field>
+    <field name="parent_id" ref="gara_account_catalog_229"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2292" model="gara.account.catalog">
+    <field name="code">2292</field>
+    <field name="name">Dự phòng tổn thất đầu tư vào đơn vị khác</field>
+    <field name="parent_id" ref="gara_account_catalog_229"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2293" model="gara.account.catalog">
+    <field name="code">2293</field>
+    <field name="name">Dự phòng phải thu khó đòi</field>
+    <field name="parent_id" ref="gara_account_catalog_229"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2294" model="gara.account.catalog">
+    <field name="code">2294</field>
+    <field name="name">Dự phòng giảm giá hàng tồn kho</field>
+    <field name="parent_id" ref="gara_account_catalog_229"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2411" model="gara.account.catalog">
+    <field name="code">2411</field>
+    <field name="name">Mua sắm TSCĐ</field>
+    <field name="parent_id" ref="gara_account_catalog_241"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2412" model="gara.account.catalog">
+    <field name="code">2412</field>
+    <field name="name">Xây dựng cơ bản</field>
+    <field name="parent_id" ref="gara_account_catalog_241"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_2413" model="gara.account.catalog">
+    <field name="code">2413</field>
+    <field name="name">Sửa chữa lớn TSCĐ</field>
+    <field name="parent_id" ref="gara_account_catalog_241"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3331" model="gara.account.catalog">
+    <field name="code">3331</field>
+    <field name="name">Thuế giá trị gia tăng phải nộp</field>
+    <field name="parent_id" ref="gara_account_catalog_333"/>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3332" model="gara.account.catalog">
+    <field name="code">3332</field>
+    <field name="name">Thuế tiêu thụ đặc biệt</field>
+    <field name="parent_id" ref="gara_account_catalog_333"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3333" model="gara.account.catalog">
+    <field name="code">3333</field>
+    <field name="name">Thuế xuất, nhập khẩu</field>
+    <field name="parent_id" ref="gara_account_catalog_333"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3334" model="gara.account.catalog">
+    <field name="code">3334</field>
+    <field name="name">Thuế thu nhập doanh nghiệp</field>
+    <field name="parent_id" ref="gara_account_catalog_333"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3335" model="gara.account.catalog">
+    <field name="code">3335</field>
+    <field name="name">Thuế thu nhập cá nhân</field>
+    <field name="parent_id" ref="gara_account_catalog_333"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3336" model="gara.account.catalog">
+    <field name="code">3336</field>
+    <field name="name">Thuế tài nguyên</field>
+    <field name="parent_id" ref="gara_account_catalog_333"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3337" model="gara.account.catalog">
+    <field name="code">3337</field>
+    <field name="name">Thuế nhà đất, tiền thuê đất</field>
+    <field name="parent_id" ref="gara_account_catalog_333"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3338" model="gara.account.catalog">
+    <field name="code">3338</field>
+    <field name="name">Thuế bảo vệ môi trường và các loại thuế khác</field>
+    <field name="parent_id" ref="gara_account_catalog_333"/>
+    <field name="is_detail">False</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3339" model="gara.account.catalog">
+    <field name="code">3339</field>
+    <field name="name">Phí, lệ phí và các khoản phải nộp khác</field>
+    <field name="parent_id" ref="gara_account_catalog_333"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3361" model="gara.account.catalog">
+    <field name="code">3361</field>
+    <field name="name">Phải trả nội bộ về vốn kinh doanh</field>
+    <field name="parent_id" ref="gara_account_catalog_336"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_3368" model="gara.account.catalog">
+    <field name="code">3368</field>
+    <field name="name">Phải trả nội bộ khác</field>
+    <field name="parent_id" ref="gara_account_catalog_336"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_3381" model="gara.account.catalog">
+    <field name="code">3381</field>
+    <field name="name">Tài sản thừa chờ giải quyết</field>
+    <field name="parent_id" ref="gara_account_catalog_338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3382" model="gara.account.catalog">
+    <field name="code">3382</field>
+    <field name="name">Kinh phí công đoàn</field>
+    <field name="parent_id" ref="gara_account_catalog_338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3383" model="gara.account.catalog">
+    <field name="code">3383</field>
+    <field name="name">Bảo hiểm xã hội</field>
+    <field name="parent_id" ref="gara_account_catalog_338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3384" model="gara.account.catalog">
+    <field name="code">3384</field>
+    <field name="name">Bảo hiểm y tế</field>
+    <field name="parent_id" ref="gara_account_catalog_338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3385" model="gara.account.catalog">
+    <field name="code">3385</field>
+    <field name="name">Bảo hiểm thất nghiệp</field>
+    <field name="parent_id" ref="gara_account_catalog_338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3386" model="gara.account.catalog">
+    <field name="code">3386</field>
+    <field name="name">Nhận ký quỹ, ký cược</field>
+    <field name="parent_id" ref="gara_account_catalog_338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_3387" model="gara.account.catalog">
+    <field name="code">3387</field>
+    <field name="name">Doanh thu chưa thực hiện</field>
+    <field name="parent_id" ref="gara_account_catalog_338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3388" model="gara.account.catalog">
+    <field name="code">3388</field>
+    <field name="name">Phải trả, phải nộp khác</field>
+    <field name="parent_id" ref="gara_account_catalog_338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CNVV</field>
+    <field name="nature_name">Công nợ theo vụ việc</field>
+  </record>
+  <record id="gara_account_catalog_3411" model="gara.account.catalog">
+    <field name="code">3411</field>
+    <field name="name">Các khoản đi vay</field>
+    <field name="parent_id" ref="gara_account_catalog_341"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">CN</field>
+    <field name="nature_name">Công nợ khách hàng</field>
+  </record>
+  <record id="gara_account_catalog_3412" model="gara.account.catalog">
+    <field name="code">3412</field>
+    <field name="name">Nợ thuê tài chính</field>
+    <field name="parent_id" ref="gara_account_catalog_341"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3521" model="gara.account.catalog">
+    <field name="code">3521</field>
+    <field name="name">Dự phòng bảo hành sản phẩm hàng hóa</field>
+    <field name="parent_id" ref="gara_account_catalog_352"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3522" model="gara.account.catalog">
+    <field name="code">3522</field>
+    <field name="name">Dự phòng bảo hành công trình xây dựng</field>
+    <field name="parent_id" ref="gara_account_catalog_352"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3524" model="gara.account.catalog">
+    <field name="code">3524</field>
+    <field name="name">Dự phòng phải trả khác</field>
+    <field name="parent_id" ref="gara_account_catalog_352"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3531" model="gara.account.catalog">
+    <field name="code">3531</field>
+    <field name="name">Quỹ khen thưởng</field>
+    <field name="parent_id" ref="gara_account_catalog_353"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3532" model="gara.account.catalog">
+    <field name="code">3532</field>
+    <field name="name">Quỹ phúc lợi</field>
+    <field name="parent_id" ref="gara_account_catalog_353"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3533" model="gara.account.catalog">
+    <field name="code">3533</field>
+    <field name="name">Quỹ phúc lợi đã hình thành TSCĐ</field>
+    <field name="parent_id" ref="gara_account_catalog_353"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3534" model="gara.account.catalog">
+    <field name="code">3534</field>
+    <field name="name">Quỹ thưởng ban quản lý điều hành công ty</field>
+    <field name="parent_id" ref="gara_account_catalog_353"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3561" model="gara.account.catalog">
+    <field name="code">3561</field>
+    <field name="name">Quỹ phát triển khoa học và công nghệ</field>
+    <field name="parent_id" ref="gara_account_catalog_356"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_3562" model="gara.account.catalog">
+    <field name="code">3562</field>
+    <field name="name">Quỹ phát triển khoa học và công nghệ đã hình thành TSCĐ</field>
+    <field name="parent_id" ref="gara_account_catalog_356"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_4111" model="gara.account.catalog">
+    <field name="code">4111</field>
+    <field name="name">Vốn góp của chủ sở hữu</field>
+    <field name="parent_id" ref="gara_account_catalog_411"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_4112" model="gara.account.catalog">
+    <field name="code">4112</field>
+    <field name="name">Thặng dư vốn cổ phần</field>
+    <field name="parent_id" ref="gara_account_catalog_411"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_4118" model="gara.account.catalog">
+    <field name="code">4118</field>
+    <field name="name">Vốn khác</field>
+    <field name="parent_id" ref="gara_account_catalog_411"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_4211" model="gara.account.catalog">
+    <field name="code">4211</field>
+    <field name="name">Lợi nhuận sau thuế chưa phân phối năm trước</field>
+    <field name="parent_id" ref="gara_account_catalog_421"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_4212" model="gara.account.catalog">
+    <field name="code">4212</field>
+    <field name="name">Lợi nhuận sau thuế chưa phân phối năm nay</field>
+    <field name="parent_id" ref="gara_account_catalog_421"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_5111" model="gara.account.catalog">
+    <field name="code">5111</field>
+    <field name="name">Doanh thu bán hàng hóa</field>
+    <field name="parent_id" ref="gara_account_catalog_511"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">DSVV</field>
+    <field name="nature_name">Doanh thu hàng hóa theo vụ việc</field>
+  </record>
+  <record id="gara_account_catalog_5112" model="gara.account.catalog">
+    <field name="code">5112</field>
+    <field name="name">Doanh thu bán thành phẩm</field>
+    <field name="parent_id" ref="gara_account_catalog_511"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">DS</field>
+    <field name="nature_name">Doanh thu hàng hóa</field>
+  </record>
+  <record id="gara_account_catalog_5113" model="gara.account.catalog">
+    <field name="code">5113</field>
+    <field name="name">Doanh thu Sơn gò</field>
+    <field name="parent_id" ref="gara_account_catalog_511"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">DTVV</field>
+    <field name="nature_name">Doanh thu dịch vụ theo vụ việc</field>
+  </record>
+  <record id="gara_account_catalog_5114" model="gara.account.catalog">
+    <field name="code">5114</field>
+    <field name="name">Doanh thu nhân công+ thuê ngoài</field>
+    <field name="parent_id" ref="gara_account_catalog_511"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">DTVV</field>
+    <field name="nature_name">Doanh thu dịch vụ theo vụ việc</field>
+  </record>
+  <record id="gara_account_catalog_5118" model="gara.account.catalog">
+    <field name="code">5118</field>
+    <field name="name">Doanh thu khác</field>
+    <field name="parent_id" ref="gara_account_catalog_511"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">DT</field>
+    <field name="nature_name">Doanh thu dịch vụ</field>
+  </record>
+  <record id="gara_account_catalog_6421" model="gara.account.catalog">
+    <field name="code">6421</field>
+    <field name="name">Chi phí bán hàng</field>
+    <field name="parent_id" ref="gara_account_catalog_642"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_6422" model="gara.account.catalog">
+    <field name="code">6422</field>
+    <field name="name">Chi phí quản lý doanh nghiệp</field>
+    <field name="parent_id" ref="gara_account_catalog_642"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_6423" model="gara.account.catalog">
+    <field name="code">6423</field>
+    <field name="name">Chi phí điện nước</field>
+    <field name="parent_id" ref="gara_account_catalog_642"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_6424" model="gara.account.catalog">
+    <field name="code">6424</field>
+    <field name="name">Chi phí thuê nhà xưởng</field>
+    <field name="parent_id" ref="gara_account_catalog_642"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_6425" model="gara.account.catalog">
+    <field name="code">6425</field>
+    <field name="name">Chi phí ăn uống</field>
+    <field name="parent_id" ref="gara_account_catalog_642"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_6426" model="gara.account.catalog">
+    <field name="code">6426</field>
+    <field name="name">Chi phí lương</field>
+    <field name="parent_id" ref="gara_account_catalog_642"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_6427" model="gara.account.catalog">
+    <field name="code">6427</field>
+    <field name="name">Chi phí thuê ngoài</field>
+    <field name="parent_id" ref="gara_account_catalog_642"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_6428" model="gara.account.catalog">
+    <field name="code">6428</field>
+    <field name="name">Chi phí vật liệu sơn</field>
+    <field name="parent_id" ref="gara_account_catalog_642"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_33311" model="gara.account.catalog">
+    <field name="code">33311</field>
+    <field name="name">Thuế GTGT đầu ra</field>
+    <field name="parent_id" ref="gara_account_catalog_3331"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_33312" model="gara.account.catalog">
+    <field name="code">33312</field>
+    <field name="name">Thuế GTGT hàng nhập khẩu</field>
+    <field name="parent_id" ref="gara_account_catalog_3331"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_33381" model="gara.account.catalog">
+    <field name="code">33381</field>
+    <field name="name">Thuế bảo vệ môi trường</field>
+    <field name="parent_id" ref="gara_account_catalog_3338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+  <record id="gara_account_catalog_33382" model="gara.account.catalog">
+    <field name="code">33382</field>
+    <field name="name">Các loại thuế khác</field>
+    <field name="parent_id" ref="gara_account_catalog_3338"/>
+    <field name="is_detail">True</field>
+    <field name="nature_code">KT</field>
+    <field name="nature_name">Tài khoản thông thường</field>
+  </record>
+</odoo>

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_allocation_plan_tree" model="ir.ui.view">
+        <field name="name">gara.allocation.plan.tree</field>
+        <field name="model">gara.allocation.plan</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="source_account_id"/>
+                <field name="journal_id"/>
+                <field name="method"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_allocation_plan_form" model="ir.ui.view">
+        <field name="name">gara.allocation.plan.form</field>
+        <field name="model">gara.allocation.plan</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_open_run_wizard" string="Thực hiện phân bổ" type="object" class="btn-primary"/>
+                    <button name="action_view_executions" string="Chi tiết đã thực hiện" type="object"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_executions" type="object" class="oe_stat_button" icon="fa-list">
+                            <field name="execution_count" widget="statinfo" string="Lần phân bổ"/>
+                        </button>
+                    </div>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                        <field name="method"/>
+                        <field name="journal_id"/>
+                        <field name="source_account_id"/>
+                    </group>
+                    <notebook>
+                        <page string="Kế hoạch phân bổ">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="company_id" invisible="1"/>
+                                    <field name="name"/>
+                                    <field name="destination_account_id"/>
+                                    <field name="percent"/>
+                                    <field name="fixed_amount"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Ghi chú">
+                            <field name="note" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_allocation_plan" model="ir.actions.act_window">
+        <field name="name">Kế hoạch phân bổ</field>
+        <field name="res_model">gara.allocation.plan</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_allocation_execution_tree" model="ir.ui.view">
+        <field name="name">gara.allocation.execution.tree</field>
+        <field name="model">gara.allocation.execution</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="date"/>
+                <field name="name"/>
+                <field name="plan_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="source_balance"/>
+                <field name="amount"/>
+                <field name="move_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_allocation_execution_form" model="ir.ui.view">
+        <field name="name">gara.allocation.execution.form</field>
+        <field name="model">gara.allocation.execution</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_view_move" string="Bút toán" type="object" class="btn-primary" invisible="not move_id"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="plan_id"/>
+                        <field name="company_id"/>
+                        <field name="date"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="source_balance"/>
+                        <field name="amount"/>
+                        <field name="move_id"/>
+                    </group>
+                    <field name="line_ids">
+                        <tree>
+                            <field name="sequence"/>
+                            <field name="name"/>
+                            <field name="destination_account_id"/>
+                            <field name="percent"/>
+                            <field name="amount"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_allocation_execution" model="ir.actions.act_window">
+        <field name="name">Chi tiết đã thực hiện</field>
+        <field name="res_model">gara.allocation.execution</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_allocation_run_wizard_form" model="ir.ui.view">
+        <field name="name">gara.allocation.run.wizard.form</field>
+        <field name="model">gara.allocation.run.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Thực hiện phân bổ">
+                <group>
+                    <field name="plan_id"/>
+                    <field name="company_id"/>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                    <field name="date"/>
+                    <field name="ref"/>
+                    <field name="source_balance"/>
+                </group>
+                <field name="line_ids">
+                    <tree editable="bottom">
+                        <field name="sequence" widget="handle"/>
+                        <field name="name"/>
+                        <field name="destination_account_id"/>
+                        <field name="percent"/>
+                        <field name="amount"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_prepare_lines" string="Tính phân bổ" type="object"/>
+                    <button name="action_create_move" string="Tạo bút toán nháp" type="object" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_allocation_run_wizard" model="ir.actions.act_window">
+        <field name="name">Thực hiện phân bổ</field>
+        <field name="res_model">gara.allocation.run.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

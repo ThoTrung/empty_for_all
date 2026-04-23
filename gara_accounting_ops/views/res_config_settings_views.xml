@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_gara_accounting_ops" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.gara.accounting.ops</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Gara Accounting Ops" name="gara_accounting_ops" groups="account.group_account_manager">
+                    <block title="Accounting Parameters">
+                        <setting string="Enable accounting rule engine">
+                            <field name="gara_enable_accounting_rule_engine"/>
+                        </setting>
+                        <setting string="Apply default document group/reason automatically">
+                            <field name="gara_enable_document_auto_defaults"/>
+                        </setting>
+                        <setting string="Enable Gara document numbering">
+                            <field name="gara_enable_document_numbering"/>
+                        </setting>
+                        <setting string="Sync account move reference from Gara document number">
+                            <field name="gara_document_number_sync_ref"/>
+                        </setting>
+                    </block>
+                    <block title="Default Document Mapping">
+                        <setting string="Sales invoice defaults">
+                            <field name="gara_default_sale_invoice_group_id"/>
+                            <field name="gara_default_sale_invoice_reason_id"
+                                   domain="['|', ('group_id', '=', False), ('group_id', '=', gara_default_sale_invoice_group_id)]"/>
+                        </setting>
+                        <setting string="Purchase invoice defaults">
+                            <field name="gara_default_purchase_invoice_group_id"/>
+                            <field name="gara_default_purchase_invoice_reason_id"
+                                   domain="['|', ('group_id', '=', False), ('group_id', '=', gara_default_purchase_invoice_group_id)]"/>
+                        </setting>
+                        <setting string="Receipt defaults">
+                            <field name="gara_default_receipt_group_id"/>
+                            <field name="gara_default_receipt_reason_id"
+                                   domain="['|', ('group_id', '=', False), ('group_id', '=', gara_default_receipt_group_id)]"/>
+                        </setting>
+                        <setting string="Payment defaults">
+                            <field name="gara_default_payment_group_id"/>
+                            <field name="gara_default_payment_reason_id"
+                                   domain="['|', ('group_id', '=', False), ('group_id', '=', gara_default_payment_group_id)]"/>
+                        </setting>
+                        <setting string="Journal entry defaults">
+                            <field name="gara_default_journal_group_id"/>
+                            <field name="gara_default_journal_reason_id"
+                                   domain="['|', ('group_id', '=', False), ('group_id', '=', gara_default_journal_group_id)]"/>
+                        </setting>
+                    </block>
+                    <block title="Default Numbering Rule">
+                        <setting string="Default prefix">
+                            <field name="gara_document_number_prefix"/>
+                        </setting>
+                        <setting string="Number padding">
+                            <field name="gara_document_number_padding"/>
+                        </setting>
+                        <setting string="Next number">
+                            <field name="gara_document_number_next"/>
+                        </setting>
+                        <setting string="Reset yearly">
+                            <field name="gara_document_number_reset_yearly"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

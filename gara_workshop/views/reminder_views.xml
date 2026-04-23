@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_reminder_tree" model="ir.ui.view">
+        <field name="name">gara.reminder.tree</field>
+        <field name="model">gara.reminder</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'done'" decoration-muted="state == 'cancel'">
+                <field name="due_date"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="reminder_type"/>
+                <field name="channel"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_reminder_form" model="ir.ui.view">
+        <field name="name">gara.reminder.form</field>
+        <field name="model">gara.reminder</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,done,cancel"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="partner_id"/>
+                        <field name="vehicle_id"/>
+                        <field name="case_id"/>
+                        <field name="reminder_type"/>
+                        <field name="channel"/>
+                        <field name="due_date"/>
+                    </group>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_reminder" model="ir.actions.act_window">
+        <field name="name">Reminders</field>
+        <field name="res_model">gara.reminder</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

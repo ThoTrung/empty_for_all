@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_gara" model="ir.ui.view">
+        <field name="name">sale.order.form.gara</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_gara_submit_quote" type="object" string="Submit Quote" class="btn-primary" invisible="not gara_case_id or gara_quote_state not in ('draft','rejected')"/>
+                <button name="action_gara_approve_quote" type="object" string="Approve Quote" invisible="not gara_case_id or gara_quote_state != 'submitted'"/>
+                <button name="action_gara_reject_quote" type="object" string="Reject Quote" invisible="not gara_case_id or gara_quote_state != 'submitted'"/>
+                <button name="action_gara_reset_quote" type="object" string="Reset Quote" groups="gara_workshop.group_gara_role_manager" invisible="not gara_case_id or gara_quote_state == 'draft'"/>
+                <button name="action_gara_open_quote_approval_request" type="object" string="Open Approval" invisible="not gara_quote_approval_request_id"/>
+                <field name="gara_quote_state" widget="statusbar" statusbar_visible="draft,submitted,approved,rejected" invisible="not gara_case_id"/>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="gara_case_id" readonly="1"/>
+                <field name="gara_quote_approval_request_id" readonly="1" invisible="not gara_case_id"/>
+                <field name="gara_quote_submitted_by_id" readonly="1" invisible="not gara_case_id"/>
+                <field name="gara_quote_submitted_date" readonly="1" invisible="not gara_case_id"/>
+                <field name="gara_quote_approved_by_id" readonly="1" invisible="not gara_case_id"/>
+                <field name="gara_quote_approved_date" readonly="1" invisible="not gara_case_id"/>
+                <field name="gara_quote_reject_reason" invisible="not gara_case_id or gara_quote_state not in ('submitted', 'rejected')"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sale_order_line_tree_inherit_gara" model="ir.ui.view">
+        <field name="name">sale.order.line.tree.gara</field>
+        <field name="model">sale.order.line</field>
+        <field name="inherit_id" ref="sale.view_order_line_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_id']" position="after">
+                <field name="gara_case_id"/>
+                <field name="gara_quote_state"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

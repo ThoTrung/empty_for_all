@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="access_gara_care_provider_manager" model="ir.model.access">
+        <field name="name">gara.care.provider manager</field>
+        <field name="model_id" ref="model_gara_care_provider"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_care_message_template_user" model="ir.model.access">
+        <field name="name">gara.care.message.template user</field>
+        <field name="model_id" ref="model_gara_care_message_template"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_care_message_template_manager" model="ir.model.access">
+        <field name="name">gara.care.message.template manager</field>
+        <field name="model_id" ref="model_gara_care_message_template"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_care_communication_log_user" model="ir.model.access">
+        <field name="name">gara.care.communication.log user</field>
+        <field name="model_id" ref="model_gara_care_communication_log"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_care_communication_log_manager" model="ir.model.access">
+        <field name="name">gara.care.communication.log manager</field>
+        <field name="model_id" ref="model_gara_care_communication_log"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+</odoo>

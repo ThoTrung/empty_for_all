@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_document_renumber_wizard_form" model="ir.ui.view">
+        <field name="name">gara.document.renumber.wizard.form</field>
+        <field name="model">gara.document.renumber.wizard</field>
+        <field name="arch" type="xml">
+            <form><sheet><group>
+                <field name="company_id" invisible="1"/><field name="journal_id"/>
+                <field name="date_from"/><field name="date_to"/>
+                <field name="prefix"/><field name="padding"/><field name="next_number"/>
+                <field name="move_count"/>
+            </group><footer><button name="action_apply" type="object" string="Renumber Draft Documents" class="btn-primary"/><button special="cancel" string="Cancel"/></footer></sheet></form>
+        </field>
+    </record>
+    <record id="action_gara_document_renumber_wizard" model="ir.actions.act_window">
+        <field name="name">Đánh lại chứng từ</field><field name="res_model">gara.document.renumber.wizard</field><field name="view_mode">form</field><field name="target">new</field>
+    </record>
+
+    <record id="view_gara_product_cost_recompute_wizard_form" model="ir.ui.view">
+        <field name="name">gara.product.cost.recompute.wizard.form</field>
+        <field name="model">gara.product.cost.recompute.wizard</field>
+        <field name="arch" type="xml">
+            <form><sheet><group><field name="company_id" invisible="1"/><field name="method"/><field name="product_ids" widget="many2many_tags"/></group>
+                <field name="line_ids"><tree editable="bottom"><field name="product_id"/><field name="old_cost"/><field name="new_cost"/></tree></field>
+                <footer><button name="action_compute" type="object" string="Preview" class="btn-secondary"/><button name="action_apply" type="object" string="Apply New Costs" class="btn-primary"/><button special="cancel" string="Cancel"/></footer>
+            </sheet></form>
+        </field>
+    </record>
+    <record id="action_gara_product_cost_recompute_wizard" model="ir.actions.act_window">
+        <field name="name">Tính lại giá vốn</field><field name="res_model">gara.product.cost.recompute.wizard</field><field name="view_mode">form</field><field name="target">new</field>
+    </record>
+
+    <record id="view_gara_closing_entry_wizard_form" model="ir.ui.view">
+        <field name="name">gara.closing.entry.wizard.form</field>
+        <field name="model">gara.closing.entry.wizard</field>
+        <field name="arch" type="xml">
+            <form><sheet><group>
+                <field name="company_id" invisible="1"/><field name="date_from"/><field name="date_to"/><field name="ref"/>
+                <field name="config_ids" widget="many2many_tags"/>
+            </group><footer><button name="action_create_entries" type="object" string="Create Draft Closing Entries" class="btn-primary"/><button special="cancel" string="Cancel"/></footer></sheet></form>
+        </field>
+    </record>
+    <record id="action_gara_closing_entry_wizard" model="ir.actions.act_window">
+        <field name="name">Bút toán kết chuyển tự động</field><field name="res_model">gara.closing.entry.wizard</field><field name="view_mode">form</field><field name="target">new</field>
+    </record>
+</odoo>

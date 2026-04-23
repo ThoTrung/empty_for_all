@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_gara_care_communication_logs"
+              name="SMS/Zalo/Call log"
+              parent="gara_workshop.menu_gara_grp_care"
+              action="action_gara_care_communication_log"
+              sequence="18"/>
+    <menuitem id="menu_gara_care_message_templates"
+              name="Mẫu SMS/Zalo/Call"
+              parent="gara_workshop.menu_gara_grp_care"
+              action="action_gara_care_message_template"
+              groups="gara_workshop.group_gara_workshop_manager"
+              sequence="52"/>
+    <menuitem id="menu_gara_care_providers"
+              name="Nhà cung cấp SMS/Zalo/Call"
+              parent="gara_workshop.menu_gara_grp_care"
+              action="action_gara_care_provider"
+              groups="gara_workshop.group_gara_workshop_manager"
+              sequence="54"/>
+</odoo>

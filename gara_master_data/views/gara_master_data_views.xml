@@ -1,0 +1,649 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_revenue_type_tree" model="ir.ui.view">
+        <field name="name">gara.revenue.type.tree</field>
+        <field name="model">gara.revenue.type</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="income_account_id"/>
+                <field name="product_category_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_revenue_type_form" model="ir.ui.view">
+        <field name="name">gara.revenue.type.form</field>
+        <field name="model">gara.revenue.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="income_account_id"/>
+                        <field name="product_category_id"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_revenue_type" model="ir.actions.act_window">
+        <field name="name">Loại doanh thu</field>
+        <field name="res_model">gara.revenue.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_membership_type_tree" model="ir.ui.view">
+        <field name="name">gara.membership.type.tree</field>
+        <field name="model">gara.membership.type</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="discount_percent"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_membership_type_form" model="ir.ui.view">
+        <field name="name">gara.membership.type.form</field>
+        <field name="model">gara.membership.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="discount_percent"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_membership_type" model="ir.actions.act_window">
+        <field name="name">Loại thẻ thành viên</field>
+        <field name="res_model">gara.membership.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_customer_source_tree" model="ir.ui.view">
+        <field name="name">gara.customer.source.tree</field>
+        <field name="model">gara.customer.source</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_customer_source_form" model="ir.ui.view">
+        <field name="name">gara.customer.source.form</field>
+        <field name="model">gara.customer.source</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_customer_source" model="ir.actions.act_window">
+        <field name="name">Nguồn khách hàng</field>
+        <field name="res_model">gara.customer.source</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_customer_status_tree" model="ir.ui.view">
+        <field name="name">gara.customer.status.tree</field>
+        <field name="model">gara.customer.status</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="color" widget="color_picker"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_customer_status_form" model="ir.ui.view">
+        <field name="name">gara.customer.status.form</field>
+        <field name="model">gara.customer.status</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="color" widget="color_picker"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_customer_status" model="ir.actions.act_window">
+        <field name="name">Trạng thái khách hàng</field>
+        <field name="res_model">gara.customer.status</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_customer_type_tree" model="ir.ui.view">
+        <field name="name">gara.customer.type.tree</field>
+        <field name="model">gara.customer.type</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_customer_type_form" model="ir.ui.view">
+        <field name="name">gara.customer.type.form</field>
+        <field name="model">gara.customer.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_customer_type" model="ir.actions.act_window">
+        <field name="name">Loại khách hàng</field>
+        <field name="res_model">gara.customer.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_care_type_tree" model="ir.ui.view">
+        <field name="name">gara.care.type.tree</field>
+        <field name="model">gara.care.type</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_care_type_form" model="ir.ui.view">
+        <field name="name">gara.care.type.form</field>
+        <field name="model">gara.care.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_care_type" model="ir.actions.act_window">
+        <field name="name">Loại chăm sóc</field>
+        <field name="res_model">gara.care.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_care_result_tree" model="ir.ui.view">
+        <field name="name">gara.care.result.tree</field>
+        <field name="model">gara.care.result</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="color" widget="color_picker"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_care_result_form" model="ir.ui.view">
+        <field name="name">gara.care.result.form</field>
+        <field name="model">gara.care.result</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="color" widget="color_picker"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_care_result" model="ir.actions.act_window">
+        <field name="name">Kết quả chăm sóc</field>
+        <field name="res_model">gara.care.result</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_care_result_detail_tree" model="ir.ui.view">
+        <field name="name">gara.care.result.detail.tree</field>
+        <field name="model">gara.care.result.detail</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="result_id"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_care_result_detail_form" model="ir.ui.view">
+        <field name="name">gara.care.result.detail.form</field>
+        <field name="model">gara.care.result.detail</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="result_id"/>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_care_result_detail" model="ir.actions.act_window">
+        <field name="name">Kết quả chăm sóc chi tiết</field>
+        <field name="res_model">gara.care.result.detail</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_bank_branch_tree" model="ir.ui.view">
+        <field name="name">gara.bank.branch.tree</field>
+        <field name="model">gara.bank.branch</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="bank_id"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="city"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_bank_branch_form" model="ir.ui.view">
+        <field name="name">gara.bank.branch.form</field>
+        <field name="model">gara.bank.branch</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="bank_id"/>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <group>
+                        <field name="street"/>
+                        <field name="city"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_bank_branch" model="ir.actions.act_window">
+        <field name="name">Chi nhánh ngân hàng</field>
+        <field name="res_model">gara.bank.branch</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_print_group_tree" model="ir.ui.view">
+        <field name="name">gara.print.group.tree</field>
+        <field name="model">gara.print.group</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="model_name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_print_group_form" model="ir.ui.view">
+        <field name="name">gara.print.group.form</field>
+        <field name="model">gara.print.group</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="model_name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_print_group" model="ir.actions.act_window">
+        <field name="name">Nhóm in</field>
+        <field name="res_model">gara.print.group</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_payment_method_tree" model="ir.ui.view">
+        <field name="name">gara.payment.method.tree</field>
+        <field name="model">gara.payment.method</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="payment_type"/>
+                <field name="journal_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_payment_method_form" model="ir.ui.view">
+        <field name="name">gara.payment.method.form</field>
+        <field name="model">gara.payment.method</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="payment_type"/>
+                        <field name="journal_id"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_payment_method" model="ir.actions.act_window">
+        <field name="name">Hình thức thanh toán</field>
+        <field name="res_model">gara.payment.method</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_bank_account_tree" model="ir.ui.view">
+        <field name="name">gara.bank.account.tree</field>
+        <field name="model">gara.bank.account</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="bank_id"/>
+                <field name="branch_id"/>
+                <field name="account_number"/>
+                <field name="account_holder"/>
+                <field name="journal_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_bank_account_form" model="ir.ui.view">
+        <field name="name">gara.bank.account.form</field>
+        <field name="model">gara.bank.account</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="bank_id"/>
+                        <field name="branch_id"/>
+                        <field name="account_number"/>
+                        <field name="account_holder"/>
+                    </group>
+                    <group>
+                        <field name="journal_id"/>
+                        <field name="currency_id"/>
+                        <field name="company_id" invisible="1"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_bank_account" model="ir.actions.act_window">
+        <field name="name">Tài khoản ngân hàng</field>
+        <field name="res_model">gara.bank.account</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_case_type_tree" model="ir.ui.view">
+        <field name="name">gara.case.type.tree</field>
+        <field name="model">gara.case.type</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="color" widget="color_picker"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_case_type_form" model="ir.ui.view">
+        <field name="name">gara.case.type.form</field>
+        <field name="model">gara.case.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="color" widget="color_picker"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_case_type" model="ir.actions.act_window">
+        <field name="name">Loại vụ việc</field>
+        <field name="res_model">gara.case.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_cost_item_tree" model="ir.ui.view">
+        <field name="name">gara.cost.item.tree</field>
+        <field name="model">gara.cost.item</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="item_type"/>
+                <field name="account_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_cost_item_form" model="ir.ui.view">
+        <field name="name">gara.cost.item.form</field>
+        <field name="model">gara.cost.item</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="item_type"/>
+                        <field name="account_id"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_cost_item" model="ir.actions.act_window">
+        <field name="name">Khoản mục</field>
+        <field name="res_model">gara.cost.item</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_product_type_tree" model="ir.ui.view">
+        <field name="name">gara.product.type.tree</field>
+        <field name="model">gara.product.type</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="parent_id"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_product_type_form" model="ir.ui.view">
+        <field name="name">gara.product.type.form</field>
+        <field name="model">gara.product.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="parent_id"/>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" placeholder="Notes..." nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_product_type" model="ir.actions.act_window">
+        <field name="name">Loại sản phẩm</field>
+        <field name="res_model">gara.product.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_service_package_tree" model="ir.ui.view">
+        <field name="name">gara.service.package.tree</field>
+        <field name="model">gara.service.package</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="service_product_id"/>
+                <field name="amount_untaxed"/>
+                <field name="company_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_service_package_form" model="ir.ui.view">
+        <field name="name">gara.service.package.form</field>
+        <field name="model">gara.service.package</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="service_product_id"/>
+                        <field name="company_id"/>
+                    </group>
+                    <group>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                        <field name="amount_untaxed"/>
+                    </group>
+                    <notebook>
+                        <page string="Package Lines">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id"/>
+                                    <field name="name"/>
+                                    <field name="product_uom_id"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit"/>
+                                    <field name="discount"/>
+                                    <field name="subtotal"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="note" placeholder="Notes..." nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_service_package" model="ir.actions.act_window">
+        <field name="name">Combo dịch vụ</field>
+        <field name="res_model">gara.service.package</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_product_template_form_gara_master_data" model="ir.ui.view">
+        <field name="name">product.template.form.gara.master.data</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='categ_id']" position="after">
+                <field name="gara_product_type_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

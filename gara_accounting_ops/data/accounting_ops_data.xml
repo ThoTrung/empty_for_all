@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="document_group_receipt" model="gara.account.document.group">
+        <field name="code">PT</field>
+        <field name="name">Phiếu thu</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="document_group_payment" model="gara.account.document.group">
+        <field name="code">PC</field>
+        <field name="name">Phiếu chi</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="document_group_sale_invoice" model="gara.account.document.group">
+        <field name="code">HDBH</field>
+        <field name="name">Hóa đơn bán hàng</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="document_group_purchase_invoice" model="gara.account.document.group">
+        <field name="code">HDMH</field>
+        <field name="name">Hóa đơn mua hàng</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="document_group_journal" model="gara.account.document.group">
+        <field name="code">PKT</field>
+        <field name="name">Phiếu kế toán</field>
+        <field name="sequence">50</field>
+    </record>
+
+    <record id="document_reason_service_payment" model="gara.account.document.reason">
+        <field name="code">THU_DV</field>
+        <field name="name">Thu tiền dịch vụ</field>
+        <field name="group_id" ref="document_group_receipt"/>
+        <field name="sequence">10</field>
+    </record>
+    <record id="document_reason_supplier_payment" model="gara.account.document.reason">
+        <field name="code">CHI_NCC</field>
+        <field name="name">Chi trả nhà cung cấp</field>
+        <field name="group_id" ref="document_group_payment"/>
+        <field name="sequence">10</field>
+    </record>
+    <record id="document_reason_service_invoice" model="gara.account.document.reason">
+        <field name="code">HDBH_DV</field>
+        <field name="name">Xuất hóa đơn dịch vụ</field>
+        <field name="group_id" ref="document_group_sale_invoice"/>
+        <field name="sequence">10</field>
+    </record>
+    <record id="document_reason_purchase_parts" model="gara.account.document.reason">
+        <field name="code">HDMH_PT</field>
+        <field name="name">Mua vật tư phụ tùng</field>
+        <field name="group_id" ref="document_group_purchase_invoice"/>
+        <field name="sequence">10</field>
+    </record>
+    <record id="document_reason_adjustment" model="gara.account.document.reason">
+        <field name="code">DIEU_CHINH</field>
+        <field name="name">Điều chỉnh kế toán</field>
+        <field name="group_id" ref="document_group_journal"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <function model="gara.account.document.group" name="write">
+        <value model="gara.account.document.group" search="[('code', '=', 'PT')]"/>
+        <value eval="{'default_reason_id': ref('document_reason_service_payment')}"/>
+    </function>
+    <function model="gara.account.document.group" name="write">
+        <value model="gara.account.document.group" search="[('code', '=', 'PC')]"/>
+        <value eval="{'default_reason_id': ref('document_reason_supplier_payment')}"/>
+    </function>
+    <function model="gara.account.document.group" name="write">
+        <value model="gara.account.document.group" search="[('code', '=', 'HDBH')]"/>
+        <value eval="{'default_reason_id': ref('document_reason_service_invoice')}"/>
+    </function>
+    <function model="gara.account.document.group" name="write">
+        <value model="gara.account.document.group" search="[('code', '=', 'HDMH')]"/>
+        <value eval="{'default_reason_id': ref('document_reason_purchase_parts')}"/>
+    </function>
+    <function model="gara.account.document.group" name="write">
+        <value model="gara.account.document.group" search="[('code', '=', 'PKT')]"/>
+        <value eval="{'default_reason_id': ref('document_reason_adjustment')}"/>
+    </function>
+</odoo>

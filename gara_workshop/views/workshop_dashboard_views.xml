@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_workshop_dashboard_form" model="ir.ui.view">
+        <field name="name">gara.workshop.dashboard.form</field>
+        <field name="model">gara.workshop.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Workshop dashboard" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Open cases</span>
+                                <div class="text-muted"><field name="stat_cases_open" class="oe_inline" nolabel="1" readonly="1"/></div>
+                                <button name="action_open_cases_open" type="object" string="Open list" class="btn-link pt-0"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">My open cases</span>
+                                <div class="text-muted"><field name="stat_cases_mine" class="oe_inline" nolabel="1" readonly="1"/></div>
+                                <button name="action_open_cases_mine" type="object" string="Open list" class="btn-link pt-0"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Payments today (workshop)</span>
+                                <div class="text-muted"><field name="stat_payments_today" class="oe_inline" nolabel="1" readonly="1"/></div>
+                                <button name="action_open_payments_today" type="object" string="Open list" class="btn-link pt-0"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Gara invoices — residual</span>
+                                <div class="text-muted"><field name="stat_invoices_residual" class="oe_inline" nolabel="1" readonly="1"/></div>
+                                <button name="action_open_invoices_residual" type="object" string="Open list" class="btn-link pt-0"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">My pending approvals</span>
+                                <div class="text-muted"><field name="stat_approvals_my_pending" class="oe_inline" nolabel="1" readonly="1"/></div>
+                                <button name="action_open_my_approvals" type="object" string="Open list" class="btn-link pt-0"/>
+                            </div>
+                        </div>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_workshop_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard</field>
+        <field name="res_model">gara.workshop.dashboard</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+    </record>
+</odoo>

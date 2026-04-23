@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_invoice_import_wizard_form" model="ir.ui.view">
+        <field name="name">gara.invoice.import.wizard.form</field>
+        <field name="model">gara.invoice.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import invoices from CSV/XLSX">
+                <sheet>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="move_type"/>
+                        <field name="journal_id"/>
+                        <field name="gara_document_group_id"/>
+                        <field name="gara_document_reason_id"/>
+                    </group>
+                    <group>
+                        <field name="file_name" invisible="1"/>
+                        <field name="file_data" filename="file_name"/>
+                        <field name="xlsx_sheet_label"/>
+                        <field name="xlsx_sheet_name"/>
+                    </group>
+                    <div class="o_form_label">
+                        Headers: invoice_ref, partner, product. Optional: invoice_date, description, quantity, price_unit, tax.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_import" type="object" string="Import" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_invoice_import_wizard" model="ir.actions.act_window">
+        <field name="name">Nhập hóa đơn từ Excel</field>
+        <field name="res_model">gara.invoice.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

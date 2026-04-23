@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_gara_workshop_user" model="res.groups">
+        <field name="name">Gara Workshop / User</field>
+        <field name="category_id" ref="base.module_category_services"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="group_gara_workshop_manager" model="res.groups">
+        <field name="name">Gara Workshop / Manager</field>
+        <field name="category_id" ref="base.module_category_services"/>
+        <field name="implied_ids" eval="[(4, ref('group_gara_workshop_user'))]"/>
+    </record>
+    <record id="group_gara_role_service_advisor" model="res.groups">
+        <field name="name">Gara Role / Service Advisor</field>
+        <field name="category_id" ref="base.module_category_services"/>
+        <field name="implied_ids" eval="[(4, ref('group_gara_workshop_user'))]"/>
+    </record>
+    <record id="group_gara_role_storekeeper" model="res.groups">
+        <field name="name">Gara Role / Storekeeper</field>
+        <field name="category_id" ref="base.module_category_services"/>
+        <field name="implied_ids" eval="[(4, ref('group_gara_workshop_user'))]"/>
+    </record>
+    <record id="group_gara_role_cashier" model="res.groups">
+        <field name="name">Gara Role / Cashier</field>
+        <field name="category_id" ref="base.module_category_services"/>
+        <field name="implied_ids" eval="[(4, ref('group_gara_workshop_user'))]"/>
+    </record>
+    <record id="group_gara_role_accountant" model="res.groups">
+        <field name="name">Gara Role / Accountant</field>
+        <field name="category_id" ref="base.module_category_services"/>
+        <field name="implied_ids" eval="[(4, ref('group_gara_workshop_user'))]"/>
+    </record>
+    <record id="group_gara_role_manager" model="res.groups">
+        <field name="name">Gara Role / Manager</field>
+        <field name="category_id" ref="base.module_category_services"/>
+        <field name="implied_ids" eval="[(4, ref('group_gara_workshop_manager'))]"/>
+    </record>
+</odoo>

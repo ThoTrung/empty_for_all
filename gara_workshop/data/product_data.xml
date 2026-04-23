@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="product_gara_labour" model="product.product">
+            <field name="name">Gara labour (service)</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="list_price">500000</field>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+        <record id="product_gara_repair_subject" model="product.product">
+            <field name="name">Gara repair unit (vehicle job)</field>
+            <field name="type">consu</field>
+            <field name="list_price">0</field>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+    </data>
+</odoo>

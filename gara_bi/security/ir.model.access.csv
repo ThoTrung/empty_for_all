@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gara_bi_monthly_kpi_user,gara.bi.monthly.kpi user,model_gara_bi_monthly_kpi,gara_workshop.group_gara_workshop_user,1,0,0,0
+access_gara_bi_management_summary_user,gara.bi.management.summary user,model_gara_bi_management_summary,gara_workshop.group_gara_workshop_user,1,0,0,0

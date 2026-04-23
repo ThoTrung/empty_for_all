@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="vn_province_hanoi" model="gara.vn.province">
+        <field name="name">Hà Nội</field>
+        <field name="code">HN</field>
+        <field name="sequence">10</field>
+        <field name="country_id" ref="base.vn"/>
+    </record>
+    <record id="vn_district_ba_dinh" model="gara.vn.district">
+        <field name="name">Ba Đình</field>
+        <field name="code">HN-BD</field>
+        <field name="province_id" ref="vn_province_hanoi"/>
+        <field name="sequence">10</field>
+    </record>
+    <record id="vn_ward_phuc_xa" model="gara.vn.ward">
+        <field name="name">Phúc Xá</field>
+        <field name="code">HN-BD-PX</field>
+        <field name="district_id" ref="vn_district_ba_dinh"/>
+        <field name="postal_code">11100</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="vn_province_hcm" model="gara.vn.province">
+        <field name="name">TP. Hồ Chí Minh</field>
+        <field name="code">HCM</field>
+        <field name="sequence">20</field>
+        <field name="country_id" ref="base.vn"/>
+    </record>
+    <record id="vn_district_1" model="gara.vn.district">
+        <field name="name">Quận 1</field>
+        <field name="code">HCM-Q1</field>
+        <field name="province_id" ref="vn_province_hcm"/>
+        <field name="sequence">10</field>
+    </record>
+    <record id="vn_ward_ben_nghe" model="gara.vn.ward">
+        <field name="name">Bến Nghé</field>
+        <field name="code">HCM-Q1-BN</field>
+        <field name="district_id" ref="vn_district_1"/>
+        <field name="postal_code">71000</field>
+        <field name="sequence">10</field>
+    </record>
+</odoo>

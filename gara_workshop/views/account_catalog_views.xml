@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_account_catalog_tree" model="ir.ui.view">
+        <field name="name">gara.account.catalog.tree</field>
+        <field name="model">gara.account.catalog</field>
+        <field name="arch" type="xml">
+            <tree string="Danh mục tài khoản" default_order="code">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="is_detail"/>
+                <field name="nature_code" optional="show"/>
+                <field name="nature_name" optional="hide"/>
+                <field name="account_class" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_account_catalog_search" model="ir.ui.view">
+        <field name="name">gara.account.catalog.search</field>
+        <field name="model">gara.account.catalog</field>
+        <field name="arch" type="xml">
+            <search string="Tài khoản kế toán">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="nature_code"/>
+                <field name="nature_name"/>
+                <filter string="Chi tiết" name="detail" domain="[('is_detail', '=', True)]"/>
+                <filter string="Tong hop" name="summary" domain="[('is_detail', '=', False)]"/>
+                <group expand="0" string="Nhóm">
+                    <filter string="Mã tính chất" name="group_nature" context="{'group_by': 'nature_code'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_account_catalog" model="ir.actions.act_window">
+        <field name="name">Tài khoản kế toán</field>
+        <field name="res_model">gara.account.catalog</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_gara_account_catalog_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Danh mục tài khoản tham chiếu</p>
+            <p>Du lieu nap tu file <code>data/account_catalog_data.xml</code> khi cai dat hoac nang cap module.</p>
+        </field>
+    </record>
+
+    <record id="view_gara_account_catalog_form" model="ir.ui.view">
+        <field name="name">gara.account.catalog.form</field>
+        <field name="model">gara.account.catalog</field>
+        <field name="arch" type="xml">
+            <form string="Tài khoản kế toán">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="parent_id"/>
+                            <field name="is_detail"/>
+                        </group>
+                        <group>
+                            <field name="nature_code"/>
+                            <field name="nature_name"/>
+                            <field name="account_class"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

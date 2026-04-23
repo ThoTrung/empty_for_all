@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_work_shift_tree" model="ir.ui.view">
+        <field name="name">gara.work.shift.tree</field>
+        <field name="model">gara.work.shift</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="calendar_id"/>
+                <field name="attendance_code_id"/>
+                <field name="hours_per_day"/>
+                <field name="weekly_hours"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_work_shift_form" model="ir.ui.view">
+        <field name="name">gara.work.shift.form</field>
+        <field name="model">gara.work.shift</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_open_calendar" type="object" string="Mở thời gian làm việc" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="company_id"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="calendar_id"/>
+                            <field name="attendance_code_id"/>
+                            <field name="hours_per_day" readonly="1"/>
+                            <field name="weekly_hours" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gara_work_shift_search" model="ir.ui.view">
+        <field name="name">gara.work.shift.search</field>
+        <field name="model">gara.work.shift</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="calendar_id"/>
+                <filter name="active" string="Đang hoạt động" domain="[('active', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="Công ty" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_calendar" string="Lịch làm việc" context="{'group_by': 'calendar_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gara_work_shift" model="ir.actions.act_window">
+        <field name="name">Khai báo ca làm</field>
+        <field name="res_model">gara.work.shift</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_gara_work_shift_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <record id="action_gara_resource_calendar" model="ir.actions.act_window">
+        <field name="name">Thời gian làm việc</field>
+        <field name="res_model">resource.calendar</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="resource.view_resource_calendar_search"/>
+    </record>
+
+    <record id="action_gara_employee" model="ir.actions.act_window">
+        <field name="name">Nhân viên</field>
+        <field name="res_model">hr.employee</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="search_view_id" ref="hr.view_employee_filter"/>
+        <field name="context">{'chat_icon': True}</field>
+    </record>
+
+    <record id="view_employee_form_gara_payroll_kpi" model="ir.ui.view">
+        <field name="name">hr.employee.form.gara.payroll.kpi</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='work_email']" position="after">
+                <field name="gara_employee_code"/>
+            </xpath>
+            <xpath expr="//group[@name='active_group']/field[@name='employee_type']" position="after">
+                <field name="gara_salary_grade_id"/>
+            </xpath>
+            <xpath expr="//field[@name='resource_calendar_id']" position="after">
+                <field name="gara_work_shift_id"/>
+                <field name="gara_weekly_hours" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_employee_tree_gara_payroll_kpi" model="ir.ui.view">
+        <field name="name">hr.employee.tree.gara.payroll.kpi</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="gara_employee_code" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='job_id']" position="after">
+                <field name="gara_salary_grade_id" optional="hide"/>
+                <field name="gara_work_shift_id" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_employee_filter_gara_payroll_kpi" model="ir.ui.view">
+        <field name="name">hr.employee.search.gara.payroll.kpi</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='job_id']" position="after">
+                <field name="gara_employee_code"/>
+                <field name="gara_work_shift_id"/>
+            </xpath>
+            <xpath expr="//search/group[1]" position="inside">
+                <filter name="group_gara_shift" string="Ca làm" domain="[]" context="{'group_by': 'gara_work_shift_id'}"/>
+                <filter name="group_gara_grade" string="Ngạch bậc" domain="[]" context="{'group_by': 'gara_salary_grade_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_gara_daily_attendance_tree_shift" model="ir.ui.view">
+        <field name="name">gara.daily.attendance.tree.shift</field>
+        <field name="model">gara.daily.attendance</field>
+        <field name="inherit_id" ref="gara_payroll_kpi.view_gara_daily_attendance_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='attendance_code_id']" position="after">
+                <field name="shift_id" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='work_days']" position="after">
+                <field name="planned_hours" optional="show"/>
+                <field name="actual_hours" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_gara_daily_attendance_form_shift" model="ir.ui.view">
+        <field name="name">gara.daily.attendance.form.shift</field>
+        <field name="model">gara.daily.attendance</field>
+        <field name="inherit_id" ref="gara_payroll_kpi.view_gara_daily_attendance_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='attendance_code_id']" position="after">
+                <field name="shift_id"/>
+                <field name="planned_hours" readonly="1"/>
+                <field name="actual_hours" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

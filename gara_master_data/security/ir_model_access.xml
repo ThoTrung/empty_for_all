@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="access_gara_revenue_type_user" model="ir.model.access">
+        <field name="name">gara.revenue.type user</field>
+        <field name="model_id" ref="model_gara_revenue_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_revenue_type_manager" model="ir.model.access">
+        <field name="name">gara.revenue.type manager</field>
+        <field name="model_id" ref="model_gara_revenue_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_membership_type_user" model="ir.model.access">
+        <field name="name">gara.membership.type user</field>
+        <field name="model_id" ref="model_gara_membership_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_membership_type_manager" model="ir.model.access">
+        <field name="name">gara.membership.type manager</field>
+        <field name="model_id" ref="model_gara_membership_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_member_card_user" model="ir.model.access">
+        <field name="name">gara.member.card user</field>
+        <field name="model_id" ref="model_gara_member_card"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_member_card_manager" model="ir.model.access">
+        <field name="name">gara.member.card manager</field>
+        <field name="model_id" ref="model_gara_member_card"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_product_type_user" model="ir.model.access">
+        <field name="name">gara.product.type user</field>
+        <field name="model_id" ref="model_gara_product_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_product_type_manager" model="ir.model.access">
+        <field name="name">gara.product.type manager</field>
+        <field name="model_id" ref="model_gara_product_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_service_package_user" model="ir.model.access">
+        <field name="name">gara.service.package user</field>
+        <field name="model_id" ref="model_gara_service_package"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_service_package_manager" model="ir.model.access">
+        <field name="name">gara.service.package manager</field>
+        <field name="model_id" ref="model_gara_service_package"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_service_package_line_user" model="ir.model.access">
+        <field name="name">gara.service.package.line user</field>
+        <field name="model_id" ref="model_gara_service_package_line"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_service_package_line_manager" model="ir.model.access">
+        <field name="name">gara.service.package.line manager</field>
+        <field name="model_id" ref="model_gara_service_package_line"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_customer_source_user" model="ir.model.access">
+        <field name="name">gara.customer.source user</field>
+        <field name="model_id" ref="model_gara_customer_source"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_customer_source_manager" model="ir.model.access">
+        <field name="name">gara.customer.source manager</field>
+        <field name="model_id" ref="model_gara_customer_source"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_customer_status_user" model="ir.model.access">
+        <field name="name">gara.customer.status user</field>
+        <field name="model_id" ref="model_gara_customer_status"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_customer_status_manager" model="ir.model.access">
+        <field name="name">gara.customer.status manager</field>
+        <field name="model_id" ref="model_gara_customer_status"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_customer_type_user" model="ir.model.access">
+        <field name="name">gara.customer.type user</field>
+        <field name="model_id" ref="model_gara_customer_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_customer_type_manager" model="ir.model.access">
+        <field name="name">gara.customer.type manager</field>
+        <field name="model_id" ref="model_gara_customer_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_care_type_user" model="ir.model.access">
+        <field name="name">gara.care.type user</field>
+        <field name="model_id" ref="model_gara_care_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_care_type_manager" model="ir.model.access">
+        <field name="name">gara.care.type manager</field>
+        <field name="model_id" ref="model_gara_care_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_care_result_user" model="ir.model.access">
+        <field name="name">gara.care.result user</field>
+        <field name="model_id" ref="model_gara_care_result"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_care_result_manager" model="ir.model.access">
+        <field name="name">gara.care.result manager</field>
+        <field name="model_id" ref="model_gara_care_result"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_care_result_detail_user" model="ir.model.access">
+        <field name="name">gara.care.result.detail user</field>
+        <field name="model_id" ref="model_gara_care_result_detail"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_care_result_detail_manager" model="ir.model.access">
+        <field name="name">gara.care.result.detail manager</field>
+        <field name="model_id" ref="model_gara_care_result_detail"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_bank_branch_user" model="ir.model.access">
+        <field name="name">gara.bank.branch user</field>
+        <field name="model_id" ref="model_gara_bank_branch"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_bank_branch_manager" model="ir.model.access">
+        <field name="name">gara.bank.branch manager</field>
+        <field name="model_id" ref="model_gara_bank_branch"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_print_group_user" model="ir.model.access">
+        <field name="name">gara.print.group user</field>
+        <field name="model_id" ref="model_gara_print_group"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_print_group_manager" model="ir.model.access">
+        <field name="name">gara.print.group manager</field>
+        <field name="model_id" ref="model_gara_print_group"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_payment_method_user" model="ir.model.access">
+        <field name="name">gara.payment.method user</field>
+        <field name="model_id" ref="model_gara_payment_method"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_payment_method_manager" model="ir.model.access">
+        <field name="name">gara.payment.method manager</field>
+        <field name="model_id" ref="model_gara_payment_method"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_bank_account_user" model="ir.model.access">
+        <field name="name">gara.bank.account user</field>
+        <field name="model_id" ref="model_gara_bank_account"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_bank_account_manager" model="ir.model.access">
+        <field name="name">gara.bank.account manager</field>
+        <field name="model_id" ref="model_gara_bank_account"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_case_type_user" model="ir.model.access">
+        <field name="name">gara.case.type user</field>
+        <field name="model_id" ref="model_gara_case_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_case_type_manager" model="ir.model.access">
+        <field name="name">gara.case.type manager</field>
+        <field name="model_id" ref="model_gara_case_type"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_gara_cost_item_user" model="ir.model.access">
+        <field name="name">gara.cost.item user</field>
+        <field name="model_id" ref="model_gara_cost_item"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+    <record id="access_gara_cost_item_manager" model="ir.model.access">
+        <field name="name">gara.cost.item manager</field>
+        <field name="model_id" ref="model_gara_cost_item"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_partner_merge_wizard_manager" model="ir.model.access">
+        <field name="name">gara.partner.merge.wizard manager</field>
+        <field name="model_id" ref="model_gara_partner_merge_wizard"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="access_gara_product_merge_wizard_manager" model="ir.model.access">
+        <field name="name">gara.product.merge.wizard manager</field>
+        <field name="model_id" ref="model_gara_product_merge_wizard"/>
+        <field name="group_id" ref="gara_workshop.group_gara_workshop_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+</odoo>

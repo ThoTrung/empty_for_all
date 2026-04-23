@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_workshop_payment_tree" model="ir.ui.view">
+        <field name="name">gara.workshop.payment.tree</field>
+        <field name="model">gara.workshop.payment</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="payment_date"/>
+                <field name="case_id"/>
+                <field name="partner_id"/>
+                <field name="amount"/>
+                <field name="account_payment_id" optional="show"/>
+                <field name="member_ledger_id" optional="show"/>
+                <field name="note"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_workshop_payment_form" model="ir.ui.view">
+        <field name="name">gara.workshop.payment.form</field>
+        <field name="model">gara.workshop.payment</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="case_id"/>
+                        <field name="partner_id"/>
+                        <field name="payment_date"/>
+                        <field name="amount"/>
+                        <field name="account_payment_id" groups="account.group_account_invoice"/>
+                        <field name="member_ledger_id"/>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_workshop_payment" model="ir.actions.act_window">
+        <field name="name">Customer payments</field>
+        <field name="res_model">gara.workshop.payment</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

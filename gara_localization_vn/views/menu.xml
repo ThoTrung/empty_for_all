@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_gara_vn_address_root"
+              name="Địa chỉ Việt Nam"
+              parent="gara_workshop.menu_gara_cat_other_sub"
+              sequence="45"/>
+    <menuitem id="menu_gara_vn_provinces"
+              name="Tỉnh / Thành phố"
+              parent="menu_gara_vn_address_root"
+              action="action_gara_vn_province"
+              sequence="10"/>
+    <menuitem id="menu_gara_vn_districts"
+              name="Quận / Huyện"
+              parent="menu_gara_vn_address_root"
+              action="action_gara_vn_district"
+              sequence="20"/>
+    <menuitem id="menu_gara_vn_wards"
+              name="Phường / Xã"
+              parent="menu_gara_vn_address_root"
+              action="action_gara_vn_ward"
+              sequence="30"/>
+</odoo>

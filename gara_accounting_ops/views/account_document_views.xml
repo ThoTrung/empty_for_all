@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_account_document_group_tree" model="ir.ui.view">
+        <field name="name">gara.account.document.group.tree</field>
+        <field name="model">gara.account.document.group</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="default_reason_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_account_document_group_form" model="ir.ui.view">
+        <field name="name">gara.account.document.group.form</field>
+        <field name="model">gara.account.document.group</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <group>
+                        <field name="default_reason_id"/>
+                        <field name="journal_ids" widget="many2many_tags"/>
+                    </group>
+                    <field name="note" nolabel="1" placeholder="Notes..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_account_document_group" model="ir.actions.act_window">
+        <field name="name">Nhóm chứng từ</field>
+        <field name="res_model">gara.account.document.group</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_account_document_reason_tree" model="ir.ui.view">
+        <field name="name">gara.account.document.reason.tree</field>
+        <field name="model">gara.account.document.reason</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="group_id"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_account_document_reason_form" model="ir.ui.view">
+        <field name="name">gara.account.document.reason.form</field>
+        <field name="model">gara.account.document.reason</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="group_id"/>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="note" nolabel="1" placeholder="Notes..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_account_document_reason" model="ir.actions.act_window">
+        <field name="name">Lý do chứng từ</field>
+        <field name="res_model">gara.account.document.reason</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_closing_config_tree" model="ir.ui.view">
+        <field name="name">gara.closing.config.tree</field>
+        <field name="model">gara.closing.config</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="journal_id"/>
+                <field name="destination_account_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gara_closing_config_form" model="ir.ui.view">
+        <field name="name">gara.closing.config.form</field>
+        <field name="model">gara.closing.config</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                        <field name="journal_id"/>
+                        <field name="destination_account_id"/>
+                    </group>
+                    <field name="source_account_ids" widget="many2many_tags"/>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gara_closing_config" model="ir.actions.act_window">
+        <field name="name">Thiết lập kết chuyển</field>
+        <field name="res_model">gara.closing.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_gara_cat_asset_category"
+              name="Nhóm tài sản"
+              parent="gara_workshop.menu_gara_cat_other_sub"
+              action="action_gara_asset_category"
+              groups="account.group_account_readonly"
+              sequence="70"/>
+    <menuitem id="menu_gara_acc_assets"
+              name="Tài sản"
+              parent="gara_workshop.menu_gara_grp_accounting"
+              action="action_gara_asset"
+              groups="account.group_account_readonly"
+              sequence="94"/>
+    <menuitem id="menu_gara_acc_asset_depreciation"
+              name="Lịch khấu hao"
+              parent="gara_workshop.menu_gara_grp_accounting"
+              action="action_gara_asset_depreciation_line"
+              groups="account.group_account_readonly"
+              sequence="95"/>
+</odoo>

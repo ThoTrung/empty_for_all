@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_gara_service_case" model="ir.actions.report">
+        <field name="name">Phiếu tiếp nhận / sửa chữa</field>
+        <field name="model">gara.workshop.case</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">gara_reports.report_gara_service_case_document</field>
+        <field name="report_file">gara_reports.report_gara_service_case_document</field>
+        <field name="binding_model_id" ref="gara_workshop.model_gara_workshop_case"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Phieu tiep nhan - %s' % (object.name)</field>
+    </record>
+
+    <record id="action_report_gara_workshop_payment" model="ir.actions.report">
+        <field name="name">Phiếu thu dịch vụ</field>
+        <field name="model">gara.workshop.payment</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">gara_reports.report_gara_workshop_payment_document</field>
+        <field name="report_file">gara_reports.report_gara_workshop_payment_document</field>
+        <field name="binding_model_id" ref="gara_workshop.model_gara_workshop_payment"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Phieu thu - %s' % (object.case_id.name)</field>
+    </record>
+
+    <record id="action_report_gara_service_case_report" model="ir.actions.report">
+        <field name="name">Bản in báo cáo dịch vụ</field>
+        <field name="model">gara.service.case.report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">gara_reports.report_gara_service_case_report_document</field>
+        <field name="report_file">gara_reports.report_gara_service_case_report_document</field>
+        <field name="binding_model_id" ref="model_gara_service_case_report"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Bao cao dich vu'</field>
+    </record>
+
+    <record id="action_report_gara_account_move_voucher" model="ir.actions.report">
+        <field name="name">Phiếu kế toán KGara</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">gara_reports.report_gara_account_move_voucher_document</field>
+        <field name="report_file">gara_reports.report_gara_account_move_voucher_document</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Chung tu - %s' % (object.gara_document_number or object.name or object.ref or '')</field>
+    </record>
+
+    <template id="report_gara_service_case_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">PHIEU TIEP NHAN / SUA CHUA</h2>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <strong>So phieu:</strong>
+                                <span t-field="doc.name"/>
+                            </div>
+                            <div class="col-6 text-end">
+                                <strong>Ngay tiep nhan:</strong>
+                                <span t-field="doc.intake_date"/>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <strong>Khach hang:</strong>
+                                <span t-field="doc.partner_id"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Co van:</strong>
+                                <span t-field="doc.user_id"/>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <strong>Xe:</strong>
+                                <span t-field="doc.vehicle_id"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Km vao:</strong>
+                                <span t-field="doc.odometer_in"/>
+                            </div>
+                        </div>
+
+                        <h4 class="mt-4">Thong tin tai chinh</h4>
+                        <table class="table table-sm o_main_table">
+                            <tbody>
+                                <tr>
+                                    <td>Tong bao gia / don hang</td>
+                                    <td class="text-end"><span t-field="doc.amount_sale_total"/></td>
+                                </tr>
+                                <tr>
+                                    <td>Da xuat hoa don</td>
+                                    <td class="text-end"><span t-field="doc.amount_invoiced_total"/></td>
+                                </tr>
+                                <tr>
+                                    <td>Da ghi nhan thanh toan</td>
+                                    <td class="text-end"><span t-field="doc.amount_payment_registered"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Con phai thu uoc tinh</strong></td>
+                                    <td class="text-end"><strong><span t-field="doc.amount_due_estimate"/></strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4 class="mt-4">Hang muc / phu tung tren bao gia</h4>
+                        <table class="table table-sm o_main_table">
+                            <thead>
+                                <tr>
+                                    <th>Noi dung</th>
+                                    <th class="text-end">SL</th>
+                                    <th class="text-end">Don gia</th>
+                                    <th class="text-end">Thanh tien</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.sale_order_id.order_line" t-as="line">
+                                    <td><span t-field="line.name"/></td>
+                                    <td class="text-end"><span t-field="line.product_uom_qty"/></td>
+                                    <td class="text-end"><span t-field="line.price_unit"/></td>
+                                    <td class="text-end"><span t-field="line.price_subtotal"/></td>
+                                </tr>
+                                <tr t-if="not doc.sale_order_id">
+                                    <td colspan="4" class="text-center text-muted">Chua co bao gia / don hang.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4 class="mt-4">Ghi chu tiep nhan</h4>
+                        <div t-field="doc.intake_notes"/>
+
+                        <div class="row mt-5">
+                            <div class="col-4 text-center">
+                                <strong>Khach hang</strong>
+                                <div class="mt-5">________________</div>
+                            </div>
+                            <div class="col-4 text-center">
+                                <strong>Co van dich vu</strong>
+                                <div class="mt-5">________________</div>
+                            </div>
+                            <div class="col-4 text-center">
+                                <strong>Thu ngan / Ke toan</strong>
+                                <div class="mt-5">________________</div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_gara_workshop_payment_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">PHIEU THU DICH VU</h2>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <strong>Vu viec:</strong>
+                                <span t-field="doc.case_id"/>
+                            </div>
+                            <div class="col-6 text-end">
+                                <strong>Ngay thu:</strong>
+                                <span t-field="doc.payment_date"/>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <strong>Khach hang:</strong>
+                                <span t-field="doc.partner_id"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Xe:</strong>
+                                <span t-field="doc.case_id.vehicle_id"/>
+                            </div>
+                        </div>
+                        <table class="table table-sm o_main_table mt-4">
+                            <tbody>
+                                <tr>
+                                    <td>So tien thu</td>
+                                    <td class="text-end"><strong><span t-field="doc.amount"/></strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Noi dung</td>
+                                    <td><span t-field="doc.note"/></td>
+                                </tr>
+                                <tr>
+                                    <td>Chung tu ke toan</td>
+                                    <td><span t-field="doc.account_payment_id"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="row mt-5">
+                            <div class="col-6 text-center">
+                                <strong>Nguoi nop tien</strong>
+                                <div class="mt-5">________________</div>
+                            </div>
+                            <div class="col-6 text-center">
+                                <strong>Nguoi thu tien</strong>
+                                <div class="mt-5">________________</div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_gara_service_case_report_document">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2 class="text-center">BAO CAO DICH VU</h2>
+                    <table class="table table-sm o_main_table mt-3">
+                        <thead>
+                            <tr>
+                                <th>Ngay</th>
+                                <th>Vu viec</th>
+                                <th>Khach hang</th>
+                                <th>Co van</th>
+                                <th>Trang thai</th>
+                                <th class="text-end">Doanh thu</th>
+                                <th class="text-end">Thu tien</th>
+                                <th class="text-end">Cong no</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="docs" t-as="doc">
+                                <td><span t-field="doc.report_date"/></td>
+                                <td><span t-field="doc.case_id"/></td>
+                                <td><span t-field="doc.partner_id"/></td>
+                                <td><span t-field="doc.user_id"/></td>
+                                <td><span t-field="doc.state"/></td>
+                                <td class="text-end"><span t-field="doc.invoiced_amount"/></td>
+                                <td class="text-end"><span t-field="doc.payment_amount"/></td>
+                                <td class="text-end"><span t-field="doc.residual_amount"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_gara_account_move_voucher_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="voucher_lines" t-value="doc.line_ids.filtered(lambda l: not l.display_type)"/>
+                <t t-set="total_debit" t-value="sum(voucher_lines.mapped('debit'))"/>
+                <t t-set="total_credit" t-value="sum(voucher_lines.mapped('credit'))"/>
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">
+                            <span t-esc="(doc.gara_document_group_id.name or 'Phieu ke toan').upper()"/>
+                        </h2>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <strong>So chung tu:</strong>
+                                <span t-esc="doc.gara_document_number or doc.name or doc.ref or '-'"/>
+                            </div>
+                            <div class="col-6 text-end">
+                                <strong>Ngay chung tu:</strong>
+                                <span t-field="doc.date"/>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <strong>Doi tuong:</strong>
+                                <span t-esc="doc.partner_id.display_name or '-'"/>
+                            </div>
+                            <div class="col-6 text-end">
+                                <strong>Ly do:</strong>
+                                <span t-esc="doc.gara_document_reason_id.display_name or '-'"/>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <strong>Dien giai:</strong>
+                                <span t-esc="doc.gara_document_note or doc.ref or '-'"/>
+                            </div>
+                        </div>
+
+                        <table class="table table-sm o_main_table mt-4">
+                            <thead>
+                                <tr>
+                                    <th>Noi dung</th>
+                                    <th>TK</th>
+                                    <th>Doi tuong</th>
+                                    <th class="text-end">No</th>
+                                    <th class="text-end">Co</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="voucher_lines" t-as="line">
+                                    <td><span t-esc="line.name or line.move_name or '-'"/></td>
+                                    <td><span t-esc="line.account_id.code or '-'"/></td>
+                                    <td><span t-esc="line.partner_id.display_name or '-'"/></td>
+                                    <td class="text-end"><span t-field="line.debit"/></td>
+                                    <td class="text-end"><span t-field="line.credit"/></td>
+                                </tr>
+                                <tr t-if="not voucher_lines">
+                                    <td colspan="5" class="text-center text-muted">Khong co dong but toan.</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3"><strong>Tong cong</strong></td>
+                                    <td class="text-end"><strong><span t-esc="total_debit"/></strong></td>
+                                    <td class="text-end"><strong><span t-esc="total_credit"/></strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <div class="row mt-5">
+                            <div class="col-4 text-center">
+                                <strong>Nguoi lap</strong>
+                                <div class="mt-5">________________</div>
+                            </div>
+                            <div class="col-4 text-center">
+                                <strong>Ke toan truong</strong>
+                                <div class="mt-5">________________</div>
+                            </div>
+                            <div class="col-4 text-center">
+                                <strong>Giam doc</strong>
+                                <div class="mt-5">________________</div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

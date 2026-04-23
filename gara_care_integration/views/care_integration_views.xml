@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_care_provider_tree" model="ir.ui.view">
+        <field name="name">gara.care.provider.tree</field>
+        <field name="model">gara.care.provider</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="channel"/>
+                <field name="sender_name"/>
+                <field name="http_method"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_care_provider_form" model="ir.ui.view">
+        <field name="name">gara.care.provider.form</field>
+        <field name="model">gara.care.provider</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="channel"/>
+                        <field name="sender_name"/>
+                        <field name="endpoint_url"/>
+                        <field name="active"/>
+                    </group>
+                    <group string="HTTP Connector">
+                        <field name="http_method"/>
+                        <field name="timeout"/>
+                        <field name="auth_scheme"/>
+                        <field name="auth_header" invisible="auth_scheme == 'none'"/>
+                        <field name="api_key" invisible="auth_scheme == 'none'"/>
+                        <field name="success_path"/>
+                        <field name="external_ref_path"/>
+                        <field name="error_path"/>
+                    </group>
+                    <group string="Payload">
+                        <field name="payload_template" nolabel="1"/>
+                    </group>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_care_provider" model="ir.actions.act_window">
+        <field name="name">Nhà cung cấp SMS/Zalo/Call</field>
+        <field name="res_model">gara.care.provider</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_care_message_template_tree" model="ir.ui.view">
+        <field name="name">gara.care.message.template.tree</field>
+        <field name="model">gara.care.message.template</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="channel"/>
+                <field name="subject"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_care_message_template_form" model="ir.ui.view">
+        <field name="name">gara.care.message.template.form</field>
+        <field name="model">gara.care.message.template</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_create_log" type="object" string="Tạo log gửi" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="channel"/>
+                        <field name="subject"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="body" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_care_message_template" model="ir.actions.act_window">
+        <field name="name">Mẫu SMS/Zalo/Call</field>
+        <field name="res_model">gara.care.message.template</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_care_communication_log_tree" model="ir.ui.view">
+        <field name="name">gara.care.communication.log.tree</field>
+        <field name="model">gara.care.communication.log</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'sent'" decoration-danger="state == 'failed'" decoration-muted="state == 'cancel'">
+                <field name="scheduled_date"/>
+                <field name="partner_id"/>
+                <field name="case_id"/>
+                <field name="name"/>
+                <field name="channel"/>
+                <field name="provider_id"/>
+                <field name="phone"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_care_communication_log_form" model="ir.ui.view">
+        <field name="name">gara.care.communication.log.form</field>
+        <field name="model">gara.care.communication.log</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_queue" type="object" string="Queue" invisible="state != 'draft'"/>
+                    <button name="action_send_now" type="object" string="Send Now" class="btn-primary" invisible="state not in ('draft', 'queued', 'failed')"/>
+                    <button name="action_mark_sent" type="object" string="Mark Sent/Logged" class="btn-primary" invisible="state not in ('draft', 'queued', 'failed')"/>
+                    <button name="action_mark_failed" type="object" string="Mark Failed" invisible="state in ('sent', 'cancel')"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state in ('sent', 'cancel')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,queued,sent"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="partner_id"/>
+                            <field name="case_id"/>
+                            <field name="template_id"/>
+                            <field name="channel"/>
+                            <field name="provider_id"/>
+                        </group>
+                        <group>
+                            <field name="scheduled_date"/>
+                            <field name="sent_date"/>
+                            <field name="phone"/>
+                            <field name="external_ref"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Message">
+                            <field name="message_body"/>
+                            <field name="rendered_body"/>
+                        </page>
+                        <page string="Error">
+                            <field name="error_message"/>
+                        </page>
+                        <page string="Provider Response">
+                            <field name="response_payload"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_gara_care_communication_log_search" model="ir.ui.view">
+        <field name="name">gara.care.communication.log.search</field>
+        <field name="model">gara.care.communication.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="case_id"/>
+                <field name="name"/>
+                <filter name="queued" string="Queued" domain="[('state', '=', 'queued')]"/>
+                <filter name="failed" string="Failed" domain="[('state', '=', 'failed')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_channel" string="Channel" context="{'group_by': 'channel'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_partner" string="Customer" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_gara_care_communication_log" model="ir.actions.act_window">
+        <field name="name">SMS/Zalo/Call log</field>
+        <field name="res_model">gara.care.communication.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_gara_care_communication_log_search"/>
+    </record>
+</odoo>

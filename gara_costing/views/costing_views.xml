@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_cost_element_tree" model="ir.ui.view">
+        <field name="name">gara.cost.element.tree</field>
+        <field name="model">gara.cost.element</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="element_type"/>
+                <field name="account_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_cost_element_form" model="ir.ui.view">
+        <field name="name">gara.cost.element.form</field>
+        <field name="model">gara.cost.element</field>
+        <field name="arch" type="xml">
+            <form><sheet><group>
+                <field name="code"/><field name="name"/><field name="element_type"/>
+                <field name="account_id"/><field name="sequence"/><field name="active"/>
+            </group></sheet></form>
+        </field>
+    </record>
+    <record id="action_gara_cost_element" model="ir.actions.act_window">
+        <field name="name">Yếu tố chi phí</field>
+        <field name="res_model">gara.cost.element</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_product_norm_tree" model="ir.ui.view">
+        <field name="name">gara.product.norm.tree</field>
+        <field name="model">gara.product.norm</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="product_tmpl_id"/>
+                <field name="planned_cost"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_product_norm_form" model="ir.ui.view">
+        <field name="name">gara.product.norm.form</field>
+        <field name="model">gara.product.norm</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="code"/><field name="name"/><field name="product_tmpl_id"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="planned_cost"/><field name="sequence"/><field name="active"/>
+                    </group>
+                    <notebook>
+                        <page string="Norm Lines">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="cost_element_id"/>
+                                    <field name="product_id"/>
+                                    <field name="description"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit"/>
+                                    <field name="subtotal"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes"><field name="note" nolabel="1"/></page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_product_norm" model="ir.actions.act_window">
+        <field name="name">Định mức sản phẩm</field>
+        <field name="res_model">gara.product.norm</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_production_order_tree" model="ir.ui.view">
+        <field name="name">gara.production.order.tree</field>
+        <field name="model">gara.production.order</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state == 'cancel'" decoration-success="state == 'done'">
+                <field name="name"/>
+                <field name="date_start"/>
+                <field name="product_id"/>
+                <field name="quantity_planned"/>
+                <field name="quantity_done"/>
+                <field name="planned_cost"/>
+                <field name="actual_cost"/>
+                <field name="cost_variance"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_production_order_form" model="ir.ui.view">
+        <field name="name">gara.production.order.form</field>
+        <field name="model">gara.production.order</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_done" type="object" string="Done" class="btn-primary" invisible="state != 'confirmed'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state in ('done', 'cancel')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="product_tmpl_id" invisible="1"/>
+                        <field name="name"/><field name="product_id"/><field name="norm_id"/>
+                        <field name="quantity_planned"/><field name="quantity_done"/>
+                        <field name="date_start"/><field name="date_done"/>
+                    </group>
+                    <group>
+                        <field name="planned_cost"/><field name="actual_cost"/>
+                        <field name="cost_variance"/><field name="unit_actual_cost"/>
+                    </group>
+                    <notebook>
+                        <page string="Costs">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="cost_element_id"/>
+                                    <field name="product_id"/>
+                                    <field name="description"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit"/>
+                                    <field name="amount"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes"><field name="note" nolabel="1"/></page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_production_order" model="ir.actions.act_window">
+        <field name="name">Lệnh sản xuất</field>
+        <field name="res_model">gara.production.order</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_gara_wip_opening_tree" model="ir.ui.view">
+        <field name="name">gara.wip.opening.tree</field>
+        <field name="model">gara.wip.opening</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="date"/><field name="name"/><field name="product_id"/>
+                <field name="quantity"/><field name="amount"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_wip_opening_form" model="ir.ui.view">
+        <field name="name">gara.wip.opening.form</field>
+        <field name="model">gara.wip.opening</field>
+        <field name="arch" type="xml">
+            <form><sheet><group>
+                <field name="name"/><field name="date"/><field name="product_id"/>
+                <field name="quantity"/><field name="amount"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </group><field name="note" nolabel="1"/></sheet></form>
+        </field>
+    </record>
+    <record id="action_gara_wip_opening" model="ir.actions.act_window">
+        <field name="name">Chi phí dở dang đầu kỳ</field>
+        <field name="res_model">gara.wip.opening</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

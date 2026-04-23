@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_gara_employee" name="Nhân viên" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_employee" groups="hr.group_hr_user" sequence="58"/>
+    <menuitem id="menu_gara_salary_minimum" name="Lương tối thiểu" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_salary_minimum" groups="hr.group_hr_user" sequence="60"/>
+    <menuitem id="menu_gara_salary_grade_group" name="Nhóm ngạch bậc" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_salary_grade_group" groups="hr.group_hr_user" sequence="62"/>
+    <menuitem id="menu_gara_salary_grade" name="Ngạch bậc" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_salary_grade" groups="hr.group_hr_user" sequence="64"/>
+    <menuitem id="menu_gara_allowance_type" name="Khai báo phụ cấp" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_allowance_type" groups="hr.group_hr_user" sequence="66"/>
+    <menuitem id="menu_gara_employee_allowance" name="PC nhân viên được hưởng" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_employee_allowance" groups="hr.group_hr_user" sequence="68"/>
+    <menuitem id="menu_gara_bonus_penalty" name="Thưởng phạt" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_bonus_penalty" groups="hr.group_hr_user" sequence="70"/>
+    <menuitem id="menu_gara_work_shift" name="Khai báo ca làm" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_work_shift" groups="hr.group_hr_user" sequence="71"/>
+    <menuitem id="menu_gara_resource_calendar" name="Thời gian làm việc" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_resource_calendar" groups="hr.group_hr_user" sequence="72"/>
+    <menuitem id="menu_gara_attendance_code" name="Ký hiệu công" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_attendance_code" groups="hr.group_hr_user" sequence="74"/>
+    <menuitem id="menu_gara_pit_config" name="Thuế TNCN" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_pit_config" groups="hr.group_hr_user" sequence="75"/>
+    <menuitem id="menu_gara_daily_attendance" name="Chấm công ngày" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_daily_attendance" groups="hr.group_hr_user" sequence="76"/>
+    <menuitem id="menu_gara_leave_request" name="Báo phép" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_leave_request" groups="hr.group_hr_user" sequence="77"/>
+    <menuitem id="menu_gara_work_summary" name="Tổng hợp công" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_work_summary" groups="hr.group_hr_user" sequence="78"/>
+    <menuitem id="menu_gara_kpi_indicator" name="Chỉ tiêu KPI" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_kpi_indicator" groups="hr.group_hr_user" sequence="79"/>
+    <menuitem id="menu_gara_kpi_template" name="Bộ chỉ tiêu KPI" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_kpi_template" groups="hr.group_hr_user" sequence="80"/>
+    <menuitem id="menu_gara_employee_kpi" name="Áp KPI nhân viên" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_employee_kpi" groups="hr.group_hr_user" sequence="81"/>
+    <menuitem id="menu_gara_payroll_summary" name="Tổng hợp lương" parent="gara_workshop.menu_gara_grp_payroll" action="action_gara_payroll_summary" groups="hr.group_hr_user" sequence="82"/>
+</odoo>

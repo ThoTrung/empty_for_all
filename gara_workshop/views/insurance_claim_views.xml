@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gara_insurance_claim_tree" model="ir.ui.view">
+        <field name="name">gara.insurance.claim.tree</field>
+        <field name="model">gara.insurance.claim</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'paid'" decoration-danger="state == 'rejected'">
+                <field name="name"/>
+                <field name="claim_date"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="approved_amount"/>
+                <field name="paid_amount"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_gara_insurance_claim_form" model="ir.ui.view">
+        <field name="name">gara.insurance.claim.form</field>
+        <field name="model">gara.insurance.claim</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_mark_approved" type="object" string="Mark Approved" invisible="state in ('approved','paid','rejected')"/>
+                    <button name="action_request_approval" type="object" string="Request Approval" invisible="state in ('approved','paid','rejected')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,paid,rejected"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="claim_date"/>
+                        <field name="case_id"/>
+                        <field name="partner_id"/>
+                        <field name="vehicle_id"/>
+                    </group>
+                    <group>
+                        <field name="insurer_partner_id"/>
+                        <field name="policy_number"/>
+                        <field name="approved_amount"/>
+                        <field name="paid_amount"/>
+                    </group>
+                    <field name="note" nolabel="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_gara_insurance_claim" model="ir.actions.act_window">
+        <field name="name">Insurance claims</field>
+        <field name="res_model">gara.insurance.claim</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

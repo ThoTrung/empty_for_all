@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_gara_warranty_lookup"
+              name="Tra cứu bảo hành"
+              parent="gara_workshop.menu_gara_grp_warranty"
+              action="action_gara_warranty_lookup_wizard"
+              sequence="5"/>
+</odoo>
