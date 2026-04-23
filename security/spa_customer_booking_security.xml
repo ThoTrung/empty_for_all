@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- App KH (portal): chỉ xem đặt lịch của chính mình -->
+        <record id="access_spa_service_booking_customer" model="ir.model.access">
+            <field name="name">booking_calendar.spa_service_booking.customer</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking"/>
+            <field name="group_id" ref="spa.group_spa_customer"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+        <record id="access_spa_service_booking_line_customer" model="ir.model.access">
+            <field name="name">booking_calendar.spa_service_booking_line.customer</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking_line"/>
+            <field name="group_id" ref="spa.group_spa_customer"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+        <record id="access_spa_booking_non_session_offering_customer" model="ir.model.access">
+            <field name="name">booking_calendar.spa_booking_non_session_offering.customer</field>
+            <field name="model_id" ref="booking_calendar.model_spa_booking_non_session_offering"/>
+            <field name="group_id" ref="spa.group_spa_customer"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_spa_service_booking_customer" model="ir.rule">
+            <field name="name">Đặt lịch: chỉ KH của tôi</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking"/>
+            <field name="groups" eval="[(4, ref('spa.group_spa_customer'))]"/>
+            <field name="domain_force">[('partner_id', 'child_of', user.partner_id.commercial_partner_id.id)]</field>
+        </record>
+        <record id="rule_spa_service_booking_line_customer" model="ir.rule">
+            <field name="name">Dòng đặt lịch: chỉ booking của tôi</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking_line"/>
+            <field name="groups" eval="[(4, ref('spa.group_spa_customer'))]"/>
+            <field name="domain_force">[('booking_id.partner_id', 'child_of', user.partner_id.commercial_partner_id.id)]</field>
+        </record>
+        <record id="rule_spa_booking_non_session_offering_customer" model="ir.rule">
+            <field name="name">Loại hoạt động (non-session): chỉ đọc danh mục active</field>
+            <field name="model_id" ref="booking_calendar.model_spa_booking_non_session_offering"/>
+            <field name="groups" eval="[(4, ref('spa.group_spa_customer'))]"/>
+            <field name="domain_force">[('active', '=', True)]</field>
+        </record>
+    </data>
+</odoo>

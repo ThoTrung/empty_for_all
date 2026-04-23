@@ -91,6 +91,9 @@ if (origOptionsDesc?.get) {
                     meta.spa_calendar_min_time || DEFAULT_MIN_TIME;
                 opts.maxTime =
                     meta.spa_calendar_max_time || DEFAULT_MAX_TIME;
+                // Do not visually overlap events in the same slot; render them as narrower columns.
+                // This makes dense schedules readable.
+                opts.slotEventOverlap = false;
                 // if (meta.spa_calendar_content_height > 0) {
                 //     opts.contentHeight = meta.spa_calendar_content_height;
                 //     opts.height = meta.spa_calendar_content_height;

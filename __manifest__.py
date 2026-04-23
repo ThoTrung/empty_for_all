@@ -14,6 +14,7 @@
     ],
     "data": [
         "security/ir.model.access.xml",
+        "security/spa_customer_booking_security.xml",
         "data/spa_booking_non_session_offering_data.xml",
         "data/booking_cron.xml",
         "views/spa_booking_non_session_offering_view.xml",
@@ -33,6 +34,9 @@
             "booking_calendar/static/src/js/spa_booking_calendar_popover.js",
             "booking_calendar/static/src/js/spa_booking_calendar_renderer.js",
             "booking_calendar/static/src/js/spa_booking_calendar_view.js",
+        ],
+        "web.assets_tests": [
+            "booking_calendar/static/tests/booking_calendar_color_tests.js",
         ],
     },
     "installable": True,

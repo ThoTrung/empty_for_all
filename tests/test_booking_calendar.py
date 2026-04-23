@@ -741,3 +741,185 @@ class TestBookingCalendar(TransactionCase):
                 "start_datetime": datetime.now() + timedelta(days=1),
                 "duration": 60,
             })
+
+    def test_booking_calendar_hex_color_normalization(self):
+        settings = self.env["res.config.settings"].create({})
+        self.assertEqual(settings._normalize_hex_color("fff"), "#fff")
+        self.assertEqual(settings._normalize_hex_color("#3A86FF"), "#3A86FF")
+        self.assertFalse(settings._normalize_hex_color("xyz"))
+
+    def test_state_calendar_hex_color_from_config(self):
+        ICP = self.env["ir.config_parameter"].sudo()
+        ICP.set_param("spa.booking_calendar_hex_color_draft", "abc")
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+        })
+        booking._compute_state_calendar_hex_color()
+        self.assertEqual(booking.state_calendar_hex_color, "#abc")
+
+    def test_state_calendar_hex_text_color_from_config(self):
+        ICP = self.env["ir.config_parameter"].sudo()
+        ICP.set_param("spa.booking_calendar_hex_text_color_draft", "fff")
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+        })
+        booking._compute_state_calendar_hex_text_color()
+        self.assertEqual(booking.state_calendar_hex_text_color, "#fff")
+
+    def test_calendar_event_title_one_line_with_nickname_phone_service(self):
+        # Staff nickname
+        self.user_a.spa_staff_nickname = "Trang"
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        partner = self.env["res.partner"].create({"name": "KH A", "phone": "0909"})
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+        })
+        booking._compute_calendar_event_title()
+        title = booking.calendar_event_title
+        self.assertIn("(Trang)", title)
+        self.assertIn("KH A (0909)", title)
+        # service line should include code or name
+        self.assertTrue("Service" in title or "-" in title)
+        self.assertNotIn("\n", title)
+
+    def test_calendar_view_uses_hex_color_field(self):
+        view = self.env.ref("booking_calendar.view_spa_service_booking_calendar")
+        self.assertIn('color="state_calendar_hex_color"', view.arch_db)
+        # Ensure both fields are present in view so the frontend has access.
+        self.assertIn('name="state_calendar_hex_color"', view.arch_db)
+        self.assertIn('name="state_calendar_hex_text_color"', view.arch_db)
+        self.assertIn('name="draft_special_hex_color"', view.arch_db)
+        self.assertIn('name="draft_special_hex_text_color"', view.arch_db)
+
+    def test_draft_special_color_non_session_priority(self):
+        ICP = self.env["ir.config_parameter"].sudo()
+        ICP.set_param("spa.booking_calendar_hex_color_draft_non_session", "#D71629")
+        ICP.set_param("spa.booking_calendar_hex_text_color_draft_non_session", "#000000")
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "non_session",
+            "non_session_offering_id": self.env["spa.booking.non_session_offering"].create({
+                "name": "Họp",
+                "duration_minutes": 30,
+            }).id,
+            "start_datetime": start,
+            "duration": 30,
+        })
+        booking._compute_draft_special_colors()
+        self.assertEqual(booking.draft_special_hex_color, "#D71629")
+        self.assertEqual(booking.draft_special_hex_text_color, "#000000")
+
+    def test_draft_special_color_weekly(self):
+        ICP = self.env["ir.config_parameter"].sudo()
+        ICP.set_param("spa.booking_calendar_hex_color_draft_weekly", "#3E51BA")
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        parent = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "recurring_enabled": True,
+            "recurring_is_active": True,
+        })
+        parent._compute_draft_special_colors()
+        self.assertEqual(parent.draft_special_hex_color, "#3E51BA")
+
+    def test_draft_special_color_hair_removal(self):
+        ICP = self.env["ir.config_parameter"].sudo()
+        ICP.set_param("spa.booking_calendar_hex_color_draft_hair_removal", "#F44F15")
+        cat = self.env["product.category"].create({"name": "Hair Removal"})
+        ICP.set_param("spa.booking_calendar_hair_removal_category_id", str(cat.id))
+        hair = self.env["product.template"].create({
+            "name": "Hair removal",
+            "detailed_type": "service",
+            "list_price": 100,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 60,
+            "categ_id": cat.id,
+        }).product_variant_id
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": hair.id,
+            "start_datetime": start,
+            "duration": 60,
+        })
+        booking._compute_draft_special_colors()
+        self.assertEqual(booking.draft_special_hex_color, "#F44F15")
+
+    def test_draft_special_color_expert_only(self):
+        ICP = self.env["ir.config_parameter"].sudo()
+        ICP.set_param("spa.booking_calendar_hex_color_draft_expert_only", "#8E24AC")
+        expert = self.env["product.template"].create({
+            "name": "Expert svc",
+            "detailed_type": "service",
+            "list_price": 100,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 60,
+            "spa_required_staff_level": "expert",
+        }).product_variant_id
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": expert.id,
+            "start_datetime": start,
+            "duration": 60,
+        })
+        booking._compute_draft_special_colors()
+        self.assertEqual(booking.draft_special_hex_color, "#8E24AC")
+
+    def test_draft_special_color_past_created(self):
+        ICP = self.env["ir.config_parameter"].sudo()
+        ICP.set_param("spa.booking_calendar_hex_color_draft_past_created", "#33B577")
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+        })
+        # force create_date to yesterday
+        yesterday = fields.Datetime.to_string(fields.Datetime.now() - timedelta(days=1))
+        self.env.cr.execute(
+            "UPDATE spa_service_booking SET create_date = %s WHERE id = %s",
+            (yesterday, booking.id),
+        )
+        booking.invalidate_recordset(["create_date"])
+        booking._compute_draft_special_colors()
+        self.assertEqual(booking.draft_special_hex_color, "#33B577")

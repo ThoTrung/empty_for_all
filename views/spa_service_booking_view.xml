@@ -33,7 +33,7 @@
                 <calendar date_start="start_datetime"
                           date_stop="end_datetime"
                           string="Lịch đặt dịch vụ"
-                          color="state_calendar_color"
+                          color="state_calendar_hex_color"
                           event_limit="15"
                           quick_create="false"
                           create_name_field="calendar_event_title"
@@ -50,7 +50,10 @@
                     <field name="bed_id" string="Giường / Máy"/>
                     <field name="staff_ids" invisible="1"/>
                     <field name="staff_level_filter" filters="1" invisible="1"/>
-                    <field name="state_calendar_color" invisible="1"/>
+                    <field name="state_calendar_hex_color" invisible="1"/>
+                    <field name="state_calendar_hex_text_color" invisible="1"/>
+                    <field name="draft_special_hex_color" invisible="1"/>
+                    <field name="draft_special_hex_text_color" invisible="1"/>
                     <field name="bed_calendar_color" invisible="1"/>
                     <field name="duration" invisible="1"/>
                 </calendar>

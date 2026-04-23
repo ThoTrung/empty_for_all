@@ -121,10 +121,28 @@ class SpaServiceBooking(models.Model):
         store=False,
         help="Giá trị phục vụ bộ lọc checkbox trên calendar (Nhân viên / Chuyên gia).",
     )
-    # Màu trên calendar: theo trạng thái (cấu hình trong Cấu hình Spa)
-    state_calendar_color = fields.Integer(
-        string="Màu lịch (theo trạng thái)",
-        compute="_compute_state_calendar_color",
+    # Màu trên calendar: theo trạng thái (HEX cấu hình trong Cấu hình Spa)
+    state_calendar_hex_color = fields.Char(
+        string="Màu HEX lịch (theo trạng thái)",
+        compute="_compute_state_calendar_hex_color",
+        store=False,
+        readonly=True,
+    )
+    state_calendar_hex_text_color = fields.Char(
+        string="Màu HEX chữ lịch (theo trạng thái)",
+        compute="_compute_state_calendar_hex_text_color",
+        store=False,
+        readonly=True,
+    )
+    draft_special_hex_color = fields.Char(
+        string="Màu HEX đặc biệt (draft)",
+        compute="_compute_draft_special_colors",
+        store=False,
+        readonly=True,
+    )
+    draft_special_hex_text_color = fields.Char(
+        string="Màu HEX chữ đặc biệt (draft)",
+        compute="_compute_draft_special_colors",
         store=False,
         readonly=True,
     )
@@ -332,8 +350,11 @@ class SpaServiceBooking(models.Model):
         "partner_id",
         "partner_id.name",
         "partner_id.customer_code",
+        "partner_id.phone",
+        "partner_id.mobile",
         "staff_ids",
         "staff_ids.name",
+        "staff_ids.spa_staff_nickname",
         "card_id",
         "card_id.code",
         "card_id.product_id",
@@ -359,26 +380,24 @@ class SpaServiceBooking(models.Model):
                     return f"{code} - {name}"
                 return code or name or ""
 
-            # Line 1: Mã KH - Tên KH
-            customer_line = ""
-            if rec.partner_id:
-                customer_line = _join_code_name(
-                    rec.partner_id.customer_code,
-                    rec.partner_id.name or rec.partner_id.display_name,
-                )
-
-            # Line 3: Tên nhân viên
-            staff_line = ""
+            # Nickname staff (first staff for compact display)
+            nick = ""
             staff_users = rec.staff_ids
-            if staff_users:
-                if isinstance(staff_users, models.BaseModel):
-                    # recordset (many2many) or single (many2one)
-                    names = staff_users.mapped("name")
-                else:
-                    names = []
-                staff_line = ", ".join([n for n in names if n]) if names else ""
+            if staff_users and isinstance(staff_users, models.BaseModel):
+                staff0 = staff_users[:1]
+                nick = (staff0.spa_staff_nickname or staff0.name or "").strip()
 
-            # Line 2: Mã dịch vụ - Tên dịch vụ
+            # Customer: Name (phone)
+            cust = ""
+            if rec.partner_id:
+                phone = (rec.partner_id.phone or rec.partner_id.mobile or "").strip()
+                name = (rec.partner_id.name or rec.partner_id.display_name or "").strip()
+                if phone and name:
+                    cust = f"{name} ({phone})"
+                else:
+                    cust = name or phone
+
+            # Service: Code - Name
             # - Nếu có `card_id` -> lấy từ thẻ (giữ nguyên logic cũ)
             # - Nếu `card_id` rỗng -> lấy từ `non_session_offering_id` (Đi họp/Đi học/...)
             # - Fallback: lấy từ `product_id` nếu thiếu cả 2 trường trên
@@ -412,14 +431,16 @@ class SpaServiceBooking(models.Model):
                 service_name = p.name or p.display_name if p else ""
                 service_line = _join_code_name(service_code, service_name)
 
-            # Render cố định 3 dòng: KH, Dịch vụ, Nhân viên
-            rec.calendar_event_title = "\n".join(
-                [
-                    customer_line or "",
-                    service_line or "",
-                    staff_line or "",
-                ]
-            )
+            # One-line title that can wrap when the cell is narrow:
+            # (Nickname) Customer (phone) ServiceCode - ServiceName
+            parts = []
+            if nick:
+                parts.append(f"({nick})")
+            if cust:
+                parts.append(cust)
+            if service_line:
+                parts.append(service_line)
+            rec.calendar_event_title = " ".join([p for p in parts if p])
 
     @api.depends("staff_ids", "staff_ids.spa_staff_level")
     def _compute_staff_level_filter(self):
@@ -441,22 +462,184 @@ class SpaServiceBooking(models.Model):
                     level = lvl
             rec.staff_level_filter = level
 
-    def _get_calendar_color_index_for_state(self, state):
-        """Chỉ số màu (0–55) cho trạng thái, đọc từ Cấu hình Spa."""
+    def _get_calendar_hex_color_for_state(self, state):
+        """Màu HEX cho trạng thái, đọc từ Cấu hình Spa. Có thể để trống."""
         ICP = self.env["ir.config_parameter"].sudo()
-        key = "spa.booking_calendar_color_%s" % (state or "draft")
-        default = {"draft": 1, "confirmed": 2, "doing": 3, "done": 4, "cancel": 0}.get(
-            state, 0
-        )
+        key = "spa.booking_calendar_hex_color_%s" % (state or "draft")
+        val = (ICP.get_param(key, "") or "").strip()
+        if not val:
+            return ""
+        if not val.startswith("#"):
+            val = f"#{val}"
+        return val
+
+    def _get_calendar_hex_text_color_for_state(self, state):
+        """Màu HEX chữ cho trạng thái, đọc từ Cấu hình Spa. Có thể để trống."""
+        ICP = self.env["ir.config_parameter"].sudo()
+        key = "spa.booking_calendar_hex_text_color_%s" % (state or "draft")
+        val = (ICP.get_param(key, "") or "").strip()
+        if not val:
+            return ""
+        if not val.startswith("#"):
+            val = f"#{val}"
+        return val
+
+    @api.model
+    def _spa_pick_text_color_bw(self, bg_hex):
+        """Trả về #FFFFFF hoặc #000000 theo contrast; bg_hex có thể #rgb/#rrggbb."""
+        val = (bg_hex or "").strip()
+        if not val:
+            return ""
+        if not val.startswith("#"):
+            val = f"#{val}"
+        h = val[1:]
+        if len(h) == 3:
+            h = "".join([c * 2 for c in h])
         try:
-            return max(0, min(55, int(ICP.get_param(key, str(default)))))
-        except (TypeError, ValueError):
-            return default
+            r = int(h[0:2], 16)
+            g = int(h[2:4], 16)
+            b = int(h[4:6], 16)
+        except Exception:
+            return ""
+
+        def srgb_to_lin(c):
+            c = c / 255.0
+            return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+        L = 0.2126 * srgb_to_lin(r) + 0.7152 * srgb_to_lin(g) + 0.0722 * srgb_to_lin(b)
+        # Contrast ratio vs white (1.0) and black (0.0)
+        c_white = (1.0 + 0.05) / (L + 0.05)
+        c_black = (L + 0.05) / (0.0 + 0.05)
+        return "#FFFFFF" if c_white >= c_black else "#000000"
+
+    def _spa_local_date_from_datetime(self, dt):
+        if not dt:
+            return None
+        local = fields.Datetime.context_timestamp(self, dt) or dt
+        if getattr(local, "tzinfo", None):
+            local = local.replace(tzinfo=None)
+        return local.date()
+
+    def _spa_get_product_template_for_draft_color(self):
+        self.ensure_one()
+        # Prefer product_id; fallback to card/non_session offering when product_id is missing.
+        product_variant = self.product_id
+        if not product_variant and self.card_id and getattr(self.card_id, "product_id", False):
+            product_variant = self.card_id.product_id
+        elif (
+            not product_variant
+            and self.non_session_offering_id
+            and getattr(self.non_session_offering_id, "product_id", False)
+        ):
+            product_variant = self.non_session_offering_id.product_id
+        return product_variant.product_tmpl_id if product_variant and product_variant.product_tmpl_id else False
 
     @api.depends("state")
-    def _compute_state_calendar_color(self):
+    def _compute_state_calendar_hex_color(self):
         for rec in self:
-            rec.state_calendar_color = rec._get_calendar_color_index_for_state(rec.state)
+            rec.state_calendar_hex_color = rec._get_calendar_hex_color_for_state(rec.state)
+
+    @api.depends("state")
+    def _compute_state_calendar_hex_text_color(self):
+        for rec in self:
+            rec.state_calendar_hex_text_color = rec._get_calendar_hex_text_color_for_state(
+                rec.state
+            )
+
+    @api.depends(
+        "state",
+        "booking_kind",
+        "non_session_offering_id",
+        "recurring_parent_id",
+        "recurring_is_active",
+        "create_date",
+        "product_id",
+        "card_id",
+        "card_id.product_id",
+        "non_session_offering_id.product_id",
+    )
+    def _compute_draft_special_colors(self):
+        """
+        Chỉ áp dụng cho state=draft. Priority (cao → thấp):
+          1) non_session (họp/đào tạo/mẫu)
+          2) lịch cố định hàng tuần (đặt theo tuần)
+          3) triệt lông (product.template.spa_booking_is_hair_removal)
+          4) dịch vụ chuyên gia (spa_required_staff_level='expert')
+          5) khách mới đặt nhưng create_date là quá khứ (khác hôm nay)
+        """
+        ICP = self.env["ir.config_parameter"].sudo()
+        try:
+            hair_categ_id = int(ICP.get_param("spa.booking_calendar_hair_removal_category_id", "0") or "0")
+        except (TypeError, ValueError):
+            hair_categ_id = 0
+        hair_categ_ids = set()
+        if hair_categ_id:
+            hair_categ_ids = set(
+                self.env["product.category"]
+                .sudo()
+                .search([("id", "child_of", hair_categ_id)])
+                .ids
+            )
+        cfg = {
+            "weekly": ICP.get_param("spa.booking_calendar_hex_color_draft_weekly", "#3E51BA"),
+            "past": ICP.get_param("spa.booking_calendar_hex_color_draft_past_created", "#33B577"),
+            "non_session": ICP.get_param("spa.booking_calendar_hex_color_draft_non_session", "#D71629"),
+            "hair": ICP.get_param("spa.booking_calendar_hex_color_draft_hair_removal", "#F44F15"),
+            "expert": ICP.get_param("spa.booking_calendar_hex_color_draft_expert_only", "#8E24AC"),
+        }
+        cfg_txt = {
+            "weekly": ICP.get_param("spa.booking_calendar_hex_text_color_draft_weekly", ""),
+            "past": ICP.get_param("spa.booking_calendar_hex_text_color_draft_past_created", ""),
+            "non_session": ICP.get_param("spa.booking_calendar_hex_text_color_draft_non_session", ""),
+            "hair": ICP.get_param("spa.booking_calendar_hex_text_color_draft_hair_removal", ""),
+            "expert": ICP.get_param("spa.booking_calendar_hex_text_color_draft_expert_only", ""),
+        }
+        for rec in self:
+            rec.draft_special_hex_color = ""
+            rec.draft_special_hex_text_color = ""
+            if rec.state != "draft":
+                continue
+
+            def norm(v):
+                v = (v or "").strip()
+                if not v:
+                    return ""
+                return v if v.startswith("#") else f"#{v}"
+
+            chosen = ""
+            chosen_key = ""
+            # 1) non_session
+            if rec.booking_kind == "non_session":
+                chosen = norm(cfg["non_session"])
+                chosen_key = "non_session"
+            # 2) weekly recurring
+            elif rec.recurring_parent_id or rec.recurring_is_active:
+                chosen = norm(cfg["weekly"])
+                chosen_key = "weekly"
+            else:
+                pt = rec._spa_get_product_template_for_draft_color()
+                # 3) hair removal
+                if pt and pt.categ_id and pt.categ_id.id in hair_categ_ids:
+                    chosen = norm(cfg["hair"])
+                    chosen_key = "hair"
+                # 4) expert only
+                elif pt and (getattr(pt, "spa_required_staff_level", "") or "") == "expert":
+                    chosen = norm(cfg["expert"])
+                    chosen_key = "expert"
+                else:
+                    # 5) created in the past (not today)
+                    today = fields.Date.context_today(rec)
+                    created_day = rec._spa_local_date_from_datetime(rec.create_date)
+                    if created_day and created_day < today:
+                        chosen = norm(cfg["past"])
+                        chosen_key = "past"
+
+            if chosen:
+                rec.draft_special_hex_color = chosen
+                cfg_text = norm(cfg_txt.get(chosen_key, "")) if chosen_key else ""
+                rec.draft_special_hex_text_color = cfg_text or rec._spa_pick_text_color_bw(
+                    chosen
+                )
 
     @api.depends("bed_id", "bed_id.calendar_color", "state")
     def _compute_bed_calendar_color(self):

@@ -17,6 +17,36 @@ import {
     Component
 } from "@odoo/owl";
 
+export function applySpaBookingEventColors(el, record) {
+    const rr = record?.rawRecord || {};
+    const isDraft = (rr.state || record?.state) === "draft";
+    const hexColor = (
+        (isDraft && rr.draft_special_hex_color) ? rr.draft_special_hex_color : rr.state_calendar_hex_color
+    ) || "";
+    const cleanedBg = String(hexColor || "").trim();
+    if (!cleanedBg || !el) {
+        return;
+    }
+    const normalized = cleanedBg.startsWith("#") ? cleanedBg : `#${cleanedBg}`;
+    // booking_calendar CSS uses `--o-event-bg` on `.fc-bg` overlay, so set both.
+    el.style.backgroundColor = normalized;
+    el.style.setProperty("--o-event-bg", normalized);
+    const bgEl = el.querySelector?.(".fc-bg");
+    if (bgEl) {
+        bgEl.style.setProperty("background-color", normalized, "important");
+        bgEl.style.setProperty("opacity", "1", "important");
+    }
+
+    const textHex = (
+        (isDraft && rr.draft_special_hex_text_color) ? rr.draft_special_hex_text_color : rr.state_calendar_hex_text_color
+    ) || "";
+    const cleanedFg = String(textHex || "").trim();
+    if (cleanedFg) {
+        const normText = cleanedFg.startsWith("#") ? cleanedFg : `#${cleanedFg}`;
+        el.style.setProperty("--spa-event-fg", normText);
+    }
+}
+
 export class SpaBookingCalendarCommonRenderer extends CalendarCommonRenderer {
     getPopoverProps(record) {
         const props = super.getPopoverProps(record);
@@ -35,6 +65,13 @@ export class SpaBookingCalendarCommonRenderer extends CalendarCommonRenderer {
             return;
         }
         this.props.editRecord(record);
+    }
+
+    onEventRender(info) {
+        super.onEventRender(info);
+        const eventId = info?.event?.id;
+        const record = eventId ? this.props.model.records[eventId] : null;
+        applySpaBookingEventColors(info?.el, record);
     }
 }
 SpaBookingCalendarCommonRenderer.components = {
