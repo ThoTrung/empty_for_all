@@ -133,3 +133,63 @@
   z-index: 20;
   min-width: 17rem;
 }
+
+/* --- Booking form: bảng bước dịch vụ (dịch vụ gộp) --- */
+/* Không hardcode width theo px/%; chỉ ép table không vượt modal (Odoo đôi khi set 200% khi nhiều cột) */
+.o_form_view .o_spa_bundle_steps_tree .o_list_renderer,
+.o_form_view .o_spa_bundle_steps_tree .table-responsive {
+  max-width: 100%;
+}
+.o_form_view .o_spa_bundle_steps_field {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.o_form_view .o_spa_bundle_steps_field.o_field_widget.o_field_one2many {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.o_form_view .o_spa_bundle_steps_field.o_field_widget.o_field_one2many .o_list_renderer,
+.o_form_view .o_spa_bundle_steps_field.o_field_widget.o_field_one2many .table-responsive {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.o_form_view .o_spa_bundle_steps_tree table.o_list_table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: auto;
+}
+.o_form_view .o_spa_bundle_steps_tree table.o_list_table th,
+.o_form_view .o_spa_bundle_steps_tree table.o_list_table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Modal chọn NV cho bước dịch vụ: hiển thị danh sách gợi ý gọn, không xuống dòng từng chữ */
+.o_form_view .o_spa_suggested_staff_field .o_spa_suggested_staff ul.list-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+.o_form_view .o_spa_suggested_staff_field .o_spa_suggested_staff ul.list-group > li.list-group-item {
+  flex: 0 0 auto;
+  max-width: 14rem;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: auto !important;
+  min-height: unset !important;
+  padding: 6px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  line-height: 1.2;
+}
+.o_form_view .o_spa_suggested_staff_field .o_spa_suggested_staff ul.list-group > li.list-group-item.active {
+  background-color: rgba(13, 110, 253, 0.10);
+  color: inherit;
+}

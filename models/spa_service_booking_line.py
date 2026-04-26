@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 from odoo import api, fields, models, _
+from markupsafe import Markup, escape
 from odoo.exceptions import ValidationError
 
 
@@ -26,6 +27,13 @@ class SpaServiceBookingLine(models.Model):
         domain=[("detailed_type", "=", "service")],
     )
     staff_id = fields.Many2one("res.users", string="Nhân viên", domain=[("share", "=", False)])
+    suggested_staff_html = fields.Html(
+        string="Nhân viên gợi ý (luân ca)",
+        compute="_compute_suggested_staff_html",
+        store=False,
+        sanitize=False,
+        help="Chỉ dùng hiển thị trong modal chọn NV cho từng bước dịch vụ con.",
+    )
     sequence = fields.Integer(string="Thứ tự", default=10)
     duration_minutes = fields.Integer(string="Thời gian (phút)", default=60, required=True)
     start_datetime = fields.Datetime(string="Bắt đầu", required=True)
@@ -68,3 +76,106 @@ class SpaServiceBookingLine(models.Model):
                 raise ValidationError(_("Thời gian (phút) phải lớn hơn 0."))
             if rec.start_datetime and rec.end_datetime and rec.end_datetime <= rec.start_datetime:
                 raise ValidationError(_("Thời gian kết thúc phải sau thời gian bắt đầu."))
+
+    @api.depends("product_id", "start_datetime", "end_datetime", "duration_minutes", "booking_id")
+    def _compute_suggested_staff_html(self):
+        for rec in self:
+            if not rec.product_id or not rec.start_datetime:
+                rec.suggested_staff_html = ""
+                continue
+            end_dt = rec.end_datetime
+            if not end_dt:
+                dm = int(rec.duration_minutes or 0)
+                dm = max(1, dm) if dm else 60
+                end_dt = rec.start_datetime + timedelta(minutes=dm)
+            Booking = rec.env["spa.service.booking"]
+            ordered_ids = Booking._spa_rotation_ordered_staff_ids_by_history(
+                product_id=rec.product_id.id,
+                start_dt=rec.start_datetime,
+                end_dt=end_dt,
+                booking_id=rec.booking_id.id if rec.booking_id else None,
+            )
+            ordered_ids = list(ordered_ids or [])
+
+            # Dịch vụ gộp: tránh gợi ý NV đã được chọn ở các bước khác (trong cùng booking) ở vị trí đầu.
+            # Mục tiêu: luân ca giữa các bước, không đề xuất lặp người đứng đầu khi đã chọn ở bước trước.
+            if rec.booking_id and rec.booking_id.booking_line_ids:
+                assigned_ids = set(
+                    rec.booking_id.booking_line_ids.filtered(
+                        lambda l: l.id != rec.id and l.staff_id
+                    ).mapped("staff_id").ids
+                )
+                if assigned_ids:
+                    ordered_ids = [uid for uid in ordered_ids if uid not in assigned_ids] + [
+                        uid for uid in ordered_ids if uid in assigned_ids
+                    ]
+
+            ordered_ids = ordered_ids[:5]
+            if not ordered_ids:
+                rec.suggested_staff_html = Markup("<i>Không có nhân viên phù hợp</i>")
+                continue
+            staffs = rec.env["res.users"].browse(ordered_ids)
+            first_id = ordered_ids[0] if ordered_ids else False
+            items = []
+            for uid in ordered_ids:
+                staff = staffs.filtered(lambda s: s.id == uid)[:1]
+                if not staff:
+                    continue
+                css = "active" if uid == first_id else ""
+                items.append(
+                    f'<li class="list-group-item {css}">{escape(staff[0].name or staff[0].login)}</li>'
+                )
+            rec.suggested_staff_html = Markup(
+                '<div class="o_spa_suggested_staff">'
+                '<ul class="list-group list-group-flush mt-1">'
+                + "".join(items)
+                + "</ul></div>"
+            )
+
+    def action_open_assign_staff_modal(self):
+        """Mở modal để chọn NV cho bước dịch vụ con (kèm gợi ý)."""
+        self.ensure_one()
+        view = self.env.ref("booking_calendar.view_spa_service_booking_line_form", raise_if_not_found=False)
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Chọn nhân viên cho bước dịch vụ"),
+            "res_model": "spa.service.booking.line",
+            "res_id": self.id,
+            "view_mode": "form",
+            "views": [(view.id, "form")] if view else [(False, "form")],
+            "target": "new",
+            "context": dict(self.env.context),
+        }
+
+    @api.onchange("staff_id")
+    def _onchange_staff_id_sync_booking_staff_ids(self):
+        """UI helper: chọn NV cho bước -> sync booking.staff_ids (many2many) theo toàn bộ lines."""
+        for rec in self:
+            if rec.booking_id:
+                rec.booking_id._sync_staff_ids_from_lines()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if rec.booking_id:
+                rec.booking_id._sync_duration_from_lines()
+                rec.booking_id._sync_staff_ids_from_lines()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if "staff_id" in vals or "duration_minutes" in vals:
+            for rec in self:
+                if rec.booking_id:
+                    rec.booking_id._sync_duration_from_lines()
+                    rec.booking_id._sync_staff_ids_from_lines()
+        return res
+
+    def unlink(self):
+        bookings = self.mapped("booking_id")
+        res = super().unlink()
+        for b in bookings:
+            b._sync_duration_from_lines()
+            b._sync_staff_ids_from_lines()
+        return res

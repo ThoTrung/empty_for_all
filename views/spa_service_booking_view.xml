@@ -52,8 +52,6 @@
                     <field name="staff_level_filter" filters="1" invisible="1"/>
                     <field name="state_calendar_hex_color" invisible="1"/>
                     <field name="state_calendar_hex_text_color" invisible="1"/>
-                    <field name="draft_special_hex_color" invisible="1"/>
-                    <field name="draft_special_hex_text_color" invisible="1"/>
                     <field name="bed_calendar_color" invisible="1"/>
                     <field name="duration" invisible="1"/>
                 </calendar>
@@ -121,48 +119,58 @@
                                 <field name="card_available_for_booking" optional="show" readonly="1" invisible="booking_kind != 'card'"/>
                                 <field name="product_id" invisible="1"/>
                                 <field name="start_datetime" required="1" readonly="is_locked"/>
-                                <field name="duration" required="1" readonly="is_locked"/>
+                                <field name="duration" required="1" readonly="is_locked or is_composite_booking"/>
                                 <field name="end_datetime" readonly="1"/>
                                 <field name="staff_ids"
                                        widget="many2many_tags"
                                        domain="[('share', '=', False)]"
-                                       readonly="is_locked"/>
-                                <field name="suggested_staff_html" readonly="1"/>
+                                       readonly="is_locked"
+                                       invisible="is_composite_booking"/>
+                                <field name="display_composite_staff_ids"
+                                       widget="many2many_tags"
+                                       readonly="1"
+                                       invisible="not is_composite_booking"/>
+                                <field name="suggested_staff_html" readonly="1" invisible="is_composite_booking"/>
                                 <field name="bed_id" readonly="is_locked"/>
                                 <field name="recurring_parent_id" invisible="not is_recurring_child" readonly="1"/>
                             </group>
-                            <group>
+                            <group col="4">
                                 <field name="session_id" options="{'open': True}"/>
                                 <field name="reminder_sent" readonly="1"/>
-                                <field name="note" readonly="is_locked"/>
+                                <field name="note" colspan="4" readonly="is_locked"/>
                                 <field name="is_locked" invisible="1"/>
                                 <field name="is_composite_booking" invisible="1"/>
                                 <field name="is_recurring_child" invisible="1"/>
                                 <field name="recurring_enabled" invisible="1"/>
                                 <field name="recurring_is_active" invisible="1"/>
-
                                 <separator string="Đặt lịch theo ngày trong tuần"
                                            class="text-danger text-medium"
                                            invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
-                                    <field name="recurring_mon" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
-                                    <field name="recurring_tue" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
-                                    <field name="recurring_wed" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
-                                    <field name="recurring_thu" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
-                                    <field name="recurring_fri" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
-                                    <field name="recurring_sat" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
-                                    <field name="recurring_sun" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                <field name="recurring_mon" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                <field name="recurring_tue" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                <field name="recurring_wed" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                <field name="recurring_thu" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                <field name="recurring_fri" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                <field name="recurring_sat" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                <field name="recurring_sun" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
                                 <button name="action_confirm_recurring"
+                                        colspan="4"
                                         string="Xác nhận đặt lịch theo tuần"
                                         type="object"
                                         class="btn btn-primary px-4" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
                             </group>
                         </group>
-                        <group string="Dịch vụ con (dịch vụ tổng)" invisible="not is_composite_booking">
-                            <field name="booking_line_ids" nolabel="1">
-                                <tree editable="bottom" default_order="sequence,id">
+                        <group string="Dịch vụ con (dịch vụ tổng)" colspan="2" invisible="not is_composite_booking">
+                            <field name="booking_line_ids" nolabel="1" colspan="2" class="o_spa_bundle_steps_field">
+                                <tree editable="bottom" default_order="sequence,id" class="o_spa_bundle_steps_tree">
                                     <field name="booking_id" column_invisible="1"/>
                                     <field name="sequence" widget="handle"/>
                                     <field name="product_id"/>
+                                    <button name="action_open_assign_staff_modal"
+                                            type="object"
+                                            string="Chọn NV"
+                                            class="btn btn-secondary"
+                                            icon="fa-user"/>
                                     <field name="staff_id"
                                            domain="[('share', '=', False)]"/>
                                     <field name="start_datetime"/>
@@ -189,6 +197,24 @@
             <field name="view_id" ref="view_spa_service_booking_calendar"/>
             <field name="search_view_id" ref="view_spa_service_booking_search"/>
             <field name="context">{'search_default_confirmed': 0}</field>
+        </record>
+        <record id="action_spa_service_booking_doctor" model="ir.actions.act_window">
+            <field name="name">Đặt lịch (Bác sĩ)</field>
+            <field name="res_model">spa.service.booking</field>
+            <field name="view_mode">calendar,tree,form</field>
+            <field name="view_id" ref="view_spa_service_booking_calendar"/>
+            <field name="search_view_id" ref="view_spa_service_booking_search"/>
+            <field name="domain">[('is_doctor_route', '=', True)]</field>
+            <field name="context">{'spa_allowed_staff_levels': ['doctor']}</field>
+        </record>
+        <record id="action_spa_service_booking_specialist" model="ir.actions.act_window">
+            <field name="name">Đặt lịch (Chuyên viên/Chuyên gia)</field>
+            <field name="res_model">spa.service.booking</field>
+            <field name="view_mode">calendar,tree,form</field>
+            <field name="view_id" ref="view_spa_service_booking_calendar"/>
+            <field name="search_view_id" ref="view_spa_service_booking_search"/>
+            <field name="domain">[('is_doctor_route', '=', False)]</field>
+            <field name="context">{'spa_allowed_staff_levels': ['spec_b','spec_a','senior','expert']}</field>
         </record>
     </data>
 </odoo>

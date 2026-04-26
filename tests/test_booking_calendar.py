@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 
 from odoo import fields
+from odoo.tests.common import Form
 from odoo.tests import TransactionCase
 from odoo.exceptions import ValidationError, UserError
 
@@ -21,25 +22,25 @@ class TestBookingCalendar(TransactionCase):
         })
         # Users (staff)
         cls.user_a = cls.env.ref("base.user_admin")
-        cls.user_a.spa_staff_level = "expert"
+        cls.user_a.spa_staff_level_id = cls.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1)
         cls.user_b = cls.env["res.users"].create({
             "name": "Staff B",
             "login": "staff_b_booking_test",
-            "spa_staff_level": "regular",
+            "spa_staff_level_id": cls.env["spa.staff.level"].search([("level_group", "=", "spec_b")], limit=1).id,
         })
 
         # Staff rotation by shift start hour
         cls.user_shift9 = cls.env["res.users"].create({
             "name": "Staff Shift 9",
             "login": "staff_shift_9_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": cls.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_shift_start_hour": 9,
             "spa_shift_duration_hours": 10.0,
         })
         cls.user_shift10 = cls.env["res.users"].create({
             "name": "Staff Shift 10",
             "login": "staff_shift_10_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": cls.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_shift_start_hour": 10,
             "spa_shift_duration_hours": 10.0,
         })
@@ -49,18 +50,18 @@ class TestBookingCalendar(TransactionCase):
         # Prevent other expert users from affecting shift-based tests.
         other_expert_staff = cls.env["res.users"].search([
             ("share", "=", False),
-            ("spa_staff_level", "=", "expert"),
+            ("spa_staff_level_id.level_group", "=", "expert"),
         ])
         for u in other_expert_staff:
             if u.id not in (cls.user_a.id, cls.user_shift9.id, cls.user_shift10.id):
                 u.spa_shift_start_hour = 16
                 u.spa_shift_duration_hours = 10.0
 
-        # Test DB có thể có nhân viên có giờ ca nhưng spa_staff_level đang để trống (NULL/False).
-        # Vì ta cho phép NULL/False tham gia luân ca, cần đẩy chúng ra khỏi khung giờ test.
+        # Test DB có thể có NV có ca nhưng chưa gắn cấp. Với sản phẩm *không* bắt cấp họ vẫn vào luân ca;
+        # cần đẩy họ ra khỏi khung giờ test tránh nhiễu (trừ test có gắn cấp rõ ràng).
         other_null_level_shift_staff = cls.env["res.users"].search([
             ("share", "=", False),
-            ("spa_staff_level", "=", False),
+            ("spa_staff_level_id", "=", False),
             ("spa_shift_start_hour", "!=", False),
             ("spa_shift_duration_hours", "!=", False),
         ])
@@ -69,19 +70,23 @@ class TestBookingCalendar(TransactionCase):
             u.spa_shift_duration_hours = 10.0
         # Product service (simple) - tạo qua template
         def make_service(name, sessions=1, duration=60, capacity=100, level=False):
-            tmpl = cls.env["product.template"].create({
+            vals = {
                 "name": name,
                 "detailed_type": "service",
                 "list_price": 100,
                 "spa_sessions_per_unit": sessions,
                 "spa_duration_minutes": duration,
                 "spa_staff_capacity_percent": capacity,
-                "spa_required_staff_level": level,
-            })
+            }
+            if level:
+                lvl = cls.env["spa.staff.level"].search([("level_group", "=", level)], limit=1)
+                if lvl:
+                    vals["spa_required_staff_level_id"] = lvl.id
+            tmpl = cls.env["product.template"].create(vals)
             return tmpl.product_variant_id
 
         cls.product_svc = make_service("Service 60min", sessions=5, duration=60, capacity=100, level=False)
-        cls.product_20 = make_service("Service 20%", sessions=1, duration=30, capacity=20, level="regular")
+        cls.product_20 = make_service("Service 20%", sessions=1, duration=30, capacity=20, level="spec_b")
         cls.product_90 = make_service("Service 90%", sessions=1, duration=60, capacity=90, level="expert")
         # Services only consuming 20% / 30% of staff capacity (expert-only for deterministic tests)
         cls.product_20_expert = make_service(
@@ -420,8 +425,8 @@ class TestBookingCalendar(TransactionCase):
         self.assertNotIn(self.user_shift9.id, avail_ids)
         self.assertNotIn(self.user_shift10.id, avail_ids)
 
-    def test_regular_service_excludes_expert(self):
-        """Dịch vụ cấp độ 'nhân viên' chỉ gợi ý NV (regular), không gợi ý chuyên gia (expert)."""
+    def test_spec_b_service_allows_expert(self):
+        """Dịch vụ yêu cầu cấp B: cho phép cả cấp cao hơn (A/senior/expert)."""
         booking_model = self.env["spa.service.booking"]
 
         # Slot nằm trong khung ca start_hour=8, duration_hours=10
@@ -429,22 +434,22 @@ class TestBookingCalendar(TransactionCase):
         start = start.replace(hour=9, minute=0, second=0, microsecond=0)
         end = start + timedelta(minutes=30)
 
-        regular_staff = self.env["res.users"].create({
-            "name": "Regular Suggestion",
-            "login": "regular_suggestion_booking_test",
-            "spa_staff_level": "regular",
+        staff_b = self.env["res.users"].create({
+            "name": "Spec B Suggestion",
+            "login": "spec_b_suggestion_booking_test",
+            "spa_staff_level_id": self.env["spa.staff.level"].search([("level_group", "=", "spec_b")], limit=1).id,
             "spa_staff_sequence": 1,
         })
         expert_staff = self.env["res.users"].create({
             "name": "Expert Should Not Appear",
             "login": "expert_should_not_appear_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": self.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_staff_sequence": 2,
         })
         self._ensure_shift_lines(
             start,
             [
-                ([regular_staff.id], 8.0, 10.0),
+                ([staff_b.id], 8.0, 10.0),
                 ([expert_staff.id], 8.0, 10.0),
             ],
         )
@@ -452,8 +457,8 @@ class TestBookingCalendar(TransactionCase):
         avail_ids = set(booking_model.get_available_staff_ids(
             self.product_20.id, start, end
         ).ids)
-        self.assertIn(regular_staff.id, avail_ids)
-        self.assertNotIn(expert_staff.id, avail_ids)
+        self.assertIn(staff_b.id, avail_ids)
+        self.assertIn(expert_staff.id, avail_ids)
 
         ordered_ids = booking_model._spa_rotation_ordered_staff_ids_by_history(
             product_id=self.product_20.id,
@@ -462,32 +467,174 @@ class TestBookingCalendar(TransactionCase):
             booking_id=False,
         )
         self.assertTrue(ordered_ids)
-        self.assertEqual(ordered_ids[0], regular_staff.id)
+        self.assertEqual(ordered_ids[0], staff_b.id)
+
+    def test_is_doctor_route_for_menu_filter(self):
+        """Menu Bác sĩ / Chuyên viên: dịch vụ bác sĩ hoặc NV bác sĩ => is_doctor_route."""
+        Level = self.env["spa.staff.level"]
+        doc = Level.search([("level_group", "=", "doctor")], limit=1)
+        sen = Level.search([("level_group", "=", "senior")], limit=1)
+        if not doc or not sen:
+            self.skipTest("Thiếu spa.staff.level doctor/senior.")
+        tmpl_doc = self.env["product.template"].create(
+            {
+                "name": "Svc Doctor route test",
+                "detailed_type": "service",
+                "list_price": 1,
+                "spa_required_staff_level_id": doc.id,
+            }
+        )
+        tmpl_sen = self.env["product.template"].create(
+            {
+                "name": "Svc Senior route test",
+                "detailed_type": "service",
+                "list_price": 1,
+                "spa_required_staff_level_id": sen.id,
+            }
+        )
+        p_doc = tmpl_doc.product_variant_id
+        p_sen = tmpl_sen.product_variant_id
+        u_doc = self.env["res.users"].create(
+            {
+                "name": "User Doc",
+                "login": "user_doc_route_test",
+                "spa_staff_level_id": doc.id,
+            }
+        )
+        u_sen = self.env["res.users"].create(
+            {
+                "name": "User Sen",
+                "login": "user_sen_route_test",
+                "spa_staff_level_id": sen.id,
+            }
+        )
+        c1 = self.env["spa.treatment.card"].create(
+            {
+                "name": "CR doc",
+                "partner_id": self.partner.id,
+                "product_id": p_sen.id,
+                "total_sessions": 1,
+                "duration_minutes": 30,
+            }
+        )
+        b1 = self.env["spa.service.booking"].create(
+            {
+                "partner_id": self.partner.id,
+                "card_id": c1.id,
+                "product_id": p_sen.id,
+                "staff_ids": [(6, 0, [u_doc.id])],
+            }
+        )
+        self.assertTrue(b1.is_doctor_route, "NV bác sĩ gán lịch chuyên viên => tuyến bác sĩ")
+        c2 = self.env["spa.treatment.card"].create(
+            {
+                "name": "CR doc prod",
+                "partner_id": self.partner.id,
+                "product_id": p_doc.id,
+                "total_sessions": 1,
+                "duration_minutes": 30,
+            }
+        )
+        b2 = self.env["spa.service.booking"].create(
+            {
+                "partner_id": self.partner.id,
+                "card_id": c2.id,
+                "product_id": p_doc.id,
+                "staff_ids": [(6, 0, [u_sen.id])],
+            }
+        )
+        self.assertTrue(
+            b2.is_doctor_route, "Dịch vụ yêu cầu bác sĩ dù gán NV chuyên => tuyến bác sĩ"
+        )
+        c3 = self.env["spa.treatment.card"].create(
+            {
+                "name": "CR spec only",
+                "partner_id": self.partner.id,
+                "product_id": p_sen.id,
+                "total_sessions": 1,
+                "duration_minutes": 30,
+            }
+        )
+        b3 = self.env["spa.service.booking"].create(
+            {
+                "partner_id": self.partner.id,
+                "card_id": c3.id,
+                "product_id": p_sen.id,
+                "staff_ids": [(6, 0, [u_sen.id])],
+            }
+        )
+        self.assertFalse(
+            b3.is_doctor_route, "Chuyên + NV chuyên, không tuyến bác sĩ"
+        )
+
+    def test_unassigned_staff_excluded_when_product_requires_senior(self):
+        """Sản phẩm bắt cấp: NV chưa gắn spa_staff_level_id không nằm luân ca / gợi ý."""
+        Level = self.env["spa.staff.level"]
+        senior = Level.search([("level_group", "=", "senior")], limit=1)
+        if not senior:
+            self.skipTest("Thiếu bản ghi spa.staff.level (senior).")
+        tmpl = self.env["product.template"].create(
+            {
+                "name": "Product Senior Only Test",
+                "detailed_type": "service",
+                "list_price": 1,
+                "spa_required_staff_level_id": senior.id,
+            }
+        )
+        product = tmpl.product_variant_id
+        no_level = self.env["res.users"].create(
+            {
+                "name": "No Level Staff",
+                "login": "no_level_senior_test",
+                "spa_staff_sequence": 1,
+            }
+        )
+        has_senior = self.env["res.users"].create(
+            {
+                "name": "Has Senior",
+                "login": "has_senior_suggestion_test",
+                "spa_staff_level_id": senior.id,
+                "spa_staff_sequence": 2,
+            }
+        )
+        start = datetime.now() + timedelta(days=80)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        end = start + timedelta(minutes=30)
+        self._ensure_shift_lines(
+            start,
+            [([no_level.id, has_senior.id], 8.0, 10.0)],
+        )
+        Bk = self.env["spa.service.booking"]
+        avail = Bk.get_available_staff_ids(
+            product.id, start, end, booking_id=None
+        )
+        self.assertIn(has_senior.id, avail.ids)
+        self.assertNotIn(no_level.id, avail.ids)
 
     def test_suggested_staff_rotation_by_history_next_after_busy(self):
         """Gợi ý: NV đã có nhiều lịch hơn trong ngày không đứng đầu (ưu tiên ít lịch trước)."""
         staff_a = self.env["res.users"].create({
             "name": "Hist Staff A",
             "login": "hist_staff_a_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": self.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_staff_sequence": 1,
         })
         staff_b = self.env["res.users"].create({
             "name": "Hist Staff B",
             "login": "hist_staff_b_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": self.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_staff_sequence": 2,
         })
         staff_c = self.env["res.users"].create({
             "name": "Hist Staff C",
             "login": "hist_staff_c_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": self.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_staff_sequence": 3,
         })
         staff_d = self.env["res.users"].create({
             "name": "Hist Staff D",
             "login": "hist_staff_d_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": self.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_staff_sequence": 4,
         })
 
@@ -560,19 +707,19 @@ class TestBookingCalendar(TransactionCase):
         a = self.env["res.users"].create({
             "name": "Rot A",
             "login": "rot_a_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": self.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_staff_sequence": 1,
         })
         b = self.env["res.users"].create({
             "name": "Rot B",
             "login": "rot_b_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": self.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_staff_sequence": 2,
         })
         c = self.env["res.users"].create({
             "name": "Rot C",
             "login": "rot_c_booking_test",
-            "spa_staff_level": "expert",
+            "spa_staff_level_id": self.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1).id,
             "spa_staff_sequence": 3,
         })
         day = datetime.now() + timedelta(days=55)
@@ -698,6 +845,529 @@ class TestBookingCalendar(TransactionCase):
         ])
         self.assertTrue(parent.is_composite_service)
         self.assertEqual(len(parent.spa_sub_service_ids), 2)
+
+    def test_product_sub_service_default_duration_from_child(self):
+        """Nếu không nhập duration_minutes thì lấy mặc định từ dịch vụ con."""
+        parent_tmpl = self.env["product.template"].create({
+            "name": "Composite Service Default Duration",
+            "detailed_type": "service",
+            "list_price": 200,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 90,
+        })
+        child_tmpl = self.env["product.template"].create({
+            "name": "Child Service 45",
+            "detailed_type": "service",
+            "list_price": 100,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 45,
+        })
+        line = self.env["spa.product.sub.service"].create({
+            "product_tmpl_id": parent_tmpl.id,
+            "sub_product_tmpl_id": child_tmpl.id,
+            "sequence": 1,
+        })
+        self.assertEqual(line.duration_minutes, 45)
+
+    def test_booking_modal_onchange_creates_lines_for_bundled_service(self):
+        """Chọn thẻ bán dịch vụ gộp (A) thì form tự sinh booking_line_ids để chọn NV từng bước."""
+        parent_tmpl = self.env["product.template"].create({
+            "name": "Gói Onchange Lines",
+            "detailed_type": "service",
+            "list_price": 200,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 90,
+        })
+        child1_tmpl = self.env["product.template"].create({
+            "name": "Child 1 - 25",
+            "detailed_type": "service",
+            "list_price": 50,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 25,
+        })
+        child2_tmpl = self.env["product.template"].create({
+            "name": "Child 2 - 35",
+            "detailed_type": "service",
+            "list_price": 50,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 35,
+        })
+        self.env["spa.product.sub.service"].create([
+            {"product_tmpl_id": parent_tmpl.id, "sub_product_tmpl_id": child1_tmpl.id, "sequence": 1},
+            {"product_tmpl_id": parent_tmpl.id, "sub_product_tmpl_id": child2_tmpl.id, "sequence": 2},
+        ])
+        card = self.env["spa.treatment.card"].create({
+            "name": "Card onchange lines",
+            "partner_id": self.partner.id,
+            "product_id": parent_tmpl.product_variant_id.id,
+            "total_sessions": 10,
+            "duration_minutes": 90,
+        })
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=30, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id, self.user_b.id], 8.0, 10.0)])
+
+        f = Form(self.env["spa.service.booking"])
+        f.partner_id = self.partner
+        f.booking_kind = "card"
+        f.start_datetime = start
+        f.duration = 90
+        f.card_id = card
+        booking = f.save()
+        self.assertTrue(booking.booking_line_ids)
+        self.assertEqual(len(booking.booking_line_ids), 2)
+        self.assertEqual(booking.booking_line_ids[0].duration_minutes, 25)
+        self.assertEqual(booking.booking_line_ids[1].duration_minutes, 35)
+
+    def test_composite_booking_shift_lines_when_start_changes(self):
+        """Đổi start_datetime của booking gộp phải dời start của các bước theo cùng offset."""
+        parent_tmpl = self.env["product.template"].create({
+            "name": "Gói Shift Lines",
+            "detailed_type": "service",
+            "list_price": 200,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 90,
+        })
+        child1_tmpl = self.env["product.template"].create({
+            "name": "Child 1 - 30",
+            "detailed_type": "service",
+            "list_price": 50,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 30,
+        })
+        child2_tmpl = self.env["product.template"].create({
+            "name": "Child 2 - 60",
+            "detailed_type": "service",
+            "list_price": 50,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 60,
+        })
+        self.env["spa.product.sub.service"].create([
+            {"product_tmpl_id": parent_tmpl.id, "sub_product_tmpl_id": child1_tmpl.id, "sequence": 1},
+            {"product_tmpl_id": parent_tmpl.id, "sub_product_tmpl_id": child2_tmpl.id, "sequence": 2},
+        ])
+        card = self.env["spa.treatment.card"].create({
+            "name": "Card shift lines",
+            "partner_id": self.partner.id,
+            "product_id": parent_tmpl.product_variant_id.id,
+            "total_sessions": 10,
+            "duration_minutes": 90,
+        })
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        f = Form(self.env["spa.service.booking"])
+        f.partner_id = self.partner
+        f.booking_kind = "card"
+        f.card_id = card
+        f.start_datetime = start
+        f.duration = 90
+        b = f.save()
+        self.assertEqual(len(b.booking_line_ids), 2)
+        l1, l2 = b.booking_line_ids.sorted(lambda l: (l.sequence, l.id))
+        self.assertEqual(l1.start_datetime, start)
+        self.assertEqual(l2.start_datetime, start + timedelta(minutes=30))
+        # Shift start by +60 minutes
+        b_form = Form(self.env["spa.service.booking"].browse(b.id))
+        b_form.start_datetime = start + timedelta(minutes=60)
+        b2 = b_form.save()
+        l1n, l2n = b2.booking_line_ids.sorted(lambda l: (l.sequence, l.id))
+        self.assertEqual(l1n.start_datetime, start + timedelta(minutes=60))
+        self.assertEqual(l2n.start_datetime, start + timedelta(minutes=90))
+
+    def test_composite_booking_write_shifts_lines(self):
+        """Đổi start_datetime bằng write (server-side) phải rebase start của các bước theo booking.start."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 120,
+            "booking_line_ids": [
+                (0, 0, {"product_id": self.product_svc.id, "start_datetime": start + timedelta(minutes=15), "duration_minutes": 60}),
+                (0, 0, {"product_id": self.product_svc.id, "start_datetime": start + timedelta(minutes=75), "duration_minutes": 45}),
+            ],
+        })
+        self.assertTrue(booking.is_composite_booking)
+        booking.write({"start_datetime": start + timedelta(minutes=30)})
+        lines = booking.booking_line_ids.sorted(lambda l: (l.start_datetime, l.id))
+        self.assertEqual(lines[0].start_datetime, start + timedelta(minutes=30))
+        self.assertEqual(lines[1].start_datetime, start + timedelta(minutes=90))
+
+    def test_composite_booking_duration_equals_sum_of_lines(self):
+        """Dịch vụ gộp: duration phải bằng tổng duration_minutes của các bước và tự sync khi đổi line."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 60,
+            "booking_line_ids": [
+                (0, 0, {"product_id": self.product_svc.id, "start_datetime": start, "duration_minutes": 120}),
+                (0, 0, {"product_id": self.product_svc.id, "start_datetime": start + timedelta(minutes=120), "duration_minutes": 60}),
+                (0, 0, {"product_id": self.product_svc.id, "start_datetime": start + timedelta(minutes=180), "duration_minutes": 60}),
+            ],
+        })
+        self.assertTrue(booking.is_composite_booking)
+        self.assertEqual(booking.duration, 240)
+        # đổi duration line -> booking.duration cũng đổi theo
+        booking.booking_line_ids[0].write({"duration_minutes": 90})
+        self.assertEqual(booking.duration, 210)
+
+    def test_composite_booking_ignores_parent_staff_ids_for_shift_check(self):
+        """Dịch vụ gộp: không validate ca làm theo staff_ids của booking cha; chỉ theo lines."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        end = start + timedelta(minutes=60)
+        # Only user_b is in shift config; user_a is not.
+        self._ensure_shift_lines(start, [([self.user_b.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "booking_line_ids": [
+                (0, 0, {"product_id": self.product_svc.id, "staff_id": self.user_b.id, "start_datetime": start, "duration_minutes": 60}),
+            ],
+        })
+        # Force constraint evaluation
+        booking.flush_recordset()
+
+    def test_action_generate_bundle_steps_creates_lines_when_missing(self):
+        """Booking đã lưu (cũ) nếu chưa có lines vẫn có thể tạo đủ bước theo cấu hình gói."""
+        parent_tmpl = self.env["product.template"].create({
+            "name": "Gói Action Generate",
+            "detailed_type": "service",
+            "list_price": 200,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 90,
+        })
+        child1_tmpl = self.env["product.template"].create({
+            "name": "Child 1 - 10",
+            "detailed_type": "service",
+            "list_price": 50,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 10,
+        })
+        child2_tmpl = self.env["product.template"].create({
+            "name": "Child 2 - 20",
+            "detailed_type": "service",
+            "list_price": 50,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 20,
+        })
+        self.env["spa.product.sub.service"].create([
+            {"product_tmpl_id": parent_tmpl.id, "sub_product_tmpl_id": child1_tmpl.id, "sequence": 1},
+            {"product_tmpl_id": parent_tmpl.id, "sub_product_tmpl_id": child2_tmpl.id, "sequence": 2},
+        ])
+        card = self.env["spa.treatment.card"].create({
+            "name": "Card action gen",
+            "partner_id": self.partner.id,
+            "product_id": parent_tmpl.product_variant_id.id,
+            "total_sessions": 10,
+            "duration_minutes": 90,
+        })
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": card.id,
+            "start_datetime": start,
+            "duration": 90,
+        })
+        self.assertFalse(booking.booking_line_ids)
+        booking.action_generate_bundle_steps()
+        self.assertEqual(len(booking.booking_line_ids), 2)
+
+    def test_booking_line_suggested_staff_html_renders(self):
+        """Bước dịch vụ con có thể render gợi ý nhân viên theo luân ca."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        end = start + timedelta(minutes=30)
+        self._ensure_shift_lines(start, [([self.user_shift9.id, self.user_shift10.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 30,
+        })
+        line = self.env["spa.service.booking.line"].create({
+            "booking_id": booking.id,
+            "product_id": self.product_20_expert.id,
+            "start_datetime": start,
+            "duration_minutes": 30,
+        })
+        line._compute_suggested_staff_html()
+        self.assertTrue(line.suggested_staff_html)
+
+    def test_booking_line_suggested_staff_works_without_end_datetime_in_memory(self):
+        """Form in-memory có thể chưa có end_datetime; vẫn phải gợi ý theo start + duration."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_shift9.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 30,
+        })
+        line = self.env["spa.service.booking.line"].new({
+            "booking_id": booking.id,
+            "product_id": self.product_20_expert.id,
+            "start_datetime": start,
+            "duration_minutes": 30,
+        })
+        line.end_datetime = False
+        line._compute_suggested_staff_html()
+        self.assertTrue(line.suggested_staff_html)
+
+    def test_composite_line_suggestion_deprioritizes_already_assigned_staff(self):
+        """Dịch vụ gộp: nếu NV đã chọn ở bước trước thì bước sau không gợi ý NV đó ở vị trí đầu."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        # Both staffs available in shift window
+        self._ensure_shift_lines(start, [([self.user_shift9.id, self.user_shift10.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 90,
+            "booking_line_ids": [
+                (0, 0, {"product_id": self.product_20_expert.id, "staff_id": self.user_shift9.id, "start_datetime": start, "duration_minutes": 30}),
+                (0, 0, {"product_id": self.product_20_expert.id, "staff_id": self.user_shift9.id, "start_datetime": start + timedelta(minutes=30), "duration_minutes": 30}),
+                (0, 0, {"product_id": self.product_20_expert.id, "staff_id": False, "start_datetime": start + timedelta(minutes=60), "duration_minutes": 30}),
+            ],
+        })
+        line3 = booking.booking_line_ids.sorted(lambda l: (l.sequence, l.id))[-1]
+        line3._compute_suggested_staff_html()
+        html = (line3.suggested_staff_html or "")
+        # active item is the first suggestion
+        self.assertIn('class="list-group-item active"', html)
+        self.assertNotIn(self.user_shift9.name, html.split('class="list-group-item active"')[1].split("</li>")[0])
+
+    def test_composite_display_staff_ids_from_lines(self):
+        """Dịch vụ gộp: trường hiển thị nhân viên lấy từ booking_line_ids.staff_id."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id, self.user_b.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 60,
+            "booking_line_ids": [
+                (0, 0, {"product_id": self.product_svc.id, "staff_id": self.user_a.id, "start_datetime": start, "duration_minutes": 30}),
+                (0, 0, {"product_id": self.product_svc.id, "staff_id": self.user_b.id, "start_datetime": start + timedelta(minutes=30), "duration_minutes": 30}),
+            ],
+        })
+        self.assertEqual(set(booking.display_composite_staff_ids.ids), {self.user_a.id, self.user_b.id})
+
+    def test_booking_line_syncs_booking_staff_ids(self):
+        """Chọn staff_id trên line phải sync vào booking.staff_ids (many2many)."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 30,
+        })
+        self.assertFalse(booking.staff_ids)
+        line = self.env["spa.service.booking.line"].create({
+            "booking_id": booking.id,
+            "product_id": self.product_svc.id,
+            "staff_id": self.user_a.id,
+            "start_datetime": start,
+            "duration_minutes": 30,
+        })
+        self.assertIn(self.user_a, booking.staff_ids)
+        line.write({"staff_id": self.user_b.id})
+        self.assertIn(self.user_b, booking.staff_ids)
+        self.assertNotIn(self.user_a, booking.staff_ids)
+
+    def test_composite_display_calendar_uses_bundled_card_product(self):
+        """Dịch vụ gộp: list/lịch hiển thị sản phẩm thẻ (A), không phải từng bước con."""
+        parent_tmpl = self.env["product.template"].create({
+            "name": "Gói Test Bundle Display",
+            "detailed_type": "service",
+            "list_price": 200,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 90,
+        })
+        child1 = self.product_20.product_tmpl_id
+        child2 = self.product_90.product_tmpl_id
+        self.env["spa.product.sub.service"].create([
+            {"product_tmpl_id": parent_tmpl.id, "sub_product_tmpl_id": child1.id, "sequence": 1, "duration_minutes": 30},
+            {"product_tmpl_id": parent_tmpl.id, "sub_product_tmpl_id": child2.id, "sequence": 2, "duration_minutes": 60},
+        ])
+        bundle_variant = parent_tmpl.product_variant_id
+        card = self.env["spa.treatment.card"].create({
+            "name": "Card bundle display",
+            "partner_id": self.partner.id,
+            "product_id": bundle_variant.id,
+            "total_sessions": 10,
+            "duration_minutes": 90,
+        })
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        t1 = start
+        t2 = start + timedelta(minutes=30)
+        self._ensure_shift_lines(start, [([self.user_a.id, self.user_b.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": card.id,
+            "product_id": self.product_20.id,
+            "start_datetime": t1,
+            "duration": 90,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+            "booking_line_ids": [
+                (0, 0, {
+                    "product_id": self.product_20.id,
+                    "staff_id": self.user_a.id,
+                    "start_datetime": t1,
+                    "duration_minutes": 30,
+                }),
+                (0, 0, {
+                    "product_id": self.product_90.id,
+                    "staff_id": self.user_b.id,
+                    "start_datetime": t2,
+                    "duration_minutes": 60,
+                }),
+            ],
+        })
+        self.assertTrue(booking.is_composite_booking)
+        self.assertTrue(booking.card_id.product_id.product_tmpl_id.is_composite_service)
+        self.assertEqual(booking.display_calendar_service_id, bundle_variant)
+        self.assertNotEqual(
+            booking.display_calendar_service_id,
+            self.product_20,
+            "Phải hiển thị sản phẩm thẻ (gói), không phải sản phẩm từng bước con.",
+        )
+
+    def test_composite_calendar_event_title_uses_bundle_name_not_child(self):
+        """Tiêu đề ô lịch dùng tên sản phẩm thẻ gói, không tên từng bước (X, Y, Z)."""
+        parent_tmpl = self.env["product.template"].create({
+            "name": "Gói Calendar Title",
+            "detailed_type": "service",
+            "list_price": 200,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 90,
+        })
+        self.env["spa.product.sub.service"].create([
+            {
+                "product_tmpl_id": parent_tmpl.id,
+                "sub_product_tmpl_id": self.product_20.product_tmpl_id.id,
+                "sequence": 1,
+                "duration_minutes": 30,
+            },
+            {
+                "product_tmpl_id": parent_tmpl.id,
+                "sub_product_tmpl_id": self.product_90.product_tmpl_id.id,
+                "sequence": 2,
+                "duration_minutes": 60,
+            },
+        ])
+        card = self.env["spa.treatment.card"].create({
+            "name": "CT bundle title",
+            "partner_id": self.partner.id,
+            "product_id": parent_tmpl.product_variant_id.id,
+            "total_sessions": 5,
+            "duration_minutes": 90,
+        })
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=11, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id, self.user_b.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": card.id,
+            "start_datetime": start,
+            "duration": 90,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+            "booking_line_ids": [
+                (0, 0, {
+                    "product_id": self.product_20.id,
+                    "staff_id": self.user_a.id,
+                    "start_datetime": start,
+                    "duration_minutes": 30,
+                }),
+                (0, 0, {
+                    "product_id": self.product_90.id,
+                    "staff_id": self.user_b.id,
+                    "start_datetime": start + timedelta(minutes=30),
+                    "duration_minutes": 60,
+                }),
+            ],
+        })
+        child_a_name = self.product_20.name
+        child_b_name = self.product_90.name
+        booking._compute_calendar_event_title()
+        title = booking.calendar_event_title
+        self.assertIn("Gói Calendar Title", title)
+        if child_a_name and child_b_name and child_a_name not in (child_b_name,):
+            self.assertNotIn(
+                child_a_name,
+                title,
+                "Tên từng bước dịch vụ con không lên tiêu đề lịch (chỉ tên dịch vụ gói trên thẻ).",
+            )
+            self.assertNotIn(
+                child_b_name,
+                title,
+                "Tên từng bước dịch vụ con không lên tiêu đề lịch (chỉ tên dịch vụ gói trên thẻ).",
+            )
+
+    def test_composite_calendar_event_title_includes_all_step_staff_nicknames(self):
+        """Dịch vụ gộp: tiêu đề lịch hiển thị nickname của toàn bộ NV theo thứ tự các bước."""
+        # Ensure nicknames
+        self.user_a.spa_staff_nickname = "A"
+        self.user_b.spa_staff_nickname = "B"
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 60,
+            "booking_line_ids": [
+                (0, 0, {"product_id": self.product_svc.id, "staff_id": self.user_a.id, "start_datetime": start, "duration_minutes": 30}),
+                (0, 0, {"product_id": self.product_svc.id, "staff_id": self.user_b.id, "start_datetime": start + timedelta(minutes=30), "duration_minutes": 30}),
+            ],
+        })
+        booking._compute_calendar_event_title()
+        title = booking.calendar_event_title
+        self.assertIn("(A/B)", title)
+
+    def test_non_composite_display_matches_effective_product(self):
+        """Lịch đơn: display_calendar_service_id trùng sản phẩm hiệu dụng (thẻ)."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+        })
+        self.assertFalse(booking.is_composite_booking)
+        self.assertEqual(booking.display_calendar_service_id, self.product_svc)
+        self.assertEqual(
+            booking.display_calendar_service_id,
+            booking._spa_effective_service_product(),
+        )
+
+    def test_list_view_uses_display_calendar_service_column(self):
+        view = self.env.ref("booking_calendar.view_spa_service_booking_tree")
+        self.assertIn("display_calendar_service_id", view.arch_db)
+        view_search = self.env.ref("booking_calendar.view_spa_service_booking_search")
+        self.assertIn("display_calendar_service_id", view_search.arch_db)
+        form = self.env.ref("booking_calendar.view_spa_service_booking_form")
+        self.assertIn("display_calendar_service_id", form.arch_db)
 
     def test_non_session_booking_action_done(self):
         """Hình thức không trừ buổi: Hoàn thành tạo session không gắn thẻ."""
@@ -882,13 +1552,14 @@ class TestBookingCalendar(TransactionCase):
     def test_draft_special_color_expert_only(self):
         ICP = self.env["ir.config_parameter"].sudo()
         ICP.set_param("spa.booking_calendar_hex_color_draft_expert_only", "#8E24AC")
+        ex_lvl = self.env["spa.staff.level"].search([("level_group", "=", "expert")], limit=1)
         expert = self.env["product.template"].create({
             "name": "Expert svc",
             "detailed_type": "service",
             "list_price": 100,
             "spa_sessions_per_unit": 1,
             "spa_duration_minutes": 60,
-            "spa_required_staff_level": "expert",
+            "spa_required_staff_level_id": ex_lvl.id if ex_lvl else False,
         }).product_variant_id
         start = datetime.now() + timedelta(days=1)
         start = start.replace(hour=10, minute=0, second=0, microsecond=0)

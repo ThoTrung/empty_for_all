@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_spa_service_booking_line_form" model="ir.ui.view">
+            <field name="name">spa.service.booking.line.form</field>
+            <field name="model">spa.service.booking.line</field>
+            <field name="arch" type="xml">
+                <form string="Bước dịch vụ">
+                    <sheet>
+                        <group>
+                            <field name="booking_id" invisible="1"/>
+                            <field name="product_id" readonly="1"/>
+                            <field name="start_datetime"/>
+                            <field name="duration_minutes"/>
+                            <field name="end_datetime" readonly="1"/>
+                            <field name="staff_id" domain="[('share', '=', False)]"/>
+                            <field name="suggested_staff_html"
+                                   readonly="1"
+                                   class="o_spa_suggested_staff_field"/>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button string="Lưu &amp; Đóng" special="save" class="btn-primary"/>
+                        <button string="Đóng" special="cancel" class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -104,6 +104,13 @@ class SpaServiceBooking(models.Model):
         tracking=True,
         help="Nhiều nhân viên có thể cùng thực hiện dịch vụ. Khi chỉ có 1 người, hệ thống vẫn tương thích với staff_id cũ.",
     )
+    display_composite_staff_ids = fields.Many2many(
+        "res.users",
+        string="Nhân viên thực hiện (từ dịch vụ con)",
+        compute="_compute_display_composite_staff_ids",
+        store=False,
+        help="Chỉ dùng hiển thị: với dịch vụ gộp, lấy danh sách nhân viên từ các bước dịch vụ con.",
+    )
 
     suggested_staff_html = fields.Html(
         string="Nhân viên gợi ý (luân ca)",
@@ -113,13 +120,25 @@ class SpaServiceBooking(models.Model):
     )
     staff_level_filter = fields.Selection(
         selection=[
-            ("regular", "Nhân viên"),
+            ("regular", "Nhân viên (cũ)"),
+            ("spec_b", "Chuyên viên cấp B"),
+            ("spec_a", "Chuyên viên cấp A"),
+            ("senior", "Chuyên viên cao cấp"),
             ("expert", "Chuyên gia"),
+            ("doctor", "Bác sĩ"),
         ],
         string="Cấp độ nhân viên",
         compute="_compute_staff_level_filter",
         store=False,
-        help="Giá trị phục vụ bộ lọc checkbox trên calendar (Nhân viên / Chuyên gia).",
+        help="Giá trị phục vụ bộ lọc checkbox trên calendar (theo cấp độ nhân viên).",
+    )
+    is_doctor_route = fields.Boolean(
+        string="Lịch tuyến bác sĩ",
+        compute="_compute_is_doctor_route",
+        store=True,
+        index=True,
+        help="True nếu dịch vụ (sản phẩm) yêu cầu cấp bác sĩ hoặc gán NV bác sĩ. "
+        "Dùng bộ lọc menu Đặt lịch (Bác sĩ) / (Chuyên viên/Chuyên gia) — cần lưu trữ, không dùng domain trên trường tính không lưu.",
     )
     # Màu trên calendar: theo trạng thái (HEX cấu hình trong Cấu hình Spa)
     state_calendar_hex_color = fields.Char(
@@ -242,8 +261,13 @@ class SpaServiceBooking(models.Model):
     @api.depends(
         "booking_kind",
         "product_id",
+        "product_id.spa_required_staff_level_id",
         "card_id",
+        "card_id.product_id",
+        "card_id.product_id.spa_required_staff_level_id",
         "non_session_offering_id",
+        "non_session_offering_id.product_id",
+        "non_session_offering_id.product_id.spa_required_staff_level_id",
         "start_datetime",
         "end_datetime",
         "duration",
@@ -370,6 +394,10 @@ class SpaServiceBooking(models.Model):
         "booking_line_ids.product_id",
         "booking_line_ids.product_id.default_code",
         "booking_line_ids.product_id.name",
+        "is_composite_booking",
+        "card_id.product_id",
+        "card_id.product_id.product_tmpl_id",
+        "card_id.product_id.product_tmpl_id.is_composite_service",
     )
     def _compute_calendar_event_title(self):
         for rec in self:
@@ -380,12 +408,27 @@ class SpaServiceBooking(models.Model):
                     return f"{code} - {name}"
                 return code or name or ""
 
-            # Nickname staff (first staff for compact display)
+            # Nickname staff:
+            # - booking thường: lấy 1 người đầu để gọn
+            # - booking gộp: hiển thị nickname của tất cả NV theo thứ tự các bước
             nick = ""
-            staff_users = rec.staff_ids
-            if staff_users and isinstance(staff_users, models.BaseModel):
-                staff0 = staff_users[:1]
-                nick = (staff0.spa_staff_nickname or staff0.name or "").strip()
+            if rec.booking_line_ids:
+                nicks = []
+                seen = set()
+                for line in rec.booking_line_ids.sorted(lambda l: (l.sequence, l.id)):
+                    u = line.staff_id
+                    if not u or u.id in seen:
+                        continue
+                    seen.add(u.id)
+                    label = (u.spa_staff_nickname or u.name or "").strip()
+                    if label:
+                        nicks.append(label)
+                nick = "/".join(nicks)
+            else:
+                staff_users = rec.staff_ids
+                if staff_users and isinstance(staff_users, models.BaseModel):
+                    staff0 = staff_users[:1]
+                    nick = (staff0.spa_staff_nickname or staff0.name or "").strip()
 
             # Customer: Name (phone)
             cust = ""
@@ -403,7 +446,7 @@ class SpaServiceBooking(models.Model):
             # - Fallback: lấy từ `product_id` nếu thiếu cả 2 trường trên
             if rec.card_id:
                 card = rec.card_id
-                card_product = card.product_id if card else rec.product_id
+                card_product = rec._get_display_calendar_service_product()
                 service_code = (card.code if card else "") or (
                     card_product.default_code if card_product else ""
                 )
@@ -426,7 +469,9 @@ class SpaServiceBooking(models.Model):
                 )
                 service_line = _join_code_name(service_code, service_name)
             else:
-                p = rec.product_id
+                p = rec._get_display_calendar_service_product()
+                if not p:
+                    p = rec.product_id
                 service_code = p.default_code if p else ""
                 service_name = p.name or p.display_name if p else ""
                 service_line = _join_code_name(service_code, service_name)
@@ -442,23 +487,163 @@ class SpaServiceBooking(models.Model):
                 parts.append(service_line)
             rec.calendar_event_title = " ".join([p for p in parts if p])
 
-    @api.depends("staff_ids", "staff_ids.spa_staff_level")
-    def _compute_staff_level_filter(self):
-        """Trả về 1 giá trị để Odoo Calendar có thể render checkbox lọc."""
+    def _spa_effective_service_product(self):
+        """product.product từ thẻ / buổi / product_id theo cùng quy tắc form (gợi ý NV, v.v.)."""
+        self.ensure_one()
+        if self.booking_kind == "card" and self.card_id and self.card_id.product_id:
+            return self.card_id.product_id
+        if self.booking_kind == "non_session" and self.non_session_offering_id and self.non_session_offering_id.product_id:
+            return self.non_session_offering_id.product_id
+        return self.product_id
+
+    @api.depends("booking_line_ids.staff_id")
+    def _compute_display_composite_staff_ids(self):
         for rec in self:
+            staffs = rec.booking_line_ids.mapped("staff_id")
+            rec.display_composite_staff_ids = staffs
+
+    def _sync_duration_from_lines(self):
+        """Dịch vụ gộp: duration (phút) = tổng duration_minutes của các bước."""
+        for rec in self:
+            if not rec.booking_line_ids:
+                continue
+            total = 0
+            for line in rec.booking_line_ids:
+                dm = int(line.duration_minutes or 0)
+                dm = max(1, dm) if dm else 60
+                total += dm
+            # Avoid recursion with write() duration sync
+            if rec.duration != total:
+                rec.with_context(skip_composite_duration_sync=True).write({"duration": total})
+
+    def _sync_staff_ids_from_lines(self):
+        """Dịch vụ gộp: staff_ids luôn = union của booking_line_ids.staff_id."""
+        for rec in self:
+            if not rec.booking_line_ids:
+                continue
+            staff_ids = rec.booking_line_ids.mapped("staff_id").ids
+            rec.staff_ids = [(6, 0, staff_ids)]
+
+    def _get_display_calendar_service_product(self):
+        """Dùng cho tên dịch vụ trên lịch, list, nhắc: dịch vụ gộp + thẻ tổng hợp = sản phẩm thẻ (A)."""
+        self.ensure_one()
+        tmpl = self.card_id.product_id.product_tmpl_id if self.card_id and self.card_id.product_id else False
+        if (
+            self.is_composite_booking
+            and self.card_id
+            and self.card_id.product_id
+            and tmpl
+            and tmpl.is_composite_service
+        ):
+            return self.card_id.product_id
+        return self._spa_effective_service_product()
+
+    @api.depends(
+        "booking_kind",
+        "product_id",
+        "product_id.spa_required_staff_level_id",
+        "product_id.spa_required_staff_level_id.level_group",
+        "card_id",
+        "card_id.product_id",
+        "card_id.product_id.spa_required_staff_level_id",
+        "card_id.product_id.spa_required_staff_level_id.level_group",
+        "non_session_offering_id",
+        "non_session_offering_id.product_id",
+        "non_session_offering_id.product_id.spa_required_staff_level_id",
+        "non_session_offering_id.product_id.spa_required_staff_level_id.level_group",
+        "staff_ids",
+        "staff_ids.spa_staff_level_id",
+        "staff_ids.spa_staff_level_id.level_group",
+        "booking_line_ids",
+        "booking_line_ids.staff_id",
+        "booking_line_ids.staff_id.spa_staff_level_id",
+        "booking_line_ids.staff_id.spa_staff_level_id.level_group",
+        "booking_line_ids.product_id",
+        "booking_line_ids.product_id.spa_required_staff_level_id",
+        "booking_line_ids.product_id.spa_required_staff_level_id.level_group",
+    )
+    def _compute_is_doctor_route(self):
+        for rec in self:
+            is_doc = False
+            p = rec._spa_effective_service_product()
+            if p and p.spa_required_staff_level_id and p.spa_required_staff_level_id.level_group == "doctor":
+                is_doc = True
+            if not is_doc and rec.staff_ids:
+                for u in rec.staff_ids:
+                    s = u.spa_staff_level_id
+                    if s and s.level_group == "doctor":
+                        is_doc = True
+                        break
+            if not is_doc and rec.booking_line_ids:
+                for line in rec.booking_line_ids:
+                    s = line.staff_id.spa_staff_level_id if line.staff_id else self.env["spa.staff.level"].browse()
+                    if s and s.level_group == "doctor":
+                        is_doc = True
+                        break
+                    lp = line.product_id
+                    if (
+                        lp
+                        and lp.spa_required_staff_level_id
+                        and lp.spa_required_staff_level_id.level_group == "doctor"
+                    ):
+                        is_doc = True
+                        break
+            rec.is_doctor_route = is_doc
+
+    @api.depends(
+        "booking_kind",
+        "product_id",
+        "product_id.spa_required_staff_level_id",
+        "product_id.spa_required_staff_level_id.level_group",
+        "card_id",
+        "card_id.product_id",
+        "card_id.product_id.spa_required_staff_level_id",
+        "card_id.product_id.spa_required_staff_level_id.level_group",
+        "non_session_offering_id",
+        "non_session_offering_id.product_id",
+        "non_session_offering_id.product_id.spa_required_staff_level_id",
+        "non_session_offering_id.product_id.spa_required_staff_level_id.level_group",
+        "staff_ids",
+        "staff_ids.spa_staff_level_id",
+        "staff_ids.spa_staff_level_id.level_group",
+    )
+    def _compute_staff_level_filter(self):
+        """1 giá trị cho bộ lọc calendar; ưu sản phẩm bác sĩ, rồi bác sĩ từ NV, rồi cấp cao nhất trong NV."""
+        rank = {"regular": 1, "spec_b": 1, "spec_a": 2, "senior": 3, "expert": 4}
+        for rec in self:
+            prod = rec._spa_effective_service_product()
+            if prod and prod.spa_required_staff_level_id and prod.spa_required_staff_level_id.level_group:
+                g = prod.spa_required_staff_level_id.level_group
+                if g == "doctor":
+                    rec.staff_level_filter = "doctor"
+                    continue
             level = ""
-            # ưu tiên expert nếu có trong danh sách
             staff_users = rec.staff_ids
             if staff_users:
                 if isinstance(staff_users, models.BaseModel):
-                    levels = set(staff_users.mapped("spa_staff_level"))
-                    if "expert" in levels:
-                        level = "expert"
-                    elif "regular" in levels:
-                        level = "regular"
+                    levels = set((staff_users.mapped("spa_staff_level_id.level_group")) or [])
+                    if "doctor" in levels:
+                        level = "doctor"
+                    else:
+                        best = ""
+                        best_rank = 0
+                        for lvl in levels:
+                            if not lvl:
+                                continue
+                            # legacy: regular -> spec_b group
+                            lvr = "spec_b" if lvl == "regular" else lvl
+                            r = rank.get(lvr, 0)
+                            if r > best_rank:
+                                best_rank = r
+                                best = lvl
+                        level = best
                 else:
                     # many2one
-                    lvl = getattr(staff_users, "spa_staff_level", "") or ""
+                    lvl = (
+                        getattr(staff_users, "spa_staff_level_id", False)
+                        and staff_users.spa_staff_level_id.level_group
+                        or ""
+                    )
                     level = lvl
             rec.staff_level_filter = level
 
@@ -564,7 +749,7 @@ class SpaServiceBooking(models.Model):
           1) non_session (họp/đào tạo/mẫu)
           2) lịch cố định hàng tuần (đặt theo tuần)
           3) triệt lông (product.template.spa_booking_is_hair_removal)
-          4) dịch vụ chuyên gia (spa_required_staff_level='expert')
+          4) dịch vụ chuyên gia (spa_required_staff_level_id.level_group='expert')
           5) khách mới đặt nhưng create_date là quá khứ (khác hôm nay)
         """
         ICP = self.env["ir.config_parameter"].sudo()
@@ -623,7 +808,7 @@ class SpaServiceBooking(models.Model):
                     chosen = norm(cfg["hair"])
                     chosen_key = "hair"
                 # 4) expert only
-                elif pt and (getattr(pt, "spa_required_staff_level", "") or "") == "expert":
+                elif rec.product_id and rec.product_id.spa_required_staff_level_id and rec.product_id.spa_required_staff_level_id.level_group == "expert":
                     chosen = norm(cfg["expert"])
                     chosen_key = "expert"
                 else:
@@ -733,6 +918,20 @@ class SpaServiceBooking(models.Model):
         related="card_id.available_for_booking",
         readonly=True,
     )
+    # Hiển thị: với dịch vụ gộp, lịch / list dùng sản phẩm thẻ (A), logic vẫn theo từng dòng con.
+    display_calendar_service_id = fields.Many2one(
+        "product.product",
+        string="Dịch vụ (hiển thị lịch)",
+        compute="_compute_display_calendar_service_id",
+        store=False,
+        help="Dịch vụ gói: luôn là sản phẩm thẻ (A). Đơn: sản phẩm dịch vụ hiệu dụng.",
+    )
+    card_is_bundled_service = fields.Boolean(
+        string="Thẻ bán dịch vụ gói",
+        related="card_id.product_id.product_tmpl_id.is_composite_service",
+        store=False,
+        readonly=True,
+    )
     session_id = fields.Many2one(
         "spa.treatment.session",
         string="Buổi trị liệu",
@@ -772,10 +971,133 @@ class SpaServiceBooking(models.Model):
                 rec.session_id and rec.session_id.state in ("done", "cancel")
             )
 
+    @api.depends(
+        "is_composite_booking",
+        "booking_kind",
+        "card_id",
+        "card_id.product_id",
+        "card_id.product_id.product_tmpl_id",
+        "card_id.product_id.product_tmpl_id.is_composite_service",
+        "non_session_offering_id",
+        "non_session_offering_id.product_id",
+        "product_id",
+    )
+    def _compute_display_calendar_service_id(self):
+        for rec in self:
+            rec.display_calendar_service_id = rec._get_display_calendar_service_product()
+
     @api.onchange("card_id")
     def _onchange_card_id_duration(self):
         if self.card_id and self.card_id.duration_minutes:
             self.duration = self.card_id.duration_minutes
+
+        # UI helper: nếu thẻ bán dịch vụ gộp (A) thì tự sinh các bước dịch vụ con để chọn NV tương ứng.
+        # Không ghi đè nếu người dùng đã nhập lines.
+        if (
+            self.booking_kind == "card"
+            and self.card_id
+            and self.card_id.product_id
+            and self.card_id.product_id.product_tmpl_id.is_composite_service
+            and not self.booking_line_ids
+        ):
+            self._onchange_prepare_booking_lines_from_bundled_service()
+
+    @api.onchange("start_datetime")
+    def _onchange_start_datetime_prepare_lines_for_bundle(self):
+        """Dịch vụ gộp: đổi giờ bắt đầu booking -> dịch chuyển giờ các bước.
+
+        - Nếu chưa có lines: sinh lines theo cấu hình gói.
+        - Nếu đã có lines: dời theo offset để giữ nguyên khoảng cách giữa các bước.
+        """
+        if not self.start_datetime:
+            return
+
+        # Preserve offsets for existing lines (UI/in-memory)
+        if self.booking_line_ids and not self.env.context.get("skip_bundle_line_shift"):
+            old_start = self._origin.start_datetime if self._origin and self._origin.id else None
+            # Khi record mới chưa lưu: lấy mốc từ line đầu tiên nếu có.
+            if not old_start:
+                starts = self.booking_line_ids.mapped("start_datetime")
+                old_start = min([s for s in starts if s], default=False)
+            if old_start:
+                delta = fields.Datetime.to_datetime(self.start_datetime) - fields.Datetime.to_datetime(old_start)
+                if delta:
+                    for line in self.booking_line_ids:
+                        if line.start_datetime:
+                            line.start_datetime = fields.Datetime.to_datetime(line.start_datetime) + delta
+
+        # Nếu chọn thẻ gộp trước rồi mới chọn start_datetime, vẫn phải sinh lines để chọn NV.
+        if (
+            self.booking_kind == "card"
+            and self.card_id
+            and self.card_id.product_id
+            and self.card_id.product_id.product_tmpl_id.is_composite_service
+            and not self.booking_line_ids
+        ):
+            self._onchange_prepare_booking_lines_from_bundled_service()
+
+    def _onchange_prepare_booking_lines_from_bundled_service(self):
+        """Tạo booking_line_ids từ cấu hình dịch vụ con của sản phẩm thẻ (A)."""
+        self.ensure_one()
+        commands = self._prepare_bundle_step_commands()
+        if commands:
+            self.booking_line_ids = commands
+
+    def _prepare_bundle_step_commands(self):
+        """Return O2M commands để tạo lines theo cấu hình dịch vụ gộp trên thẻ."""
+        self.ensure_one()
+        if not self.start_datetime:
+            return []
+        if not self.card_id or not self.card_id.product_id:
+            return []
+        parent_tmpl = self.card_id.product_id.product_tmpl_id
+        if not parent_tmpl or not parent_tmpl.is_composite_service:
+            return []
+
+        start = self.start_datetime
+        commands = []
+        offset_minutes = 0
+        for sub in parent_tmpl.spa_sub_service_ids.sorted(lambda s: (s.sequence, s.id)):
+            child_tmpl = sub.sub_product_tmpl_id
+            if not child_tmpl:
+                continue
+            child_product = child_tmpl.product_variant_id
+            if not child_product:
+                continue
+            dur = int(sub.duration_minutes or child_tmpl.spa_duration_minutes or 0)
+            dur = max(1, dur) if dur else 60
+            line_start = start + timedelta(minutes=offset_minutes)
+            commands.append(
+                (
+                    0,
+                    0,
+                    {
+                        "sequence": sub.sequence or 10,
+                        "product_id": child_product.id,
+                        "staff_id": False,
+                        "start_datetime": line_start,
+                        "duration_minutes": dur,
+                    },
+                )
+            )
+            offset_minutes += dur
+        return commands
+
+    def action_generate_bundle_steps(self):
+        """Booking cũ (đã lưu) có thẻ gộp nhưng chưa có lines: sinh đủ bước theo cấu hình gói."""
+        for rec in self:
+            if rec.is_locked:
+                continue
+            if rec.booking_kind != "card" or not rec.card_id or not rec.card_id.product_id:
+                continue
+            tmpl = rec.card_id.product_id.product_tmpl_id
+            if not tmpl or not tmpl.is_composite_service:
+                continue
+            if rec.booking_line_ids:
+                continue
+            commands = rec._prepare_bundle_step_commands()
+            if commands:
+                rec.write({"booking_line_ids": [(5, 0, 0)] + commands})
 
     @api.onchange("booking_kind")
     def _onchange_booking_kind(self):
@@ -1027,14 +1349,16 @@ class SpaServiceBooking(models.Model):
 
                 return _check_for_day(day_local) or _check_for_day(prev_day)
 
-            for user in rec.staff_ids:
-                if not _within_shift(user, rec.start_datetime, rec.end_datetime):
-                    raise ValidationError(
-                        _(
-                            "Nhân viên %s không thuộc ca làm đã cấu hình cho ngày này.",
-                            user.name,
+            # Booking gộp: bỏ qua staff_ids trên booking cha, chỉ check theo từng dòng con.
+            if not rec.booking_line_ids:
+                for user in rec.staff_ids:
+                    if not _within_shift(user, rec.start_datetime, rec.end_datetime):
+                        raise ValidationError(
+                            _(
+                                "Nhân viên %s không thuộc ca làm đã cấu hình cho ngày này.",
+                                user.name,
+                            )
                         )
-                    )
             for line in rec.booking_line_ids:
                 if line.staff_id and line.start_datetime and line.end_datetime:
                     if not _within_shift(line.staff_id, line.start_datetime, line.end_datetime):
@@ -1181,6 +1505,17 @@ class SpaServiceBooking(models.Model):
         return result
 
     def write(self, vals):
+        if self.env.context.get("skip_composite_duration_sync"):
+            return super().write(vals)
+
+        # Nếu đổi start_datetime của booking gộp: rebase giờ các bước (line1 = start, line(i+1) nối tiếp).
+        rebase_ids = set()
+        if "start_datetime" in vals and vals.get("start_datetime"):
+            for rec in self:
+                if rec.is_locked or not rec.booking_line_ids or not rec.start_datetime:
+                    continue
+                rebase_ids.add(rec.id)
+
         # Khi có thẻ (mới chọn hoặc đổi thẻ): luôn đồng bộ duration từ thẻ và bỏ end_datetime
         # để tránh client gửi end_datetime/duration cũ (60p) → inverse ghi đè duration
         if vals.get("card_id"):
@@ -1201,6 +1536,26 @@ class SpaServiceBooking(models.Model):
             if vals.get("card_id"):
                 card_ids_to_invalidate.add(vals["card_id"])
         result = super().write(vals)
+
+        # Apply rebase after write (persistently)
+        if rebase_ids:
+            for rec in self.browse(list(rebase_ids)):
+                if not rec.start_datetime or not rec.booking_line_ids:
+                    continue
+                current = fields.Datetime.to_datetime(rec.start_datetime)
+                lines = rec.booking_line_ids.sorted(lambda l: (l.sequence, l.id))
+                for line in lines:
+                    line.write({"start_datetime": current})
+                    dm = int(line.duration_minutes or 0)
+                    dm = max(1, dm) if dm else 60
+                    current = current + timedelta(minutes=dm)
+                # Đồng bộ duration theo tổng thời gian các bước
+                rec._sync_duration_from_lines()
+
+        # Nếu là booking gộp thì duration luôn theo lines (kể cả trường hợp đổi thẻ làm sync duration từ thẻ).
+        composites = self.filtered(lambda b: b.booking_line_ids)
+        if composites:
+            composites._sync_duration_from_lines()
         if card_ids_to_invalidate:
             self.env["spa.treatment.card"].browse(card_ids_to_invalidate).invalidate_recordset(
                 ["reserved_by_bookings", "available_for_booking"]
@@ -1288,11 +1643,15 @@ class SpaServiceBooking(models.Model):
             if rec.booking_kind == "non_session" and rec.non_session_offering_id:
                 service_label = rec.non_session_offering_id.display_name
             else:
-                service_label = (
-                    rec.product_id.display_name
-                    or rec.card_id.display_name
-                    or _("Thẻ trị liệu")
-                )
+                p_show = rec._get_display_calendar_service_product()
+                if p_show:
+                    service_label = p_show.display_name
+                else:
+                    service_label = (
+                        (rec.product_id and rec.product_id.display_name)
+                        or (rec.card_id and rec.card_id.display_name)
+                        or _("Thẻ trị liệu")
+                    )
             body = _(
                 "Khách hàng <strong>%s</strong> sắp tới lịch lúc <strong>%s</strong> — %s."
             ) % (rec.partner_id.name or "", start.strftime("%d/%m/%Y %H:%M"), service_label)
@@ -1471,33 +1830,69 @@ class SpaServiceBooking(models.Model):
         )
 
     @api.model
+    def _spa_user_matches_product_staff_level(self, user, required):
+        """
+        Cấp dịch vụ: product.spa_required_staff_level_id (spa.staff.level).
+        So khớp theo level_group + rank. NV chưa gắn spa_staff_level_id coi như không đủ cấp
+        (không còn được gợi ý khi sản phẩm bắt cấp).
+        """
+        if not required or not required.exists():
+            return True
+        s = user.spa_staff_level_id
+        g = required.level_group
+        if g == "doctor":
+            if not s:
+                return False
+            return s.level_group == "doctor"
+        if g in ("spec_b", "spec_a", "senior", "expert"):
+            if not s:
+                return False
+            if s.level_group == "doctor":
+                return False
+            if s.level_group == "regular":
+                # Cấp "Nhân viên (cũ)" chỉ coi đủ mức tối thiểu spec_b; không đủ senior/expert/...
+                return g == "spec_b"
+            if s.level_group not in ("spec_b", "spec_a", "senior", "expert"):
+                return False
+            req_r = required.rank
+            u_rank = s.rank
+            if req_r in (None, False):
+                return s.level_group == g
+            if u_rank in (None, False):
+                return False
+            return int(u_rank) >= int(req_r)
+        if g == "regular":
+            if not s:
+                return False
+            return s.level_group == "regular"
+        return True
+
+    @api.model
     def get_available_staff_ids(self, product_id, start_datetime, end_datetime, booking_id=None):
         """
-        Nhân viên đủ cấp độ, có ca trong booking.shift.config cho ngày local của slot
-        (hoặc ca ngày hôm trước nếu slot nằm trong khung ca qua đêm), slot nằm trọn trong khung ca,
-        và còn đủ capacity % trong (start_datetime, end_datetime).
-        Không dùng spa_shift_start_hour / spa_shift_duration_hours trên res.users.
-        booking_id: loại trừ đặt lịch này khi tính capacity (khi sửa).
+        Nhân viên đủ cấp theo product.spa_required_staff_level_id (spa.staff.level: level_group + rank),
+        có ca trong booking.shift.config, slot nằm trọn khung ca, còn đủ capacity %.
+        Khi sản phẩm không gán cấp: mọi NV nội bộ (cùng bộ lọc ca + capacity) đủ điều kiện luân ca.
+        Khi sản phẩm gán cấp: NV chưa có spa_staff_level_id không được gợi ý.
         """
         if not start_datetime or not end_datetime:
             return self.env["res.users"]
         product = self.env["product.product"].browse(product_id) if product_id else None
-        required_level = ""
+        Level = self.env["spa.staff.level"]
+        required = (
+            product.spa_required_staff_level_id
+            if product and product.spa_required_staff_level_id
+            else Level.browse()
+        )
         capacity_percent = 100
         if product and product.product_tmpl_id:
             pt = product.product_tmpl_id
-            required_level = getattr(pt, "spa_required_staff_level", "") or ""
             capacity_percent = getattr(pt, "spa_staff_capacity_percent", None) or 100
-        domain = [("share", "=", False)]
-        if required_level == "expert":
-            domain.append("|")
-            domain.append(("spa_staff_level", "=", "expert"))
-            domain.append(("spa_staff_level", "=", False))
-        elif required_level == "regular":
-            domain.append("|")
-            domain.append(("spa_staff_level", "=", "regular"))
-            domain.append(("spa_staff_level", "=", False))
-        users = self.env["res.users"].search(domain, order="spa_staff_sequence, id")
+        all_staff = self.env["res.users"].search([("share", "=", False)], order="spa_staff_sequence, id")
+        if required:
+            users = all_staff.filtered(lambda u: self._spa_user_matches_product_staff_level(u, required))
+        else:
+            users = all_staff
 
         # Lọc theo khung ca trên booking.shift.config (ngày local + có thể ca từ hôm trước).
         #
@@ -1574,10 +1969,8 @@ class SpaServiceBooking(models.Model):
             return []
         product = self.env["product.product"].browse(product_id) if product_id else None
         required_level = ""
-        if product and product.product_tmpl_id:
-            required_level = getattr(
-                product.product_tmpl_id, "spa_required_staff_level", ""
-            ) or ""
+        if product and getattr(product, "spa_required_staff_level_id", False):
+            required_level = product.spa_required_staff_level_id.level_group or ""
         level_key = required_level or "any"
         param_key = "spa.rotation_last_user_id.%s" % level_key
         self.env["ir.config_parameter"].sudo().set_param(param_key, str(ordered[0]))
