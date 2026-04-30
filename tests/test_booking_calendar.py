@@ -1573,6 +1573,32 @@ class TestBookingCalendar(TransactionCase):
         booking._compute_draft_special_colors()
         self.assertEqual(booking.draft_special_hex_color, "#8E24AC")
 
+    def test_parent_child_rechain_and_display_end(self):
+        """Booking cha có booking con nối tiếp: child.start = parent.end, display_end = last end."""
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 0.0, 48.0)])
+
+        parent = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 30,
+        })
+        child = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": self.card2.id,
+            "parent_booking_id": parent.id,
+            "child_sequence": 10,
+            "start_datetime": start,  # will be rechained
+            "duration": 60,
+        })
+        parent._spa_rechain_children()
+        self.assertEqual(child.start_datetime, parent.end_datetime)
+        self.assertEqual(parent.display_end_datetime, child.end_datetime)
+
     def test_draft_special_color_past_created(self):
         ICP = self.env["ir.config_parameter"].sudo()
         ICP.set_param("spa.booking_calendar_hex_color_draft_past_created", "#33B577")

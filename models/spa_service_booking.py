@@ -14,6 +14,45 @@ class SpaServiceBooking(models.Model):
     _order = "start_datetime asc, id desc"
 
     name = fields.Char(string="Mã đặt lịch", readonly=True, copy=False)
+    parent_booking_id = fields.Many2one(
+        "spa.service.booking",
+        string="Đặt lịch cha",
+        index=True,
+        ondelete="set null",
+        help="Dùng để gộp hiển thị nhiều dịch vụ trong cùng một đặt lịch. "
+        "Booking con là dịch vụ nối tiếp trong cùng chuỗi.",
+    )
+    child_booking_ids = fields.One2many(
+        "spa.service.booking",
+        "parent_booking_id",
+        string="Đặt lịch con",
+    )
+    child_sequence = fields.Integer(
+        string="Thứ tự trong chuỗi",
+        default=10,
+        help="Chỉ áp dụng cho booking con; dùng để sắp xếp chuỗi nối tiếp.",
+    )
+    display_is_calendar_parent = fields.Boolean(
+        string="Hiển thị trên lịch",
+        compute="_compute_display_is_calendar_parent",
+        store=True,
+        index=True,
+        help="Chỉ booking cha được hiển thị trên calendar/list; booking con vẫn là booking thực thi nhưng bị ẩn.",
+    )
+    display_start_datetime = fields.Datetime(
+        string="Bắt đầu (hiển thị)",
+        compute="_compute_display_datetimes",
+        store=True,
+        readonly=False,
+        inverse="_inverse_display_start_datetime",
+    )
+    display_end_datetime = fields.Datetime(
+        string="Kết thúc (hiển thị)",
+        compute="_compute_display_datetimes",
+        store=True,
+        readonly=False,
+        inverse="_inverse_display_end_datetime",
+    )
     calendar_event_title = fields.Char(
         string="Tiêu đề lịch",
         compute="_compute_calendar_event_title",
@@ -180,6 +219,142 @@ class SpaServiceBooking(models.Model):
                 rec.end_datetime = rec.start_datetime + timedelta(minutes=rec.duration)
             else:
                 rec.end_datetime = rec.start_datetime
+
+    @api.model
+    def default_get(self, fields_list):
+        """Map calendar defaults from display_* to real fields.
+
+        Calendar view uses `display_start_datetime`/`display_end_datetime` for aggregated
+        parent display. When creating a new record from calendar, Odoo provides defaults
+        for those fields; we map them back so the form shows `start_datetime` populated.
+        """
+        res = super().default_get(fields_list)
+        ctx = self.env.context or {}
+
+        def _ctx_dt(key):
+            val = ctx.get(key)
+            return fields.Datetime.to_datetime(val) if val else False
+
+        if not res.get("start_datetime"):
+            start = _ctx_dt("default_start_datetime") or _ctx_dt("default_display_start_datetime")
+            if start:
+                res["start_datetime"] = start
+
+        # If calendar provided a range (start/end) but duration not set yet, derive duration.
+        if (res.get("duration") is None or res.get("duration", 0) <= 0) and res.get("start_datetime"):
+            end = _ctx_dt("default_end_datetime") or _ctx_dt("default_display_end_datetime")
+            if end and end > res["start_datetime"]:
+                delta = end - res["start_datetime"]
+                if hasattr(delta, "total_seconds"):
+                    res["duration"] = max(int(round(delta.total_seconds() / 60.0)), 15)
+
+        return res
+
+    @api.depends("parent_booking_id")
+    def _compute_display_is_calendar_parent(self):
+        for rec in self:
+            rec.display_is_calendar_parent = not bool(rec.parent_booking_id)
+
+    @api.depends(
+        "parent_booking_id",
+        "start_datetime",
+        "end_datetime",
+        "child_booking_ids",
+        "child_booking_ids.start_datetime",
+        "child_booking_ids.end_datetime",
+    )
+    def _compute_display_datetimes(self):
+        for rec in self:
+            if rec.display_is_calendar_parent and rec.child_booking_ids:
+                starts = [rec.start_datetime] + rec.child_booking_ids.mapped("start_datetime")
+                ends = [rec.end_datetime] + rec.child_booking_ids.mapped("end_datetime")
+                rec.display_start_datetime = min([s for s in starts if s], default=rec.start_datetime)
+                rec.display_end_datetime = max([e for e in ends if e], default=rec.end_datetime)
+            else:
+                rec.display_start_datetime = rec.start_datetime
+                rec.display_end_datetime = rec.end_datetime
+
+    def _inverse_display_start_datetime(self):
+        """Calendar drag&drop writes to display_start_datetime; map back to real start_datetime.
+
+        For chain parents, moving the parent moves the whole chain (children are rechained sequentially).
+        """
+        ctx = dict(self.env.context, spa_skip_rechain_children=True)
+        for rec in self:
+            new_start = fields.Datetime.to_datetime(rec.display_start_datetime)
+            if not new_start:
+                continue
+            # Only parent should be moved as a whole; children start is controlled by rechaining.
+            if rec.parent_booking_id:
+                continue
+            if rec.start_datetime != new_start:
+                rec.with_context(ctx).write({"start_datetime": new_start})
+            rec._spa_rechain_children()
+
+    def _inverse_display_end_datetime(self):
+        """Allow calendar writes without breaking the chain.
+
+        We intentionally do not support resizing aggregated (parent) events here.
+        """
+        for rec in self:
+            # For non-chain bookings, allow setting end_datetime through existing inverse.
+            if not rec.child_booking_ids and not rec.parent_booking_id and rec.display_end_datetime:
+                try:
+                    rec.end_datetime = rec.display_end_datetime
+                except Exception:
+                    # Be defensive: calendar may send both start/end; end will be recomputed anyway.
+                    continue
+
+    def _spa_chain_root(self):
+        self.ensure_one()
+        return self.parent_booking_id or self
+
+    def _spa_chain_ordered(self):
+        """Return ordered chain bookings by sequence, including parent.
+
+        The parent booking is the display root, not necessarily the first service.
+        Children with negative `child_sequence` are executed before the parent.
+        """
+        self.ensure_one()
+        parent = self._spa_chain_root()
+        all_bks = parent | parent.child_booking_ids
+        return all_bks.sorted(lambda b: ((b.child_sequence or 0) if b.parent_booking_id else 0, b.id))
+
+    def _spa_rechain_children(self):
+        """Ensure chain bookings are strictly sequential (nối tiếp) from the parent's start.
+
+        The chain anchor is always the display parent `start_datetime`. Ordering is based on:
+        - parent booking sequence = 0
+        - child booking sequence = `child_sequence` (can be negative to run before parent)
+        """
+        for rec in self:
+            parent = rec._spa_chain_root()
+            if not parent.start_datetime:
+                continue
+            if parent.env.context.get("spa_skip_rechain_children"):
+                continue
+            ctx = dict(parent.env.context, spa_skip_rechain_children=True)
+            current = fields.Datetime.to_datetime(parent.start_datetime)
+            for bk in parent._spa_chain_ordered():
+                dm = int(bk.duration or 0)
+                dm = max(1, dm) if dm else 60
+                if bk.start_datetime != current:
+                    bk.with_context(ctx).write({"start_datetime": current})
+                current = current + timedelta(minutes=dm)
+
+    def _spa_next_child_sequence(self, position="after"):
+        self.ensure_one()
+        parent = self._spa_chain_root()
+        seqs = parent.child_booking_ids.mapped("child_sequence") or []
+        if position == "before":
+            return (min(seqs) if seqs else 0) - 10
+        return (max(seqs) if seqs else 0) + 10
+
+    def _spa_chain_last_booking(self):
+        self.ensure_one()
+        parent = self._spa_chain_root()
+        ordered = parent._spa_chain_ordered()
+        return ordered[-1:] or parent
 
     @api.model
     def _spa_staff_booking_count_on_local_day(self, user_id, local_day, exclude_booking_id=None):
@@ -408,6 +583,22 @@ class SpaServiceBooking(models.Model):
                     return f"{code} - {name}"
                 return code or name or ""
 
+            def _service_line_for(bk):
+                if bk.booking_kind == "card" and bk.card_id:
+                    p_show = bk._get_display_calendar_service_product() or bk.card_id.product_id or bk.product_id
+                    code = (bk.card_id.code or "") if bk.card_id else ""
+                    code = code or (p_show.default_code if p_show else "")
+                    name = p_show.name or p_show.display_name if p_show else ""
+                    return _join_code_name(code, name)
+                if bk.booking_kind == "non_session" and bk.non_session_offering_id:
+                    off = bk.non_session_offering_id
+                    p_show = off.product_id or bk.product_id
+                    code = (off.code or "") or (p_show.default_code if p_show else "")
+                    name = off.name or (p_show.name or p_show.display_name if p_show else "")
+                    return _join_code_name(code, name)
+                p = bk._get_display_calendar_service_product() or bk.product_id
+                return _join_code_name(p.default_code if p else "", p.name or p.display_name if p else "")
+
             # Nickname staff:
             # - booking thường: lấy 1 người đầu để gọn
             # - booking gộp: hiển thị nickname của tất cả NV theo thứ tự các bước
@@ -430,6 +621,21 @@ class SpaServiceBooking(models.Model):
                     staff0 = staff_users[:1]
                     nick = (staff0.spa_staff_nickname or staff0.name or "").strip()
 
+            # If booking is chain parent, aggregate nicknames from all bookings in chain
+            if rec.display_is_calendar_parent and rec.child_booking_ids:
+                nicks = []
+                seen = set()
+                for bk in (rec | rec.child_booking_ids).sorted(lambda b: (b.start_datetime or datetime.min, b.id)):
+                    for u in bk.staff_ids:
+                        if not u or u.id in seen:
+                            continue
+                        seen.add(u.id)
+                        label = (u.spa_staff_nickname or u.name or "").strip()
+                        if label:
+                            nicks.append(label)
+                if nicks:
+                    nick = "/".join(nicks)
+
             # Customer: Name (phone)
             cust = ""
             if rec.partner_id:
@@ -440,41 +646,10 @@ class SpaServiceBooking(models.Model):
                 else:
                     cust = name or phone
 
-            # Service: Code - Name
-            # - Nếu có `card_id` -> lấy từ thẻ (giữ nguyên logic cũ)
-            # - Nếu `card_id` rỗng -> lấy từ `non_session_offering_id` (Đi họp/Đi học/...)
-            # - Fallback: lấy từ `product_id` nếu thiếu cả 2 trường trên
-            if rec.card_id:
-                card = rec.card_id
-                card_product = rec._get_display_calendar_service_product()
-                service_code = (card.code if card else "") or (
-                    card_product.default_code if card_product else ""
-                )
-                service_name = (
-                    card_product.name or card_product.display_name if card_product else ""
-                )
-                service_line = _join_code_name(service_code, service_name)
-            elif rec.non_session_offering_id:
-                off = rec.non_session_offering_id
-                off_product = off.product_id or rec.product_id
-                service_code = (off.code or "") or (
-                    off_product.default_code if off_product else ""
-                )
-                service_name = (
-                    off.name
-                    or off_product.name
-                    or off_product.display_name
-                    if off_product
-                    else ""
-                )
-                service_line = _join_code_name(service_code, service_name)
-            else:
-                p = rec._get_display_calendar_service_product()
-                if not p:
-                    p = rec.product_id
-                service_code = p.default_code if p else ""
-                service_name = p.name or p.display_name if p else ""
-                service_line = _join_code_name(service_code, service_name)
+            # Service aggregation for chain parent
+            bookings = rec | rec.child_booking_ids if rec.display_is_calendar_parent and rec.child_booking_ids else rec
+            service_lines = [s for s in (_service_line_for(b) for b in bookings) if s]
+            service_line = " + ".join(service_lines)
 
             # One-line title that can wrap when the cell is narrow:
             # (Nickname) Customer (phone) ServiceCode - ServiceName
@@ -1497,6 +1672,12 @@ class SpaServiceBooking(models.Model):
                 except (TypeError, ValueError):
                     pass
         result = super().create(vals_list)
+        # Ensure sequential chain for newly created children/parents
+        roots = set()
+        for rec in result:
+            roots.add(rec._spa_chain_root().id)
+        for root in self.browse(list(roots)):
+            root._spa_rechain_children()
         card_ids = [v.get("card_id") for v in vals_list if v.get("card_id")]
         if card_ids:
             self.env["spa.treatment.card"].browse(card_ids).invalidate_recordset(
@@ -1535,7 +1716,15 @@ class SpaServiceBooking(models.Model):
             card_ids_to_invalidate.update(self.card_id.ids)
             if vals.get("card_id"):
                 card_ids_to_invalidate.add(vals["card_id"])
+        need_rechain = any(k in vals for k in ("start_datetime", "duration", "parent_booking_id", "child_sequence"))
+        roots = set()
+        if need_rechain:
+            for rec in self:
+                roots.add(rec._spa_chain_root().id)
         result = super().write(vals)
+        if need_rechain and not self.env.context.get("spa_skip_rechain_children"):
+            for root in self.browse(list(roots)):
+                root._spa_rechain_children()
 
         # Apply rebase after write (persistently)
         if rebase_ids:
@@ -1604,8 +1793,77 @@ class SpaServiceBooking(models.Model):
             shift_date = fields.Date.from_string(shift_date)
         return self.env["booking.shift.config"].action_open_config_modal(shift_date)
 
+    def action_open_child_bookings(self):
+        self.ensure_one()
+        parent = self._spa_chain_root()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Dịch vụ con"),
+            "res_model": "spa.service.booking",
+            "view_mode": "tree,form",
+            "domain": [("parent_booking_id", "=", parent.id)],
+            "context": dict(self.env.context, default_parent_booking_id=parent.id),
+        }
+
+    def action_open_parent_booking(self):
+        self.ensure_one()
+        if not self.parent_booking_id:
+            return False
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Đặt lịch cha"),
+            "res_model": "spa.service.booking",
+            "res_id": self.parent_booking_id.id,
+            "view_mode": "form",
+            "target": "current",
+        }
+
+    def action_add_child_service_booking(self):
+        """Tạo booking con và mở form để chọn dịch vụ (mặc định thêm sau)."""
+        return self._action_add_child_service_booking(position="after")
+
+    def action_add_child_service_booking_before(self):
+        """Tạo booking con chạy trước booking cha và mở form."""
+        return self._action_add_child_service_booking(position="before")
+
+    def _action_add_child_service_booking(self, position="after"):
+        self.ensure_one()
+        if self.is_locked:
+            raise UserError(_("Không thể thêm dịch vụ khi booking đã khóa."))
+        parent = self._spa_chain_root()
+        next_seq = parent._spa_next_child_sequence(position=position)
+        last = parent._spa_chain_last_booking()
+        vals = {
+            "parent_booking_id": parent.id,
+            "child_sequence": next_seq,
+            "partner_id": parent.partner_id.id,
+            "booking_kind": parent.booking_kind,
+            "card_id": parent.card_id.id if parent.booking_kind == "card" and parent.card_id else False,
+            "non_session_offering_id": parent.non_session_offering_id.id if parent.booking_kind == "non_session" and parent.non_session_offering_id else False,
+            "start_datetime": parent.start_datetime if position == "before" else (last.end_datetime if last and last.end_datetime else parent.end_datetime),
+            "duration": 60,
+            "bed_id": parent.bed_id.id if parent.bed_id else False,
+        }
+        child = self.create(vals)
+        parent._spa_rechain_children()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Thêm dịch vụ"),
+            "res_model": "spa.service.booking",
+            "res_id": child.id,
+            "view_mode": "form",
+            "target": "current",
+            "context": dict(self.env.context, default_parent_booking_id=parent.id),
+        }
+
     def action_done(self):
         for booking in self:
+            if (
+                not self.env.context.get("spa_skip_child_done")
+                and booking.display_is_calendar_parent
+                and booking.child_booking_ids
+            ):
+                booking.child_booking_ids.with_context(spa_skip_child_done=True).action_done()
             if booking.session_id:
                 booking.write({"state": "done"})
                 continue

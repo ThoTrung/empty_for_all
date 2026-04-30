@@ -10,6 +10,7 @@
                     <field name="booking_kind"/>
                     <field name="partner_id"/>
                     <field name="product_id"/>
+                    <field name="display_is_calendar_parent" invisible="1"/>
                     <field name="staff_ids"/>
                     <field name="bed_id"/>
                      <filter string="Đặt lịch" name="draft" domain="[('state', '=', 'draft')]"/>
@@ -30,8 +31,8 @@
             <field name="name">spa.service.booking.calendar</field>
             <field name="model">spa.service.booking</field>
             <field name="arch" type="xml">
-                <calendar date_start="start_datetime"
-                          date_stop="end_datetime"
+                <calendar date_start="display_start_datetime"
+                          date_stop="display_end_datetime"
                           string="Lịch đặt dịch vụ"
                           color="state_calendar_hex_color"
                           event_limit="15"
@@ -52,8 +53,12 @@
                     <field name="staff_level_filter" filters="1" invisible="1"/>
                     <field name="state_calendar_hex_color" invisible="1"/>
                     <field name="state_calendar_hex_text_color" invisible="1"/>
+                    <field name="draft_special_hex_color" invisible="1"/>
+                    <field name="draft_special_hex_text_color" invisible="1"/>
                     <field name="bed_calendar_color" invisible="1"/>
                     <field name="duration" invisible="1"/>
+                    <field name="display_start_datetime" invisible="1"/>
+                    <field name="display_end_datetime" invisible="1"/>
                 </calendar>
             </field>
         </record>
@@ -70,6 +75,7 @@
                     <field name="product_id"/>
                     <field name="start_datetime"/>
                     <field name="end_datetime"/>
+                    <field name="display_end_datetime" optional="hide"/>
                     <field name="staff_ids" widget="many2many_tags"/>
                     <field name="bed_id"/>
                     <field name="state" widget="badge"/>
@@ -106,6 +112,22 @@
                                 invisible="is_locked or state != 'cancel'"/>
                     </header>
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_open_child_bookings"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-sitemap"
+                                    invisible="not display_is_calendar_parent">
+                                <field name="child_booking_ids" widget="statinfo" string="Dịch vụ con"/>
+                            </button>
+                            <button name="action_open_parent_booking"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-level-up"
+                                    invisible="not parent_booking_id">
+                                <span>Booking cha</span>
+                            </button>
+                        </div>
                         <div class="oe_title">
                             <h1><field name="name" readonly="1" class="oe_inline"/></h1>
                         </div>
@@ -113,6 +135,8 @@
                             <group>
                                 <field name="partner_id" context="{'form_view_ref': 'spa.view_partner_form_spa'}" required="1" readonly="is_locked"/>
                                 <field name="booking_kind" readonly="is_locked"/>
+                                <field name="parent_booking_id" invisible="1"/>
+                                <field name="display_is_calendar_parent" invisible="1"/>
                                 <field name="card_id" domain="[('partner_id', '=', partner_id), ('available_for_booking', '&gt;', 0), ('state', '=', 'active')]" invisible="booking_kind != 'card'" required="booking_kind == 'card'" readonly="is_locked"/>
                                 <field name="non_session_offering_id" options="{'no_create': True}" invisible="booking_kind != 'non_session'" required="booking_kind == 'non_session'" readonly="is_locked"/>
                                 <field name="card_total_sessions" optional="show" readonly="1" invisible="booking_kind != 'card'"/>
@@ -120,7 +144,8 @@
                                 <field name="product_id" invisible="1"/>
                                 <field name="start_datetime" required="1" readonly="is_locked"/>
                                 <field name="duration" required="1" readonly="is_locked or is_composite_booking"/>
-                                <field name="end_datetime" readonly="1"/>
+                                <field name="display_end_datetime" readonly="1"/>
+                                <field name="end_datetime" invisible="1"/>
                                 <field name="staff_ids"
                                        widget="many2many_tags"
                                        domain="[('share', '=', False)]"
@@ -160,6 +185,35 @@
                                         class="btn btn-primary px-4" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
                             </group>
                         </group>
+                        <group string="Dịch vụ đã thêm" colspan="2" invisible="not display_is_calendar_parent">
+                            <div colspan="2">
+                                <button name="action_add_child_service_booking_before"
+                                        type="object"
+                                        class="btn btn-success p-1 mx-2"
+                                        string="+ Thêm dịch vụ (trước)"
+                                        invisible="is_locked"/>
+                                <button name="action_add_child_service_booking"
+                                        type="object"
+                                        class="btn btn-info p-1 mx-2"
+                                        string="+ Thêm dịch vụ (sau)"
+                                        invisible="is_locked"/>
+                            </div>
+                            <field name="child_booking_ids" nolabel="1" colspan="2"
+                                   context="{'default_parent_booking_id': id}">
+                                <tree default_order="child_sequence,id" create="false" edit="false" delete="false">
+                                    <field name="child_sequence" string="#" optional="show"/>
+                                    <field name="name" string="Mã"/>
+                                    <field name="booking_kind" optional="hide"/>
+                                    <field name="card_id" optional="show" invisible="booking_kind != 'card'"/>
+                                    <field name="non_session_offering_id" optional="show" invisible="booking_kind != 'non_session'"/>
+                                    <field name="start_datetime" string="Bắt đầu"/>
+                                    <field name="duration" string="Phút" optional="hide"/>
+                                    <field name="end_datetime" string="Kết thúc"/>
+                                    <field name="staff_ids" widget="many2many_tags" optional="hide"/>
+                                    <field name="state" widget="badge" optional="show"/>
+                                </tree>
+                            </field>
+                        </group>
                         <group string="Dịch vụ con (dịch vụ tổng)" colspan="2" invisible="not is_composite_booking">
                             <field name="booking_line_ids" nolabel="1" colspan="2" class="o_spa_bundle_steps_field">
                                 <tree editable="bottom" default_order="sequence,id" class="o_spa_bundle_steps_tree">
@@ -196,6 +250,7 @@
             <field name="view_mode">calendar,tree,form</field>
             <field name="view_id" ref="view_spa_service_booking_calendar"/>
             <field name="search_view_id" ref="view_spa_service_booking_search"/>
+            <field name="domain">[('display_is_calendar_parent', '=', True)]</field>
             <field name="context">{'search_default_confirmed': 0}</field>
         </record>
         <record id="action_spa_service_booking_doctor" model="ir.actions.act_window">
@@ -204,7 +259,7 @@
             <field name="view_mode">calendar,tree,form</field>
             <field name="view_id" ref="view_spa_service_booking_calendar"/>
             <field name="search_view_id" ref="view_spa_service_booking_search"/>
-            <field name="domain">[('is_doctor_route', '=', True)]</field>
+            <field name="domain">[('display_is_calendar_parent', '=', True), ('is_doctor_route', '=', True)]</field>
             <field name="context">{'spa_allowed_staff_levels': ['doctor']}</field>
         </record>
         <record id="action_spa_service_booking_specialist" model="ir.actions.act_window">
@@ -213,7 +268,7 @@
             <field name="view_mode">calendar,tree,form</field>
             <field name="view_id" ref="view_spa_service_booking_calendar"/>
             <field name="search_view_id" ref="view_spa_service_booking_search"/>
-            <field name="domain">[('is_doctor_route', '=', False)]</field>
+            <field name="domain">[('display_is_calendar_parent', '=', True), ('is_doctor_route', '=', False)]</field>
             <field name="context">{'spa_allowed_staff_levels': ['spec_b','spec_a','senior','expert']}</field>
         </record>
     </data>
