@@ -551,6 +551,7 @@ class SpaServiceBooking(models.Model):
         "partner_id.customer_code",
         "partner_id.phone",
         "partner_id.mobile",
+        "calendar_note",
         "staff_ids",
         "staff_ids.name",
         "staff_ids.spa_staff_nickname",
@@ -645,6 +646,10 @@ class SpaServiceBooking(models.Model):
                     cust = f"{name} ({phone})"
                 else:
                     cust = name or phone
+            # Free note shown right after customer label on calendar
+            note_txt = (rec.calendar_note or "").strip()
+            if cust and note_txt:
+                cust = f"{cust} - {note_txt}"
 
             # Service aggregation for chain parent
             bookings = rec | rec.child_booking_ids if rec.display_is_calendar_parent and rec.child_booking_ids else rec
@@ -1133,6 +1138,10 @@ class SpaServiceBooking(models.Model):
         copy=False,
     )
     note = fields.Text(string="Ghi chú")
+    calendar_note = fields.Char(
+        string="Ghi chú (hiển thị trên lịch)",
+        help="Ghi chú tự do cho nhân viên. Nội dung sẽ xuất hiện trên ô lịch sau tên khách hàng.",
+    )
     is_locked = fields.Boolean(
         string="Khóa sửa",
         compute="_compute_is_locked",

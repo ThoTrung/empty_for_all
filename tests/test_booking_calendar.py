@@ -1474,6 +1474,10 @@ class TestBookingCalendar(TransactionCase):
         title = booking.calendar_event_title
         self.assertIn("(Trang)", title)
         self.assertIn("KH A (0909)", title)
+        # calendar_note appears right after customer label
+        booking.calendar_note = "Ghi chú test"
+        booking._compute_calendar_event_title()
+        self.assertIn("KH A (0909) - Ghi chú test", booking.calendar_event_title)
         # service line should include code or name
         self.assertTrue("Service" in title or "-" in title)
         self.assertNotIn("\n", title)

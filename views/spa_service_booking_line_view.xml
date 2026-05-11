@@ -13,7 +13,11 @@
                             <field name="start_datetime"/>
                             <field name="duration_minutes"/>
                             <field name="end_datetime" readonly="1"/>
-                            <field name="staff_id" domain="[('share', '=', False)]"/>
+                            <field name="staff_id"
+                                   domain="[
+                                     ('share', '=', False),
+                                     ('spa_staff_level_id.level_group', 'in', context.get('spa_allowed_staff_levels', ['regular','spec_b','spec_a','senior','expert','doctor']))
+                                   ]"/>
                             <field name="suggested_staff_html"
                                    readonly="1"
                                    class="o_spa_suggested_staff_field"/>

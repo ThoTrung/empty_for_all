@@ -146,7 +146,16 @@
                                 <field name="booking_kind" readonly="is_locked"/>
                                 <field name="parent_booking_id" invisible="1"/>
                                 <field name="display_is_calendar_parent" invisible="1"/>
-                                <field name="card_id" domain="[('partner_id', '=', partner_id), ('available_for_booking', '&gt;', 0), ('state', '=', 'active')]" invisible="booking_kind != 'card'" required="booking_kind == 'card'" readonly="is_locked"/>
+                                <field name="card_id"
+                                       domain="[
+                                         ('partner_id', '=', partner_id),
+                                         ('available_for_booking', '&gt;', 0),
+                                         ('state', '=', 'active'),
+                                         ('product_id.spa_required_staff_level_id.level_group', 'in', context.get('spa_allowed_staff_levels', ['regular','spec_b','spec_a','senior','expert','doctor']))
+                                       ]"
+                                       invisible="booking_kind != 'card'"
+                                       required="booking_kind == 'card'"
+                                       readonly="is_locked"/>
                                 <field name="non_session_offering_id" options="{'no_create': True}" invisible="booking_kind != 'non_session'" required="booking_kind == 'non_session'" readonly="is_locked"/>
                                 <field name="card_total_sessions" optional="show" readonly="1" invisible="booking_kind != 'card'"/>
                                 <field name="card_available_for_booking" optional="show" readonly="1" invisible="booking_kind != 'card'"/>
@@ -157,7 +166,10 @@
                                 <field name="end_datetime" invisible="1"/>
                                 <field name="staff_ids"
                                        widget="many2many_tags"
-                                       domain="[('share', '=', False)]"
+                                       domain="[
+                                         ('share', '=', False),
+                                         ('spa_staff_level_id.level_group', 'in', context.get('spa_allowed_staff_levels', ['regular','spec_b','spec_a','senior','expert','doctor']))
+                                       ]"
                                        readonly="is_locked"
                                        invisible="is_composite_booking"/>
                                 <field name="display_composite_staff_ids"
@@ -172,6 +184,7 @@
                                 <field name="session_id" options="{'open': True}"/>
                                 <field name="reminder_sent" readonly="1"/>
                                 <field name="note" colspan="4" readonly="is_locked"/>
+                                <field name="calendar_note" colspan="4" readonly="is_locked" placeholder="Ghi chú hiển thị trên lịch (sau tên KH)"/>
                                 <field name="is_locked" invisible="1"/>
                                 <field name="is_composite_booking" invisible="1"/>
                                 <field name="is_recurring_child" invisible="1"/>
