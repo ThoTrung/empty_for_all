@@ -15,6 +15,7 @@
     "data": [
         "security/ir.model.access.xml",
         "security/spa_customer_booking_security.xml",
+        "security/staff_readonly_booking_security.xml",
         "data/spa_booking_non_session_offering_data.xml",
         "data/booking_cron.xml",
         "views/spa_booking_non_session_offering_view.xml",
@@ -41,6 +42,7 @@
         ],
     },
     "installable": True,
-    "application": False,
+    "application": True,
     "auto_install": False,
+    'sequence': -100,
 }

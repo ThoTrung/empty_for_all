@@ -135,6 +135,7 @@ class SpaServiceBookingLine(models.Model):
     def action_open_assign_staff_modal(self):
         """Mở modal để chọn NV cho bước dịch vụ con (kèm gợi ý)."""
         self.ensure_one()
+        self.env.user.spa_staff_raise_if_readonly_observer()
         view = self.env.ref("booking_calendar.view_spa_service_booking_line_form", raise_if_not_found=False)
         return {
             "type": "ir.actions.act_window",

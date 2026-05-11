@@ -1944,6 +1944,7 @@ class SpaServiceBooking(models.Model):
     @api.model
     def set_calendar_display_config(self, pixels_per_hour=None, min_time=None, max_time=None):
         """Lưu cấu hình lịch (gọi từ màn hình lịch hoặc Cấu hình)."""
+        self.env.user.spa_staff_raise_if_readonly_observer()
         ICP = self.env["ir.config_parameter"].sudo()
         if pixels_per_hour is not None:
             px = max(40, min(360, int(pixels_per_hour)))

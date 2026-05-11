@@ -94,21 +94,28 @@
                                 string="Đặt theo tuần"
                                 type="object"
                                 class="oe_highlight"
+                                groups="spa.group_spa_staff"
                                 invisible="is_locked or is_recurring_child or recurring_is_active or booking_kind != 'card'"/>
                         <button name="action_cancel_recurring"
                                 string="Hủy đặt lịch theo tuần"
                                 type="object"
                                 class="btn-danger"
+                                groups="spa.group_spa_staff"
                                 invisible="is_locked or is_recurring_child or not recurring_is_active or booking_kind != 'card'"/>
                         <button name="action_confirm" string="Xác nhận" type="object"
+                                groups="spa.group_spa_staff"
                                 invisible="is_locked or state != 'draft'" class="btn btn-warning"/>
                         <button name="action_doing" string="Phục vụ" type="object" class="btn btn-success"
+                                groups="spa.group_spa_staff"
                                 invisible="is_locked or state not in ('draft', 'confirmed')"/>
                         <button name="action_done" string="Hoàn thành" type="object" class="btn btn-info"
+                                groups="spa.group_spa_staff"
                                 invisible="is_locked or state not in ('confirmed', 'doing')"/>
                         <button name="action_cancel" string="Hủy" type="object" class="btn btn-danger"
+                                groups="spa.group_spa_staff"
                                 invisible="is_locked or state not in ('draft', 'confirmed')"/>
                         <button name="action_draft" string="Đặt lại Đã xác nhận" type="object"
+                                groups="spa.group_spa_staff"
                                 invisible="is_locked or state != 'cancel'"/>
                     </header>
                     <sheet>
@@ -117,6 +124,7 @@
                                     type="object"
                                     class="oe_stat_button"
                                     icon="fa-sitemap"
+                                    groups="spa.group_spa_staff,spa.group_spa_staff_readonly"
                                     invisible="not display_is_calendar_parent">
                                 <field name="child_booking_ids" widget="statinfo" string="Dịch vụ con"/>
                             </button>
@@ -124,6 +132,7 @@
                                     type="object"
                                     class="oe_stat_button"
                                     icon="fa-level-up"
+                                    groups="spa.group_spa_staff,spa.group_spa_staff_readonly"
                                     invisible="not parent_booking_id">
                                 <span>Booking cha</span>
                             </button>
@@ -182,7 +191,9 @@
                                         colspan="4"
                                         string="Xác nhận đặt lịch theo tuần"
                                         type="object"
-                                        class="btn btn-primary px-4" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                        class="btn btn-primary px-4"
+                                        groups="spa.group_spa_staff"
+                                        invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
                             </group>
                         </group>
                         <group string="Dịch vụ đã thêm" colspan="2" invisible="not display_is_calendar_parent">
@@ -191,11 +202,13 @@
                                         type="object"
                                         class="btn btn-success p-1 mx-2"
                                         string="+ Thêm dịch vụ (trước)"
+                                        groups="spa.group_spa_staff"
                                         invisible="is_locked"/>
                                 <button name="action_add_child_service_booking"
                                         type="object"
                                         class="btn btn-info p-1 mx-2"
                                         string="+ Thêm dịch vụ (sau)"
+                                        groups="spa.group_spa_staff"
                                         invisible="is_locked"/>
                             </div>
                             <field name="child_booking_ids" nolabel="1" colspan="2"
@@ -223,6 +236,7 @@
                                     <button name="action_open_assign_staff_modal"
                                             type="object"
                                             string="Chọn NV"
+                                            groups="spa.group_spa_staff"
                                             class="btn btn-secondary"
                                             icon="fa-user"/>
                                     <field name="staff_id"

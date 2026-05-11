@@ -1,5 +1,7 @@
 # Booking Calendar Module Reference (Living Doc)
 
+> **Phiên làm việc chuẩn:** Áp dụng `docs/AGENT_SESSION_DEFAULTS.md` cho mọi task có thể liên quan `booking_calendar` và/hoặc `spa`. Người dùng thường chỉ gửi **mô tả nhiệm vụ**; quy trình chung đã gom vào file đó.
+
 ## 1) Business Scope
 - Purpose: manage spa booking operations separated from core SPA module (calendar planning, staff capacity, recurring/composite bookings, reminder activities).
 - Main roles: spa staff (daily scheduling), spa manager (configuration and catalog), spa customer (limited self-visibility via record rules).
@@ -71,6 +73,7 @@
 
 ## 7) Dependencies
 - Declared in `__manifest__.py`: `spa`, `mail`, `web`.
+- Read-only staff: `spa.group_spa_staff_readonly` nhận ACL đọc trên `spa.service.booking` / line / non-session offering (mirror staff), không có quyền wizard recurring; nút chuyển trạng thái trên form gắn `groups=\"spa.group_spa_staff\"`; `set_calendar_display_config` chặn user chỉ đọc.
 - Cross-module assumptions:
   - relies heavily on `spa` models/fields (`spa.treatment.card`, staff levels, beds, partner/service structures).
 - Hidden dependency caution:
@@ -105,6 +108,7 @@
   - safe fix pattern: narrow exception types and add logging context.
 
 ## 10) Change Protocol For New Agents
+0. Follow repo-wide session contract in `docs/AGENT_SESSION_DEFAULTS.md` (read order, skill, dependency check, worklog updates).
 1. Read this file, then `BUG_LOG.md`, `DECISIONS.md`, `WORKLOG.md`.
 2. Validate shift/capacity and recurring side effects whenever modifying booking writes.
 3. Keep calendar XML/xpaths minimal and verify JS patch compatibility.

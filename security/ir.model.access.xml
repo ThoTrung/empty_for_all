@@ -64,5 +64,25 @@
             <field name="perm_create" eval="1"/>
             <field name="perm_unlink" eval="1"/>
         </record>
+
+        <!-- Mirror spa staff access: read-only observer (no recurring wizard – no transient create) -->
+        <record id="access_spa_service_booking_staff_readonly" model="ir.model.access">
+            <field name="name">booking_calendar.spa_service_booking_staff_readonly</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking"/>
+            <field name="group_id" ref="spa.group_spa_staff_readonly"/>
+            <field name="perm_read" eval="1"/>
+        </record>
+        <record id="access_spa_booking_non_session_offering_staff_readonly" model="ir.model.access">
+            <field name="name">booking_calendar.booking.non_session_offering_staff_readonly</field>
+            <field name="model_id" ref="booking_calendar.model_spa_booking_non_session_offering"/>
+            <field name="group_id" ref="spa.group_spa_staff_readonly"/>
+            <field name="perm_read" eval="1"/>
+        </record>
+        <record id="access_spa_service_booking_line_staff_readonly" model="ir.model.access">
+            <field name="name">booking_calendar.spa_service_booking_line_staff_readonly</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking_line"/>
+            <field name="group_id" ref="spa.group_spa_staff_readonly"/>
+            <field name="perm_read" eval="1"/>
+        </record>
     </data>
 </odoo>
