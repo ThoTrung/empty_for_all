@@ -162,7 +162,7 @@
                                 <field name="product_id" invisible="1"/>
                                 <field name="start_datetime" required="1" readonly="is_locked"/>
                                 <field name="duration" required="1" readonly="is_locked or is_composite_booking"/>
-                                <field name="display_end_datetime" readonly="1"/>
+                                <field name="display_end_datetime" readonly="1" force_save="1"/>
                                 <field name="end_datetime" invisible="1"/>
                                 <field name="staff_ids"
                                        widget="many2many_tags"

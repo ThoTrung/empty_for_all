@@ -1403,6 +1403,89 @@ class TestBookingCalendar(TransactionCase):
                 "duration": 60,
             })
 
+    def test_create_booking_keeps_duration_when_stale_end_datetime_posted(self):
+        """Regression: ORM inverse on end_datetime must not reset duration (e.g. to 60).
+
+        Client can send duration=90 with end_datetime still matching a 60m slot.
+        """
+        off = self.env["spa.booking.non_session_offering"].create({
+            "name": "Test duration stale end",
+            "duration_minutes": 0,
+        })
+        start = datetime.now() + timedelta(days=6)
+        start = start.replace(hour=11, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        stale_end = start + timedelta(minutes=60)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "non_session",
+            "non_session_offering_id": off.id,
+            "start_datetime": start,
+            "duration": 90,
+            "end_datetime": stale_end,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+        })
+        self.assertEqual(booking.duration, 90)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            (start + timedelta(minutes=90)).replace(microsecond=0),
+        )
+
+    def test_create_booking_keeps_duration_when_stale_display_end_datetime_posted(self):
+        """display_end_datetime cũ (slot 60p) + duration dài hơn → không được kéo duration về 60."""
+        off = self.env["spa.booking.non_session_offering"].create({
+            "name": "Test stale display end",
+            "duration_minutes": 0,
+        })
+        start = datetime.now() + timedelta(days=8)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        stale_display_end = start + timedelta(minutes=60)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "non_session",
+            "non_session_offering_id": off.id,
+            "start_datetime": start,
+            "duration": 120,
+            "display_start_datetime": start,
+            "display_end_datetime": stale_display_end,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+        })
+        self.assertEqual(booking.duration, 120)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            (start + timedelta(minutes=120)).replace(microsecond=0),
+        )
+        self.assertEqual(booking.display_end_datetime, booking.end_datetime)
+
+    def test_write_booking_keeps_duration_when_stale_end_datetime_posted(self):
+        off = self.env["spa.booking.non_session_offering"].create({
+            "name": "Test write stale end",
+            "duration_minutes": 0,
+        })
+        start = datetime.now() + timedelta(days=7)
+        start = start.replace(hour=11, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "non_session",
+            "non_session_offering_id": off.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+        })
+        stale_end = start + timedelta(minutes=60)
+        booking.write({
+            "duration": 120,
+            "end_datetime": stale_end,
+            "display_end_datetime": stale_end,
+        })
+        self.assertEqual(booking.duration, 120)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            (start + timedelta(minutes=120)).replace(microsecond=0),
+        )
+
     def test_card_kind_requires_card(self):
         with self.assertRaises(ValidationError):
             self.env["spa.service.booking"].create({
