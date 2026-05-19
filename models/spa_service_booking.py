@@ -521,45 +521,6 @@ class SpaServiceBooking(models.Model):
             )
             rec.suggested_staff_html = Markup(html)
 
-    @api.onchange(
-        "booking_kind",
-        "product_id",
-        "card_id",
-        "non_session_offering_id",
-        "start_datetime",
-        "duration",
-        "end_datetime",
-    )
-    def _onchange_set_staff_from_suggested(self):
-        """Nếu staff_ids đang trống thì tự chọn nhân viên gợi ý đầu tiên."""
-        if self.state not in ("draft", False):
-            return
-        if self.staff_ids:
-            return
-        if not self.start_datetime or not self.end_datetime:
-            return
-
-        product_id = False
-        if self.booking_kind == "card" and self.card_id and self.card_id.product_id:
-            product_id = self.card_id.product_id.id
-        elif (
-            self.booking_kind == "non_session"
-            and self.non_session_offering_id
-            and self.non_session_offering_id.product_id
-        ):
-            product_id = self.non_session_offering_id.product_id.id
-        elif self.product_id:
-            product_id = self.product_id.id
-
-        ordered_ids = self._spa_rotation_ordered_staff_ids_by_history(
-            product_id=product_id,
-            start_dt=self.start_datetime,
-            end_dt=self.end_datetime,
-            booking_id=self.id,
-        )
-        if ordered_ids:
-            self.staff_ids = [(6, 0, [ordered_ids[0]])]
-
     def _inverse_end_datetime(self):
         """Khi sửa giờ kết thúc (vd. kéo thả lịch), cập nhật duration (phút)."""
         for rec in self:

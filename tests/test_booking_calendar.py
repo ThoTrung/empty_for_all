@@ -391,6 +391,22 @@ class TestBookingCalendar(TransactionCase):
         # NV không có trong cấu hình ca ngày đó không được gợi ý.
         self.assertNotIn(self.user_b.id, ids.ids)
 
+    def test_form_suggestion_does_not_auto_assign_staff_ids(self):
+        """Gợi ý NV chỉ hiển thị (suggested_staff_html); không tự gán staff_ids."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        with Form(self.env["spa.service.booking"]) as f:
+            f.partner_id = self.partner
+            f.booking_kind = "card"
+            f.card_id = self.card
+            f.start_datetime = start
+            self.assertFalse(f.staff_ids)
+        booking = f.save()
+        self.assertFalse(booking.staff_ids)
+        booking._compute_suggested_staff_html()
+        self.assertTrue(booking.suggested_staff_html)
+
     def test_get_suggested_staff_ids_returns_list(self):
         """get_suggested_staff_ids trả về list id theo thứ tự ưu tiên."""
         start = datetime.now() + timedelta(days=5)
