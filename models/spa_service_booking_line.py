@@ -6,6 +6,14 @@ from odoo import api, fields, models, _
 from markupsafe import Markup, escape
 from odoo.exceptions import ValidationError
 
+from .booking_schedule_sanitize import (
+    CTX_SCHEDULE_END_ONLY_WRITE,
+    duration_minutes_between,
+    is_intentional_line_end_resize,
+    is_stale_longer_force_saved_end,
+    sanitize_line_write_vals,
+)
+
 
 class SpaServiceBookingLine(models.Model):
     """Dòng đặt lịch: một dịch vụ con trong đặt lịch tổng (composite). Dùng để check rảnh/capacity theo từng dòng."""
@@ -55,8 +63,21 @@ class SpaServiceBookingLine(models.Model):
 
     def _inverse_end_datetime(self):
         for rec in self:
-            if rec.start_datetime and rec.end_datetime and rec.end_datetime > rec.start_datetime:
-                delta = rec.end_datetime - rec.start_datetime
+            if not rec.start_datetime or not rec.end_datetime:
+                continue
+            new_end = fields.Datetime.to_datetime(rec.end_datetime)
+            if rec.duration_minutes and not rec.env.context.get(CTX_SCHEDULE_END_ONLY_WRITE):
+                if is_stale_longer_force_saved_end(
+                    rec.start_datetime, rec.duration_minutes, new_end
+                ):
+                    continue
+                min_end = fields.Datetime.to_datetime(rec.start_datetime) + timedelta(
+                    minutes=max(int(rec.duration_minutes or 0), 1)
+                )
+                if new_end < min_end - timedelta(seconds=1):
+                    continue
+            if new_end > rec.start_datetime:
+                delta = new_end - fields.Datetime.to_datetime(rec.start_datetime)
                 rec.duration_minutes = int(round(delta.total_seconds() / 60.0))
 
     def _get_capacity_percent(self):
@@ -157,6 +178,7 @@ class SpaServiceBookingLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = [sanitize_line_write_vals(vals, is_create=True) for vals in vals_list]
         records = super().create(vals_list)
         for rec in records:
             if rec.booking_id:
@@ -165,7 +187,25 @@ class SpaServiceBookingLine(models.Model):
         return records
 
     def write(self, vals):
-        res = super().write(vals)
+        vals = sanitize_line_write_vals(vals)
+        records = self
+        if set(vals.keys()) == {"end_datetime"}:
+            new_end = fields.Datetime.to_datetime(vals["end_datetime"])
+            if any(
+                is_intentional_line_end_resize(
+                    rec.start_datetime, rec.duration_minutes, new_end
+                )
+                for rec in self
+            ):
+                records = self.with_context(**{CTX_SCHEDULE_END_ONLY_WRITE: True})
+                for rec in self:
+                    mins = duration_minutes_between(rec.start_datetime, new_end)
+                    if mins:
+                        vals = dict(vals, duration_minutes=mins)
+                        break
+            else:
+                vals.pop("end_datetime", None)
+        res = super(SpaServiceBookingLine, records).write(vals)
         if "staff_id" in vals or "duration_minutes" in vals:
             for rec in self:
                 if rec.booking_id:

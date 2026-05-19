@@ -19,6 +19,28 @@ Use this file for short session-level handoff notes.
 
 ## Entries
 
+### 2026-05-19 - Fix booking disappears when shifting start to next day (single booking)
+- Goal: sửa lỗi đặt lịch đơn (chưa NV) đổi Bắt đầu sang ngày sau thì mất trên lịch; **giữ** `force_save` trên `display_end_datetime` (regression duration 60p).
+- Changes made:
+  - reproduce trên drlai: `start` ngày mới + `display_end` cũ (force_save) → `end < start`, calendar ẩn event
+  - `_sanitize_schedule_write_vals`: đổi `start_datetime` → bỏ display/end cũ; có `duration` → bỏ display/end stale (duration thắng, không về 60p)
+  - **Giữ** form `display_end_datetime` + `force_save="1"` như trước
+  - create: sanitize khi có `duration`; sau create gọi `_compute_display_datetimes()`
+  - tests: shift ngày, duration 90p Form/write, stale display_end create/write
+- Files touched:
+  - `custom_addons/booking_calendar/models/spa_service_booking.py`
+  - `custom_addons/booking_calendar/views/spa_service_booking_view.xml`
+  - `custom_addons/booking_calendar/tests/test_booking_calendar.py`
+  - `custom_addons/booking_calendar/docs/BUG_LOG.md`
+- Validation done:
+  - shell Form 90p + shift ngày; API write shift + stale display_end
+  - 6 regression tests pass (tag `.test_create_booking_keeps_duration_when_stale_display_end_datetime_posted`, `.test_write_booking_keeps_duration_when_stale_end_datetime_posted`, `.test_write_shift_*`, `.test_form_*`)
+- Dependency impact check:
+  - Dependents reviewed: calendar (`display_*`), form save, `write`/`_inverse_display_*`, chain parent form end display
+  - Contract compatibility: giữ field names; chỉ bỏ nhận stale display payload khi đổi start
+  - Regression tests/manual checks run: `test_write_shift_start_to_next_day_single_booking_no_staff`; manual UI: sửa Bắt đầu +1 ngày, mở lịch đúng ngày
+- Open risks: booking đã lưu trước fix với `end < start` cần sửa tay hoặc script one-off
+- Next suggested steps: `-u booking_calendar` trên DB UAT; kiểm tra vài record draft bị lệch end/start nếu user báo vẫn mất
 
 ### 2026-05-09 - post-UAT correction for readonly booking scope gate
 - Goal: ensure readonly user sees exactly own assigned bookings in drlai.

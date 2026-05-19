@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from . import booking_schedule_sanitize
 from . import spa_booking_non_session_offering
 from . import spa_service_booking_line
 from . import spa_service_booking

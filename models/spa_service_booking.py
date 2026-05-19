@@ -6,6 +6,13 @@ from odoo import api, fields, models, _
 from markupsafe import Markup, escape
 from odoo.exceptions import ValidationError, UserError
 
+from .booking_schedule_sanitize import (
+    CTX_SCHEDULE_END_ONLY_WRITE,
+    duration_minutes_between,
+    sanitize_booking_write_vals,
+    write_with_optional_end_only_context,
+)
+
 
 class SpaServiceBooking(models.Model):
     _name = "spa.service.booking"
@@ -295,15 +302,30 @@ class SpaServiceBooking(models.Model):
         """Allow calendar writes without breaking the chain.
 
         We intentionally do not support resizing aggregated (parent) events here.
+        Ignore display_end shorter than start+duration (stale force_save from form).
         """
         for rec in self:
-            # For non-chain bookings, allow setting end_datetime through existing inverse.
-            if not rec.child_booking_ids and not rec.parent_booking_id and rec.display_end_datetime:
-                try:
-                    rec.end_datetime = rec.display_end_datetime
-                except Exception:
-                    # Be defensive: calendar may send both start/end; end will be recomputed anyway.
+            if not rec.display_end_datetime:
+                continue
+            if rec.child_booking_ids or rec.parent_booking_id:
+                continue
+            new_end = fields.Datetime.to_datetime(rec.display_end_datetime)
+            if not new_end:
+                continue
+            if (
+                rec.start_datetime
+                and rec.duration
+                and not rec.env.context.get(CTX_SCHEDULE_END_ONLY_WRITE)
+            ):
+                min_end = fields.Datetime.to_datetime(rec.start_datetime) + timedelta(
+                    minutes=max(int(rec.duration or 0), 1)
+                )
+                if new_end < min_end - timedelta(seconds=1):
                     continue
+            try:
+                rec.end_datetime = new_end
+            except Exception:
+                continue
 
     def _spa_chain_root(self):
         self.ensure_one()
@@ -694,7 +716,12 @@ class SpaServiceBooking(models.Model):
                 total += dm
             # Avoid recursion with write() duration sync
             if rec.duration != total:
-                rec.with_context(skip_composite_duration_sync=True).write({"duration": total})
+                ctx = dict(self.env.context, skip_composite_duration_sync=True)
+                if self.env.context.get("spa_sync_duration_internal"):
+                    rec.with_context(ctx)._write({"duration": total})
+                    rec.invalidate_recordset(["duration", "end_datetime"])
+                else:
+                    rec.with_context(ctx).write({"duration": total})
 
     def _sync_staff_ids_from_lines(self):
         """Dịch vụ gộp: staff_ids luôn = union của booking_line_ids.staff_id."""
@@ -1653,6 +1680,7 @@ class SpaServiceBooking(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = [sanitize_booking_write_vals(vals, is_create=True) for vals in vals_list]
         for vals in vals_list:
             if not vals.get("name"):
                 vals["name"] = self.env["ir.sequence"].next_by_code("spa.service.booking") or _("New")
@@ -1662,6 +1690,7 @@ class SpaServiceBooking(models.Model):
                 if card.exists() and card.duration_minutes:
                     vals["duration"] = card.duration_minutes
                     vals.pop("end_datetime", None)
+                    vals.pop("display_end_datetime", None)
             if vals.get("non_session_offering_id"):
                 off = self.env["spa.booking.non_session_offering"].browse(
                     vals["non_session_offering_id"]
@@ -1669,6 +1698,7 @@ class SpaServiceBooking(models.Model):
                 if off.exists() and off.duration_minutes:
                     vals["duration"] = off.duration_minutes
                     vals.pop("end_datetime", None)
+                    vals.pop("display_end_datetime", None)
             # Khi tạo từ calendar (chọn khoảng), có thể chỉ có start + end → suy ra duration
             start = vals.get("start_datetime")
             end = vals.get("end_datetime")
@@ -1681,12 +1711,18 @@ class SpaServiceBooking(models.Model):
                 except (TypeError, ValueError):
                     pass
         result = super().create(vals_list)
+        if result:
+            # After stripping stale display_end from vals, stored display_* must be refreshed.
+            result._compute_display_datetimes()
         # Ensure sequential chain for newly created children/parents
         roots = set()
         for rec in result:
             roots.add(rec._spa_chain_root().id)
         for root in self.browse(list(roots)):
             root._spa_rechain_children()
+        composites = result.filtered("booking_line_ids")
+        if composites:
+            composites.with_context(spa_sync_duration_internal=True)._sync_duration_from_lines()
         card_ids = [v.get("card_id") for v in vals_list if v.get("card_id")]
         if card_ids:
             self.env["spa.treatment.card"].browse(card_ids).invalidate_recordset(
@@ -1697,6 +1733,18 @@ class SpaServiceBooking(models.Model):
     def write(self, vals):
         if self.env.context.get("skip_composite_duration_sync"):
             return super().write(vals)
+
+        vals = sanitize_booking_write_vals(vals)
+        records = write_with_optional_end_only_context(self, vals)
+        if records.env.context.get(CTX_SCHEDULE_END_ONLY_WRITE) and vals.get(
+            "display_end_datetime"
+        ):
+            new_end = fields.Datetime.to_datetime(vals["display_end_datetime"])
+            for rec in self:
+                mins = duration_minutes_between(rec.start_datetime, new_end)
+                if mins:
+                    vals = dict(vals, duration=mins)
+                    break
 
         # Nếu đổi start_datetime của booking gộp: rebase giờ các bước (line1 = start, line(i+1) nối tiếp).
         rebase_ids = set()
@@ -1713,6 +1761,7 @@ class SpaServiceBooking(models.Model):
             if card.exists() and card.duration_minutes:
                 vals = dict(vals, duration=card.duration_minutes)
                 vals.pop("end_datetime", None)
+                vals.pop("display_end_datetime", None)
         if vals.get("non_session_offering_id"):
             off = self.env["spa.booking.non_session_offering"].browse(
                 vals["non_session_offering_id"]
@@ -1720,6 +1769,7 @@ class SpaServiceBooking(models.Model):
             if off.exists() and off.duration_minutes:
                 vals = dict(vals, duration=off.duration_minutes)
                 vals.pop("end_datetime", None)
+                vals.pop("display_end_datetime", None)
         card_ids_to_invalidate = set()
         if "card_id" in vals or "state" in vals:
             card_ids_to_invalidate.update(self.card_id.ids)
@@ -1730,7 +1780,7 @@ class SpaServiceBooking(models.Model):
         if need_rechain:
             for rec in self:
                 roots.add(rec._spa_chain_root().id)
-        result = super().write(vals)
+        result = super(SpaServiceBooking, records).write(vals)
         if need_rechain and not self.env.context.get("spa_skip_rechain_children"):
             for root in self.browse(list(roots)):
                 root._spa_rechain_children()
@@ -1748,12 +1798,12 @@ class SpaServiceBooking(models.Model):
                     dm = max(1, dm) if dm else 60
                     current = current + timedelta(minutes=dm)
                 # Đồng bộ duration theo tổng thời gian các bước
-                rec._sync_duration_from_lines()
+                rec.with_context(spa_sync_duration_internal=True)._sync_duration_from_lines()
 
         # Nếu là booking gộp thì duration luôn theo lines (kể cả trường hợp đổi thẻ làm sync duration từ thẻ).
         composites = self.filtered(lambda b: b.booking_line_ids)
         if composites:
-            composites._sync_duration_from_lines()
+            composites.with_context(spa_sync_duration_internal=True)._sync_duration_from_lines()
         if card_ids_to_invalidate:
             self.env["spa.treatment.card"].browse(card_ids_to_invalidate).invalidate_recordset(
                 ["reserved_by_bookings", "available_for_booking"]

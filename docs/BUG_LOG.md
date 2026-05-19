@@ -20,6 +20,19 @@ Use one section per bug. Keep entries short and reproducible.
 
 ## Active Bugs
 
+### [BC-BUG-2026-05-19-01] Single booking vanishes after moving start to next day (stale display_end)
+- Date: 2026-05-19
+- Reporter: user UAT
+- Context (screen/model/action): form đặt lịch đơn, chưa gán NV, đổi `start_datetime` sang ngày kế tiếp rồi Lưu
+- Symptom: không báo lỗi; booking biến mất khỏi lịch (record còn nhưng `end_datetime` vẫn ngày cũ → `end` < `start`, calendar không render)
+- Reproduction steps: tạo booking đơn draft, không `staff_ids`, mở form, đổi Bắt đầu +1 ngày, Lưu; quan sát lịch ngày cũ
+- Root cause: form `display_end_datetime` có `force_save="1"` gửi giá trị cũ cùng `write()`; `_inverse_display_end_datetime` ghim `end_datetime` ở ngày cũ trong khi `start_datetime` đã sang ngày mới
+- Fix summary: giữ `display_end_datetime` + `force_save="1"`; `write()` bỏ display/end stale trên mọi form save (kể cả khi `duration` không có trong vals); calendar-only write giữ nguyên; `_inverse_display_end` bỏ qua end ngắn hơn start+duration; chọn thẻ pop display_end
+- Files changed: `models/spa_service_booking.py`, `views/spa_service_booking_view.xml`, `tests/test_booking_calendar.py`
+- Test coverage: `test_write_shift_start_to_next_day_single_booking_no_staff`
+- Regression risk: low (chỉ khi `start_datetime` trong vals; kéo lịch vẫn qua `display_start` inverse)
+- Follow-up TODO: none
+
 ### [BC-BUG-2026-05-08-03] View/test mismatch for `display_calendar_service_id`
 - Date: 2026-05-08
 - Reporter: AI audit

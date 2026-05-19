@@ -955,21 +955,20 @@ class TestBookingCalendar(TransactionCase):
         })
         start = datetime.now() + timedelta(days=1)
         start = start.replace(hour=9, minute=0, second=0, microsecond=0)
-        f = Form(self.env["spa.service.booking"])
-        f.partner_id = self.partner
-        f.booking_kind = "card"
-        f.card_id = card
-        f.start_datetime = start
-        f.duration = 90
-        b = f.save()
+        b = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": card.id,
+            "start_datetime": start,
+        })
+        b.action_generate_bundle_steps()
+        self.assertEqual(b.duration, 90)
         self.assertEqual(len(b.booking_line_ids), 2)
         l1, l2 = b.booking_line_ids.sorted(lambda l: (l.sequence, l.id))
         self.assertEqual(l1.start_datetime, start)
         self.assertEqual(l2.start_datetime, start + timedelta(minutes=30))
-        # Shift start by +60 minutes
-        b_form = Form(self.env["spa.service.booking"].browse(b.id))
-        b_form.start_datetime = start + timedelta(minutes=60)
-        b2 = b_form.save()
+        b.write({"start_datetime": start + timedelta(minutes=60)})
+        b2 = b
         l1n, l2n = b2.booking_line_ids.sorted(lambda l: (l.sequence, l.id))
         self.assertEqual(l1n.start_datetime, start + timedelta(minutes=60))
         self.assertEqual(l2n.start_datetime, start + timedelta(minutes=90))
@@ -1457,6 +1456,331 @@ class TestBookingCalendar(TransactionCase):
             (start + timedelta(minutes=120)).replace(microsecond=0),
         )
         self.assertEqual(booking.display_end_datetime, booking.end_datetime)
+
+    def _make_card(self, duration_minutes, name="Card duration test"):
+        return self.env["spa.treatment.card"].create({
+            "name": name,
+            "partner_id": self.partner.id,
+            "product_id": self.product_svc.id,
+            "total_sessions": 10,
+            "duration_minutes": duration_minutes,
+        })
+
+    def test_write_shift_start_to_next_day_single_booking_no_staff(self):
+        """Write: đổi Bắt đầu sang ngày sau + display_end cũ (force_save) → end phải theo start."""
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        tomorrow = start + timedelta(days=1)
+        stale_display_end = start + timedelta(minutes=60)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(5, 0, 0)],
+        })
+        booking.write({
+            "start_datetime": tomorrow,
+            "display_end_datetime": stale_display_end,
+        })
+        self.assertEqual(
+            fields.Datetime.to_datetime(booking.start_datetime).date(),
+            tomorrow.date(),
+        )
+        self.assertGreater(booking.end_datetime, booking.start_datetime)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            (tomorrow + timedelta(minutes=60)).replace(microsecond=0),
+        )
+        self.assertEqual(booking.display_end_datetime, booking.end_datetime)
+
+    def test_write_shift_start_keeps_card_duration_with_stale_display_end(self):
+        """Đổi ngày + thẻ 90p + display_end cũ 60p: duration vẫn 90, lịch hợp lệ."""
+        card_90 = self._make_card(90, name="Card 90 shift day")
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        tomorrow = start + timedelta(days=1)
+        stale_display_end = start + timedelta(minutes=60)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": card_90.id,
+            "start_datetime": start,
+            "duration": 90,
+            "staff_ids": [(5, 0, 0)],
+        })
+        booking.write({
+            "start_datetime": tomorrow,
+            "duration": 90,
+            "display_end_datetime": stale_display_end,
+        })
+        self.assertEqual(booking.duration, 90)
+        self.assertEqual(
+            fields.Datetime.to_datetime(booking.start_datetime).date(),
+            tomorrow.date(),
+        )
+        self.assertGreater(booking.end_datetime, booking.start_datetime)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            (tomorrow + timedelta(minutes=90)).replace(microsecond=0),
+        )
+
+    def test_form_save_keeps_card_duration_not_default_60(self):
+        """Regression force_save: form lưu thẻ 90p không bị kéo về 60."""
+        card_90 = self._make_card(90, name="Card 90 form save")
+        start = datetime.now() + timedelta(days=3)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        with Form(self.env["spa.service.booking"]) as f:
+            f.partner_id = self.partner
+            f.booking_kind = "card"
+            f.card_id = card_90
+            f.start_datetime = start
+            self.assertEqual(f.duration, 90)
+            booking = f.save()
+        self.assertEqual(booking.duration, 90)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            (start + timedelta(minutes=90)).replace(microsecond=0),
+        )
+        self.assertEqual(booking.display_end_datetime, booking.end_datetime)
+
+    def test_write_force_save_display_end_only_keeps_duration(self):
+        """Regression: form Lưu chỉ gửi display_end (force_save), không gửi duration → không về 60."""
+        card_90 = self._make_card(90, name="Card 90 force save only")
+        start = datetime.now() + timedelta(days=5)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": card_90.id,
+            "start_datetime": start,
+            "duration": 90,
+            "staff_ids": [(5, 0, 0)],
+        })
+        stale_display_end = start + timedelta(minutes=60)
+        booking.write({"display_end_datetime": stale_display_end})
+        self.assertEqual(booking.duration, 90)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            (start + timedelta(minutes=90)).replace(microsecond=0),
+        )
+
+    def test_write_select_card_stale_display_end_keeps_card_duration(self):
+        """Chọn thẻ 90p trên form: client có thể gửi duration=60 + display_end cũ."""
+        off = self.env["spa.booking.non_session_offering"].create({
+            "name": "Placeholder before card",
+            "duration_minutes": 0,
+        })
+        card_90 = self._make_card(90, name="Card 90 select")
+        start = datetime.now() + timedelta(days=5)
+        start = start.replace(hour=14, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "non_session",
+            "non_session_offering_id": off.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(5, 0, 0)],
+        })
+        stale_display_end = start + timedelta(minutes=60)
+        booking.write({
+            "booking_kind": "card",
+            "card_id": card_90.id,
+            "duration": 60,
+            "display_end_datetime": stale_display_end,
+        })
+        self.assertEqual(booking.duration, 90)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            (start + timedelta(minutes=90)).replace(microsecond=0),
+        )
+
+    def test_form_save_without_touching_duration_keeps_card_minutes(self):
+        """Form: chỉ đổi ghi chú, duration trên UI vẫn từ thẻ — không reset 60."""
+        card_90 = self._make_card(90, name="Card 90 note save")
+        start = datetime.now() + timedelta(days=5)
+        start = start.replace(hour=15, minute=0, second=0, microsecond=0)
+        with Form(self.env["spa.service.booking"]) as f:
+            f.partner_id = self.partner
+            f.booking_kind = "card"
+            f.card_id = card_90
+            f.start_datetime = start
+            self.assertEqual(f.duration, 90)
+            booking = f.save()
+        with Form(self.env["spa.service.booking"].browse(booking.id)) as f:
+            f.note = "ghi chú test duration"
+            booking2 = f.save()
+        self.assertEqual(booking2.duration, 90)
+
+    def test_form_shift_start_next_day_keeps_card_duration(self):
+        """Form: đổi Bắt đầu sang ngày sau, thẻ 90p — duration/end vẫn đúng."""
+        card_90 = self._make_card(90, name="Card 90 form shift")
+        start = datetime.now() + timedelta(days=4)
+        start = start.replace(hour=11, minute=0, second=0, microsecond=0)
+        tomorrow = start + timedelta(days=1)
+        with Form(self.env["spa.service.booking"]) as f:
+            f.partner_id = self.partner
+            f.booking_kind = "card"
+            f.card_id = card_90
+            f.start_datetime = start
+            self.assertEqual(f.duration, 90)
+            booking = f.save()
+        with Form(self.env["spa.service.booking"].browse(booking.id)) as f:
+            f.start_datetime = tomorrow
+            self.assertEqual(f.duration, 90)
+            booking2 = f.save()
+        self.assertEqual(booking2.duration, 90)
+        self.assertEqual(
+            fields.Datetime.to_datetime(booking2.start_datetime).date(),
+            tomorrow.date(),
+        )
+        self.assertGreater(booking2.end_datetime, booking2.start_datetime)
+        self.assertEqual(
+            booking2.end_datetime.replace(microsecond=0),
+            (tomorrow + timedelta(minutes=90)).replace(microsecond=0),
+        )
+
+    def test_create_card_without_duration_vals_keeps_card_minutes(self):
+        """Create chỉ card_id + display_end stale (không gửi duration) → lấy duration từ thẻ."""
+        card_90 = self._make_card(90, name="Card create no duration key")
+        start = datetime.now() + timedelta(days=9)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        stale_display_end = start + timedelta(minutes=60)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": card_90.id,
+            "start_datetime": start,
+            "display_end_datetime": stale_display_end,
+            "staff_ids": [(5, 0, 0)],
+        })
+        self.assertEqual(booking.duration, 90)
+        self.assertGreater(booking.end_datetime, booking.start_datetime)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            (start + timedelta(minutes=90)).replace(microsecond=0),
+        )
+        self.assertEqual(booking.display_end_datetime, booking.end_datetime)
+
+    def _make_composite_line_fixture(self, line_duration_minutes=45):
+        """Booking gộp 1 line để test modal line (force_save end)."""
+        parent_tmpl = self.env["product.template"].create({
+            "name": "Gói line sanitize",
+            "detailed_type": "service",
+            "list_price": 200,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": line_duration_minutes,
+        })
+        child_tmpl = self.env["product.template"].create({
+            "name": "Child line sanitize",
+            "detailed_type": "service",
+            "list_price": 50,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": line_duration_minutes,
+        })
+        self.env["spa.product.sub.service"].create([{
+            "product_tmpl_id": parent_tmpl.id,
+            "sub_product_tmpl_id": child_tmpl.id,
+            "sequence": 1,
+            "duration_minutes": line_duration_minutes,
+        }])
+        card = self.env["spa.treatment.card"].create({
+            "name": "Card line sanitize",
+            "partner_id": self.partner.id,
+            "product_id": parent_tmpl.product_variant_id.id,
+            "total_sessions": 10,
+            "duration_minutes": line_duration_minutes,
+        })
+        start = datetime.now() + timedelta(days=9)
+        start = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": card.id,
+            "start_datetime": start,
+            "duration": line_duration_minutes,
+        })
+        booking.action_generate_bundle_steps()
+        line = booking.booking_line_ids[:1]
+        self.assertTrue(line)
+        return booking, line, start
+
+    def test_line_write_stale_end_only_keeps_duration_minutes(self):
+        """Modal line: write chỉ end_datetime cũ (60p) → duration_minutes line giữ 45."""
+        _booking, line, start = self._make_composite_line_fixture(45)
+        stale_end = start + timedelta(minutes=60)
+        line.write({"end_datetime": stale_end})
+        self.assertEqual(line.duration_minutes, 45)
+        self.assertEqual(
+            line.end_datetime.replace(microsecond=0),
+            (start + timedelta(minutes=45)).replace(microsecond=0),
+        )
+
+    def test_line_write_staff_change_stale_end_keeps_duration(self):
+        """Modal line: đổi NV + force_save end cũ → không kéo duration_minutes về 60."""
+        booking, line, start = self._make_composite_line_fixture(45)
+        self._ensure_shift_lines(start, [([self.user_b.id], 8.0, 10.0)])
+        stale_end = start + timedelta(minutes=60)
+        line.write({
+            "staff_id": self.user_b.id,
+            "end_datetime": stale_end,
+        })
+        self.assertEqual(line.duration_minutes, 45)
+        self.assertEqual(line.staff_id, self.user_b)
+        self.assertEqual(booking.duration, 45)
+
+    def test_line_write_shift_start_keeps_duration_minutes(self):
+        """Đổi start line + end stale → duration_minutes không đổi, end theo start mới."""
+        _booking, line, start = self._make_composite_line_fixture(45)
+        new_start = start + timedelta(days=1)
+        stale_end = start + timedelta(minutes=60)
+        line.write({
+            "start_datetime": new_start,
+            "end_datetime": stale_end,
+        })
+        self.assertEqual(line.duration_minutes, 45)
+        self.assertEqual(
+            fields.Datetime.to_datetime(line.start_datetime).date(),
+            new_start.date(),
+        )
+        self.assertEqual(
+            line.end_datetime.replace(microsecond=0),
+            (new_start + timedelta(minutes=45)).replace(microsecond=0),
+        )
+
+    def test_line_end_only_write_can_shorten_duration(self):
+        """Chỉ write end_datetime (resize): được phép rút ngắn duration."""
+        _booking, line, start = self._make_composite_line_fixture(45)
+        shorter_end = start + timedelta(minutes=30)
+        line.write({"end_datetime": shorter_end})
+        self.assertEqual(line.duration_minutes, 30)
+        self.assertEqual(
+            line.end_datetime.replace(microsecond=0),
+            shorter_end.replace(microsecond=0),
+        )
+
+    def test_calendar_display_write_can_shorten_duration(self):
+        """Write calendar-only display_end (context) → resize rút ngắn duration."""
+        start = datetime.now() + timedelta(days=10)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": self.card.id,
+            "start_datetime": start,
+            "duration": 90,
+            "staff_ids": [(5, 0, 0)],
+        })
+        shorter_end = start + timedelta(minutes=45)
+        booking.write({
+            "display_end_datetime": shorter_end,
+        })
+        self.assertEqual(booking.duration, 45)
+        self.assertEqual(
+            booking.end_datetime.replace(microsecond=0),
+            shorter_end.replace(microsecond=0),
+        )
 
     def test_write_booking_keeps_duration_when_stale_end_datetime_posted(self):
         off = self.env["spa.booking.non_session_offering"].create({
