@@ -1263,7 +1263,7 @@ class TestBookingCalendar(TransactionCase):
         )
 
     def test_composite_calendar_event_title_uses_bundle_name_not_child(self):
-        """Tiêu đề ô lịch dùng tên sản phẩm thẻ gói, không tên từng bước (X, Y, Z)."""
+        """Tiêu đề ô lịch dùng mã tham chiếu nội bộ của dịch vụ gói, không tên từng bước (X, Y, Z)."""
         parent_tmpl = self.env["product.template"].create({
             "name": "Gói Calendar Title",
             "detailed_type": "service",
@@ -1271,6 +1271,7 @@ class TestBookingCalendar(TransactionCase):
             "spa_sessions_per_unit": 1,
             "spa_duration_minutes": 90,
         })
+        parent_tmpl.product_variant_id.default_code = "BUNDLE01"
         self.env["spa.product.sub.service"].create([
             {
                 "product_tmpl_id": parent_tmpl.id,
@@ -1321,7 +1322,7 @@ class TestBookingCalendar(TransactionCase):
         child_b_name = self.product_90.name
         booking._compute_calendar_event_title()
         title = booking.calendar_event_title
-        self.assertIn("Gói Calendar Title", title)
+        self.assertIn("BUNDLE01", title)
         if child_a_name and child_b_name and child_a_name not in (child_b_name,):
             self.assertNotIn(
                 child_a_name,
@@ -1378,9 +1379,9 @@ class TestBookingCalendar(TransactionCase):
 
     def test_list_view_uses_display_calendar_service_column(self):
         view = self.env.ref("booking_calendar.view_spa_service_booking_tree")
-        self.assertIn("display_calendar_service_id", view.arch_db)
+        self.assertIn("product_internal_ref", view.arch_db)
         view_search = self.env.ref("booking_calendar.view_spa_service_booking_search")
-        self.assertIn("display_calendar_service_id", view_search.arch_db)
+        self.assertIn("product_internal_ref", view_search.arch_db)
         form = self.env.ref("booking_calendar.view_spa_service_booking_form")
         self.assertIn("display_calendar_service_id", form.arch_db)
 
@@ -1901,8 +1902,9 @@ class TestBookingCalendar(TransactionCase):
         booking.calendar_note = "Ghi chú test"
         booking._compute_calendar_event_title()
         self.assertIn("KH A (0909) - Ghi chú test", booking.calendar_event_title)
-        # service line should include code or name
-        self.assertTrue("Service" in title or "-" in title)
+        # service line should include internal reference
+        self.assertTrue(bool(self.product_svc.default_code))
+        self.assertIn(self.product_svc.default_code, title)
         self.assertNotIn("\n", title)
 
     def test_calendar_view_uses_hex_color_field(self):

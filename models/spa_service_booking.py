@@ -116,6 +116,13 @@ class SpaServiceBooking(models.Model):
         domain=[("detailed_type", "=", "service")],
         tracking=True,
     )
+    product_internal_ref = fields.Char(
+        string="Mã dịch vụ",
+        compute="_compute_product_internal_ref",
+        store=False,
+        search="_search_product_internal_ref",
+        help="Chỉ dùng hiển thị trong Đặt lịch: mã tham chiếu nội bộ (default_code) của dịch vụ hiệu dụng.",
+    )
     start_datetime = fields.Datetime(string="Bắt đầu", required=True, tracking=True)
     duration = fields.Integer(
         string="Thời gian (phút)",
@@ -560,28 +567,29 @@ class SpaServiceBooking(models.Model):
     )
     def _compute_calendar_event_title(self):
         for rec in self:
-            def _join_code_name(code, name):
+            def _internal_ref_or_name(code, name):
                 code = (code or "").strip()
-                name = (name or "").strip()
-                if code and name:
-                    return f"{code} - {name}"
-                return code or name or ""
+                if code:
+                    return code
+                return (name or "").strip()
 
             def _service_line_for(bk):
                 if bk.booking_kind == "card" and bk.card_id:
                     p_show = bk._get_display_calendar_service_product() or bk.card_id.product_id or bk.product_id
-                    code = (bk.card_id.code or "") if bk.card_id else ""
-                    code = code or (p_show.default_code if p_show else "")
+                    code = p_show.default_code if p_show else ""
                     name = p_show.name or p_show.display_name if p_show else ""
-                    return _join_code_name(code, name)
+                    return _internal_ref_or_name(code, name)
                 if bk.booking_kind == "non_session" and bk.non_session_offering_id:
                     off = bk.non_session_offering_id
                     p_show = off.product_id or bk.product_id
-                    code = (off.code or "") or (p_show.default_code if p_show else "")
+                    code = p_show.default_code if p_show else ""
                     name = off.name or (p_show.name or p_show.display_name if p_show else "")
-                    return _join_code_name(code, name)
+                    return _internal_ref_or_name(code, name)
                 p = bk._get_display_calendar_service_product() or bk.product_id
-                return _join_code_name(p.default_code if p else "", p.name or p.display_name if p else "")
+                return _internal_ref_or_name(
+                    p.default_code if p else "",
+                    p.name or p.display_name if p else "",
+                )
 
             # Nickname staff:
             # - booking thường: lấy 1 người đầu để gọn
@@ -649,6 +657,40 @@ class SpaServiceBooking(models.Model):
             if service_line:
                 parts.append(service_line)
             rec.calendar_event_title = " ".join([p for p in parts if p])
+
+    @api.depends(
+        "booking_kind",
+        "product_id",
+        "product_id.default_code",
+        "card_id",
+        "card_id.product_id",
+        "card_id.product_id.default_code",
+        "non_session_offering_id",
+        "non_session_offering_id.product_id",
+        "non_session_offering_id.product_id.default_code",
+        "is_composite_booking",
+        "booking_line_ids",
+        "booking_line_ids.product_id",
+        "booking_line_ids.product_id.default_code",
+    )
+    def _compute_product_internal_ref(self):
+        for rec in self:
+            p = rec._get_display_calendar_service_product()
+            rec.product_internal_ref = (p.default_code or "").strip() if p else ""
+
+    def _search_product_internal_ref(self, operator, value):
+        # Search by internal reference across possible service sources (direct product, card product, offering product).
+        # This is used only by booking screens; keep it simple and domain-based.
+        val = (value or "").strip()
+        if not val:
+            return []
+        return [
+            "|",
+            "|",
+            ("product_id.default_code", operator, val),
+            ("card_id.product_id.default_code", operator, val),
+            ("non_session_offering_id.product_id.default_code", operator, val),
+        ]
 
     def _spa_effective_service_product(self):
         """product.product từ thẻ / buổi / product_id theo cùng quy tắc form (gợi ý NV, v.v.)."""

@@ -19,6 +19,26 @@ Use this file for short session-level handoff notes.
 
 ## Entries
 
+### 2026-05-27 - Booking: chỉ hiển thị mã tham chiếu nội bộ cho dịch vụ
+- Goal: trong màn Đặt lịch, hiển thị dịch vụ bằng `default_code` (mã tham chiếu nội bộ) thay vì `code - name`.
+- Changes made:
+  - calendar title (`calendar_event_title`) chỉ ghép mã tham chiếu nội bộ (fallback tên nếu thiếu mã).
+  - thêm field hiển thị `product_internal_ref`/`product_internal_ref` (line) và dùng trong search/tree/modal để chỉ hiện mã, không cần can thiệp `product.product.name_get`.
+- Files touched:
+  - `custom_addons/booking_calendar/models/spa_service_booking.py`
+  - `custom_addons/booking_calendar/models/spa_service_booking_line.py`
+  - `custom_addons/booking_calendar/views/spa_service_booking_view.xml`
+  - `custom_addons/booking_calendar/views/spa_service_booking_line_view.xml`
+  - `custom_addons/booking_calendar/tests/test_booking_calendar.py`
+- Validation done:
+  - `python3 -m compileall -q` các file đã sửa.
+- Dependency impact check:
+  - Dependents reviewed: calendar view uses `create_name_field="calendar_event_title"`, list/search/tree product fields, reminder activity (không đổi), các JS patches không phụ thuộc format service label.
+  - Contract compatibility result: không đổi field/model/XML id; chỉ thêm field compute/related dùng cho hiển thị và search domain.
+  - Regression tests/manual checks run: cập nhật assertions liên quan `calendar_event_title` trong `test_booking_calendar.py`; manual UI: mở lịch đặt → tiêu đề chỉ còn mã (vd `C005488`).
+- Open risks: sản phẩm không có `default_code` sẽ fallback về tên để tránh trống.
+- Next suggested steps: nếu cần áp dụng thêm cho chỗ khác (nhắc lịch/activity hoặc report), thêm context tương tự hoặc chuẩn hoá formatter.
+
 ### 2026-05-19 - Fix booking disappears when shifting start to next day (single booking)
 - Goal: sửa lỗi đặt lịch đơn (chưa NV) đổi Bắt đầu sang ngày sau thì mất trên lịch; **giữ** `force_save` trên `display_end_datetime` (regression duration 60p).
 - Changes made:

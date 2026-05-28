@@ -34,6 +34,12 @@ class SpaServiceBookingLine(models.Model):
         required=True,
         domain=[("detailed_type", "=", "service")],
     )
+    product_internal_ref = fields.Char(
+        string="Mã dịch vụ",
+        related="product_id.default_code",
+        store=False,
+        readonly=True,
+    )
     staff_id = fields.Many2one("res.users", string="Nhân viên", domain=[("share", "=", False)])
     suggested_staff_html = fields.Html(
         string="Nhân viên gợi ý (luân ca)",

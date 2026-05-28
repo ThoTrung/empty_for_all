@@ -9,7 +9,8 @@
                     <sheet>
                         <group>
                             <field name="booking_id" invisible="1"/>
-                            <field name="product_id" readonly="1"/>
+                            <field name="product_internal_ref" readonly="1"/>
+                            <field name="product_id" readonly="1" invisible="1"/>
                             <field name="start_datetime"/>
                             <field name="duration_minutes"/>
                             <field name="end_datetime" readonly="1" force_save="1"/>
