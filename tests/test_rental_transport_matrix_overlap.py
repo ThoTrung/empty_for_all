@@ -172,3 +172,18 @@ class TestRentalTransportMatrixHelpers(TransactionCase):
         )
         sorted_o = rtm._sort_products_odict(prods)
         self.assertEqual(list(sorted_o.keys()), [3, 2, 1])
+
+    def test_group_needs_md_single_variant_with_length(self):
+        prods = {10: {"variant_name": "1,5m", "prod_name": "Hộp 5*10 (1,5m)"}}
+        self.assertTrue(rtm._group_needs_md_column(self.env, prods, [10]))
+
+    def test_group_needs_md_single_variant_without_length(self):
+        prods = {10: {"variant_name": "", "prod_name": "Kích chân D38* L500"}}
+        self.assertFalse(rtm._group_needs_md_column(self.env, prods, [10]))
+
+    def test_group_needs_md_multi_variant(self):
+        prods = {
+            10: {"variant_name": "1,5m", "prod_name": "Hộp (1,5m)"},
+            11: {"variant_name": "2m", "prod_name": "Hộp (2m)"},
+        }
+        self.assertTrue(rtm._group_needs_md_column(self.env, prods, [10, 11]))

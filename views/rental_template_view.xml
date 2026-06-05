@@ -1,13 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="view_rental_template_search" model="ir.ui.view">
+        <field name="name">rental.template.search</field>
+        <field name="model">rental.template</field>
+        <field name="arch" type="xml">
+            <search string="Mẫu tài liệu cho thuê">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="template_type"/>
+                <filter string="Đang dùng" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Mặc định" name="is_default" domain="[('is_default', '=', True)]"/>
+                <group expand="0" string="Nhóm theo">
+                    <filter string="Loại mẫu" name="group_type" context="{'group_by': 'template_type'}"/>
+                    <filter string="Công ty" name="group_company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="view_rental_template_tree" model="ir.ui.view">
         <field name="name">rental.template.tree</field>
         <field name="model">rental.template</field>
         <field name="arch" type="xml">
-            <tree string="Rental Templates">
+            <tree string="Mẫu tài liệu cho thuê">
                 <field name="name"/>
-                <field name="company_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <field name="template_type"/>
+                <field name="template_usage" optional="show"/>
+                <field name="file_name" optional="hide"/>
                 <field name="is_default"/>
                 <field name="active"/>
             </tree>
@@ -20,14 +40,28 @@
         <field name="arch" type="xml">
             <form string="Mẫu tài liệu cho thuê">
                 <sheet>
+                    <div class="alert alert-info mb-3" role="status">
+                        <p class="mb-1">
+                            <strong>Nhân viên</strong> có thể tải file mẫu Word/Excel tại đây theo <strong>công ty</strong> và <strong>loại mẫu</strong>.
+                            Các nút tải/in trên hợp đồng, bảng xác nhận khối lượng, bảng thanh toán… sẽ ưu tiên file bạn upload.
+                        </p>
+                        <p class="mb-0 text-muted">
+                            Nếu chưa upload, hệ thống dùng file mẫu mặc định trong module. Đánh dấu <em>Mặc định</em> khi có nhiều bản cùng loại.
+                        </p>
+                    </div>
                     <group>
-                        <field name="name"/>
-                        <field name="company_id"/>
-                        <field name="template_type"/>
-                        <field name="file_data" widget="binary" filename="file_name"/>
-                        <field name="file_name"/>
-                        <field name="is_default"/>
-                        <field name="active"/>
+                        <group>
+                            <field name="name" placeholder="VD: Bảng xác nhận KL — Quý Lan 2026"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="template_type"/>
+                            <field name="template_usage" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="file_data" widget="binary" filename="file_name"/>
+                            <field name="file_name" invisible="1"/>
+                            <field name="is_default"/>
+                            <field name="active"/>
+                        </group>
                     </group>
                 </sheet>
             </form>
@@ -38,6 +72,15 @@
         <field name="name">Mẫu tài liệu cho thuê</field>
         <field name="res_model">rental.template</field>
         <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_rental_template_search"/>
         <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Tải lên mẫu Word/Excel cho từng loại tài liệu tải xuống.
+            </p>
+            <p>
+                Chọn loại mẫu (bảng xác nhận khối lượng, bảng thanh toán, hợp đồng…), gắn đúng công ty, rồi upload file.
+            </p>
+        </field>
     </record>
 </odoo>

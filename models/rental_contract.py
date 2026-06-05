@@ -17,7 +17,6 @@ from ..services import rental_contract_services as rcs
 
 from urllib.parse import quote
 from openpyxl import load_workbook
-from odoo.modules.module import get_module_resource
 from datetime import date
 import base64
 import io
@@ -418,26 +417,11 @@ class RentalContract(models.Model):
 
     def _rental_invoice_xlsx_load_workbook(self):
         self.ensure_one()
-        Template = self.env["rental.template"]
-        tmpl = Template.search(
-            [
-                ("company_id", "=", self.company_id.id),
-                ("template_type", "=", "rental_invoice_xlsx"),
-                ("active", "=", True),
-            ],
-            order="is_default desc, id desc",
-            limit=1,
+        data, _source = self.env["rental.template"].get_template_bytes(
+            self.company_id,
+            "rental_invoice_xlsx",
         )
-        if tmpl and tmpl.file_data:
-            data = base64.b64decode(tmpl.file_data)
-            return load_workbook(io.BytesIO(data))
-        template_path = get_module_resource(
-            "rental",
-            "static",
-            "file_template",
-            "rental_invoice_template.xlsx",
-        )
-        return load_workbook(template_path)
+        return load_workbook(io.BytesIO(data))
 
     def _rental_invoice_xlsx_apply_placeholders(self, ws, start_date, end_date):
         replacements = {
@@ -457,12 +441,47 @@ class RentalContract(models.Model):
             "{{end_date}}": end_date.strftime("%d/%m/%Y"),
             "{{end_date_month_year}}": end_date.strftime("%m/%Y"),
         }
+        from ..helper.xlsx_template_utils import replace_placeholders_in_sheet
+
+        replace_placeholders_in_sheet(ws, replacements)
+
+    def _payment_table_subtotal(self, bob_map, map_map):
+        """Sum line amounts written to column I of the payment table."""
+        total = 0.0
+        for bucket in (bob_map, map_map):
+            if not bucket:
+                continue
+            for _tmpl_id in bucket:
+                for line in bucket[_tmpl_id].get("lines", []):
+                    total += line.get("total_amount") or 0.0
+        return total
+
+    def _rental_invoice_xlsx_apply_payment_totals(self, ws, bob_map, map_map):
+        """Fill summary placeholders and amount-in-words anywhere in the sheet."""
+        from ..helper.xlsx_template_utils import replace_placeholders_in_sheet
+
+        subtotal = self._payment_table_subtotal(bob_map, map_map)
+        vat = round(subtotal * 0.08)
+        total_after_tax = int(round(subtotal + vat))
+        amount_words = self.env["amount_to_text.vi"].vn_amount_to_text(total_after_tax)
+        replace_placeholders_in_sheet(
+            ws,
+            {
+                "{{total_after_tax_string}}": amount_words,
+                "{{subtotal_before_tax}}": int(round(subtotal)),
+                "{{vat_amount}}": int(round(vat)),
+                "{{total_after_tax}}": total_after_tax,
+            },
+        )
         for row in ws.iter_rows():
             for cell in row:
-                if isinstance(cell.value, str):
-                    for key, val in replacements.items():
-                        if key in cell.value:
-                            cell.value = cell.value.replace(key, val)
+                val = cell.value
+                if not isinstance(val, str):
+                    continue
+                if "{{total_after_tax_string}}" in val:
+                    cell.value = val.replace("{{total_after_tax_string}}", amount_words)
+                elif "Bằng chữ" in val or "bằng chữ" in val:
+                    cell.value = f"(Bằng chữ: {amount_words}/.)"
 
     def _sorted_payment_table_keys(self, tmpl_id_2_line):
         return sorted(
@@ -535,6 +554,7 @@ class RentalContract(models.Model):
         ws = wb.active
         self._rental_invoice_xlsx_apply_placeholders(ws, start_date, end_date)
         self._rental_invoice_xlsx_write_table(ws, bob_map, map_map)
+        self._rental_invoice_xlsx_apply_payment_totals(ws, bob_map, map_map)
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
@@ -761,27 +781,11 @@ class RentalContract(models.Model):
                     total_paid_in_period += (inv.amount_total - inv.amount_residual)
                     total_remain += inv.amount_residual
 
-        Template = self.env["rental.template"]
-        tmpl = Template.search(
-            [
-                ("company_id", "=", self.company_id.id),
-                ("template_type", "=", "debt_confirmation_xlsx"),
-                ("active", "=", True),
-            ],
-            order="is_default desc, id desc",
-            limit=1,
+        data, _source = self.env["rental.template"].get_template_bytes(
+            self.company_id,
+            "debt_confirmation_xlsx",
         )
-        if tmpl and tmpl.file_data:
-            data = base64.b64decode(tmpl.file_data)
-            wb = load_workbook(io.BytesIO(data))
-        else:
-            template_path = get_module_resource(
-                'rental',
-                'static',
-                'file_template',
-                'debt_confirmation_comparison_table_template.xlsx'
-            )
-            wb = load_workbook(template_path)
+        wb = load_workbook(io.BytesIO(data))
         ws = wb.active
 
         replacements = {

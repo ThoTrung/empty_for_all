@@ -14,9 +14,14 @@ import tempfile
 import subprocess
 from urllib.parse import quote
 from openpyxl import load_workbook
-from odoo.modules.module import get_module_resource
+from openpyxl.utils import get_column_letter
 from datetime import datetime, date
-from ..helper.export_excel_template import insert_rows_below
+from ..helper.export_excel_template import insert_rows_below, extend_product_column_styles
+from ..helper.xlsx_template_utils import (
+    apply_product_column_styles,
+    find_transport_matrix_layout,
+    replace_placeholders_in_sheet,
+)
 from odoo.exceptions import UserError
 from docxtpl import DocxTemplate
 from ..services import rental_contract_services as rcs
@@ -40,27 +45,11 @@ class RentalContractController(http.Controller):
         if not is_internal:
             return request.redirect('/my')
 
-        Template = request.env["rental.template"].sudo()
-        tmpl = Template.search(
-            [
-                ("company_id", "=", contract.company_id.id),
-                ("template_type", "=", "contract_quotation_xlsx"),
-                ("active", "=", True),
-            ],
-            order="is_default desc, id desc",
-            limit=1,
+        data, _source = request.env["rental.template"].sudo().get_template_bytes(
+            contract.company_id,
+            "contract_quotation_xlsx",
         )
-        if tmpl and tmpl.file_data:
-            data = base64.b64decode(tmpl.file_data)
-            wb = load_workbook(io.BytesIO(data))
-        else:
-            template_path = get_module_resource(
-                'rental',
-                'static',
-                'file_template',
-                'quotation_template.xlsx'
-            )
-            wb = load_workbook(template_path)
+        wb = load_workbook(io.BytesIO(data))
         ws = wb.active
         # --- Replace placeholders ---
         replacements = {
@@ -261,22 +250,36 @@ class RentalContractController(http.Controller):
         for _p_tmpl_id, p_tmpl in product_tmpls.items():
             p_tmpl['products'] = dict(rtm._sort_products_odict(OrderedDict(p_tmpl['products'])))
 
+        env = request.env
+        groups_meta = []
+        for p_tmpl_id, p_tmpl in product_tmpls.items():
+            prod_order = list(p_tmpl['products'].keys())
+            prods = p_tmpl['products']
+            needs_md = rtm._group_needs_md_column(env, prods, prod_order)
+            groups_meta.append({
+                'tmpl_id': p_tmpl_id,
+                'p_tmpl': p_tmpl,
+                'prod_order': prod_order,
+                'needs_md': needs_md,
+            })
+
         product_ids_2_col = {}
         md_col_by_tmpl = {}
         col_idx = 4
-        for p_tmpl_id in product_tmpls:
-            p_tmpl = product_tmpls[p_tmpl_id]
-            n = len(p_tmpl['products'])
-            if n > 1:
-                for prod_id in p_tmpl['products']:
+        for g in groups_meta:
+            p_tmpl_id = g['tmpl_id']
+            p_tmpl = g['p_tmpl']
+            if g['needs_md']:
+                for prod_id in g['prod_order']:
                     product_ids_2_col[f"{p_tmpl_id}_{prod_id}"] = col_idx
                     col_idx += 1
                 md_col_by_tmpl[p_tmpl_id] = col_idx
                 col_idx += 1
             else:
-                prod_id = next(iter(p_tmpl['products']))
+                prod_id = g['prod_order'][0]
                 product_ids_2_col[f"{p_tmpl_id}_{prod_id}"] = col_idx
                 col_idx += 1
+        last_product_col = col_idx - 1
 
         # Tổng cuối = Tồn đầu kỳ + tổng trong kỳ
         total_cells = dict((k, v) for k, v in opening_cells.items())
@@ -287,27 +290,11 @@ class RentalContractController(http.Controller):
                 key = (line.product_tmpl_id.id, line.product_id.id)
                 total_cells[key] = total_cells.get(key, 0) + (line.qty or 0)
 
-        Template = request.env["rental.template"].sudo()
-        tmpl = Template.search(
-            [
-                ("company_id", "=", contract.company_id.id),
-                ("template_type", "=", "transport_matrix_xlsx"),
-                ("active", "=", True),
-            ],
-            order="is_default desc, id desc",
-            limit=1,
+        data, _source = request.env["rental.template"].sudo().get_template_bytes(
+            contract.company_id,
+            "transport_matrix_xlsx",
         )
-        if tmpl and tmpl.file_data:
-            data = base64.b64decode(tmpl.file_data)
-            wb = load_workbook(io.BytesIO(data))
-        else:
-            template_path = get_module_resource(
-                'rental',
-                'static',
-                'file_template',
-                'transport_matrix_template.xlsx'
-            )
-            wb = load_workbook(template_path)
+        wb = load_workbook(io.BytesIO(data))
         ws = wb.active
         replacements = {
             '{{b_company}}': contract.b_party.parent_id.name or '',
@@ -321,16 +308,11 @@ class RentalContractController(http.Controller):
             '{{construction_work_name}}': contract.construction_work_id.name or '',
             '{{construction_work_address}}': contract.construction_work_address or '',
         }
-        for row in ws.iter_rows():
-            for cell in row:
-                if isinstance(cell.value, str):
-                    for key, val in replacements.items():
-                        if key in cell.value:
-                            cell.value = cell.value.replace(key, val)
+        replace_placeholders_in_sheet(ws, replacements)
 
-        header_second_row = 15
-        header_third_row = 16
+        title_row, header_second_row, header_third_row, start_row = find_transport_matrix_layout(ws)
         start_product_col = 4
+        template_last_product_col = 23  # column W in default template
         cur_product_col = start_product_col
         md_fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
 
@@ -352,11 +334,43 @@ class RentalContractController(http.Controller):
                 return int(round(total))
             return round(float(total), 2)
 
-        for p_tmpl_id in product_tmpls:
-            p_tmpl = product_tmpls[p_tmpl_id]
-            number_prod_variant = len(p_tmpl['products'])
-            if number_prod_variant > 1:
-                span = number_prod_variant + 1
+        def _write_md_cells(r, cell_qty_map):
+            for g in groups_meta:
+                if not g['needs_md']:
+                    continue
+                p_tmpl_id = g['tmpl_id']
+                mcol = md_col_by_tmpl.get(p_tmpl_id)
+                if mcol:
+                    mdv = _xlsx_md_sum(cell_qty_map, p_tmpl_id, g['p_tmpl'])
+                    ws.cell(r, mcol).value = _xlsx_md_cell_value(mdv)
+                    ws.cell(r, mcol).fill = md_fill
+
+        # Extend merged header "Chủng loại/ Khối lượng" through all product columns.
+        for rng in list(ws.merged_cells.ranges):
+            ref = str(rng)
+            if (
+                rng.min_row == title_row
+                and rng.min_col >= start_product_col
+                and rng.max_col >= start_product_col
+            ):
+                ws.unmerge_cells(ref)
+        ws.merge_cells(
+            start_row=title_row,
+            start_column=start_product_col,
+            end_row=title_row,
+            end_column=last_product_col,
+        )
+
+        # Clear old product-header merges from template before rewriting columns.
+        for rng in list(ws.merged_cells.ranges):
+            if rng.min_row in (header_second_row, header_third_row) and rng.min_col >= start_product_col:
+                ws.unmerge_cells(str(rng))
+
+        for g in groups_meta:
+            p_tmpl_id = g['tmpl_id']
+            p_tmpl = g['p_tmpl']
+            if g['needs_md']:
+                span = len(g['prod_order']) + 1
                 ws.merge_cells(
                     start_row=header_second_row,
                     start_column=cur_product_col,
@@ -365,29 +379,27 @@ class RentalContractController(http.Controller):
                 )
                 ws.cell(header_second_row, cur_product_col).value = p_tmpl['product_tmpl_name']
                 i = 0
-                for prod_id in p_tmpl['products']:
+                for prod_id in g['prod_order']:
                     prod = p_tmpl['products'][prod_id]
                     c = ws.cell(header_third_row, cur_product_col + i)
-                    c.value = prod['variant_name']
+                    c.value = prod['variant_name'] or prod['name']
                     i += 1
                 md_cell = ws.cell(header_third_row, cur_product_col + i)
                 md_cell.value = "Tổng MD"
                 md_cell.fill = md_fill
                 cur_product_col += span
             else:
-                for prod_id in p_tmpl['products']:
-                    prod = p_tmpl['products'][prod_id]
-                    ws.merge_cells(
-                        start_row=header_second_row,
-                        start_column=cur_product_col,
-                        end_row=header_third_row,
-                        end_column=cur_product_col,
-                    )
-                    ws.cell(header_second_row, cur_product_col).value = prod['name']
-                    break
+                prod_id = g['prod_order'][0]
+                prod = p_tmpl['products'][prod_id]
+                ws.merge_cells(
+                    start_row=header_second_row,
+                    start_column=cur_product_col,
+                    end_row=header_third_row,
+                    end_column=cur_product_col,
+                )
+                ws.cell(header_second_row, cur_product_col).value = prod['name']
                 cur_product_col += 1
 
-        start_row = 17
         max_row = 100
         row_idx = 0
 
@@ -403,13 +415,7 @@ class RentalContractController(http.Controller):
                 col = product_ids_2_col.get(f'{tmpl_id}_{prod_id}')
                 if col:
                     ws.cell(r, col).value = qty
-            for p_tmpl_id, p_tmpl in product_tmpls.items():
-                if len(p_tmpl['products']) > 1:
-                    mcol = md_col_by_tmpl.get(p_tmpl_id)
-                    if mcol:
-                        mdv = _xlsx_md_sum(opening_cells, p_tmpl_id, p_tmpl)
-                        ws.cell(r, mcol).value = _xlsx_md_cell_value(mdv)
-                        ws.cell(r, mcol).fill = md_fill
+            _write_md_cells(r, opening_cells)
             row_idx += 1
 
         # 2) Các dòng transport trong kỳ
@@ -423,13 +429,7 @@ class RentalContractController(http.Controller):
                 col = product_ids_2_col.get(f'{tmpl_id}_{prod_id}')
                 if col:
                     ws.cell(r, col).value = qty
-            for p_tmpl_id, p_tmpl in product_tmpls.items():
-                if len(p_tmpl['products']) > 1:
-                    mcol = md_col_by_tmpl.get(p_tmpl_id)
-                    if mcol:
-                        mdv = _xlsx_md_sum(cell_row, p_tmpl_id, p_tmpl)
-                        ws.cell(r, mcol).value = _xlsx_md_cell_value(mdv)
-                        ws.cell(r, mcol).fill = md_fill
+            _write_md_cells(r, cell_row)
             row_idx += 1
 
         # 3) Dòng Tổng KL Cuối T{MM.YYYY}
@@ -441,14 +441,28 @@ class RentalContractController(http.Controller):
             col = product_ids_2_col.get(f'{tmpl_id}_{prod_id}')
             if col:
                 ws.cell(r_total, col).value = qty
-        for p_tmpl_id, p_tmpl in product_tmpls.items():
-            if len(p_tmpl['products']) > 1:
-                mcol = md_col_by_tmpl.get(p_tmpl_id)
-                if mcol:
-                    mdv = _xlsx_md_sum(total_cells, p_tmpl_id, p_tmpl)
-                    ws.cell(r_total, mcol).value = _xlsx_md_cell_value(mdv)
-                    ws.cell(r_total, mcol).fill = md_fill
+        _write_md_cells(r_total, total_cells)
         row_idx += 1
+
+        data_end_row = start_row + row_idx - 1
+        apply_product_column_styles(
+            ws,
+            start_col=start_product_col,
+            last_col=last_product_col,
+            header_rows=[header_second_row, header_third_row],
+            ref_col=start_product_col,
+            data_start_row=start_row,
+            data_end_row=data_end_row,
+            total_row=r_total,
+            header_wrap=True,
+        )
+        for mcol in md_col_by_tmpl.values():
+            ws.cell(header_third_row, mcol).value = "Tổng MD"
+            ws.cell(header_third_row, mcol).fill = md_fill
+        for col in range(start_product_col, last_product_col + 1):
+            width = ws.column_dimensions[get_column_letter(col)].width
+            if not width or width < 7:
+                ws.column_dimensions[get_column_letter(col)].width = 7.0
 
         for r in range(start_row + row_idx, start_row + max_row):
             ws.row_dimensions[r].hidden = True

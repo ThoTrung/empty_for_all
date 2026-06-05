@@ -34,8 +34,52 @@ class AccountMove(models.Model):
     )
 
     def action_download_business_xlsx(self):
+        """Regenerate payment table from current company template, then download."""
         self.ensure_one()
-        att = self.business_xlsx_attachment_id
+        if not (
+            self.rental_contract_id
+            and self.rental_start_date
+            and self.rental_end_date
+        ):
+            att = self.business_xlsx_attachment_id
+            if not att:
+                raise UserError(
+                    _(
+                        "No payment table file. Create a rental invoice with period dates first."
+                    )
+                )
+            return {
+                "type": "ir.actions.act_url",
+                "url": f"/web/content/{att.id}?download=1",
+                "target": "self",
+            }
+        buffer = self.rental_contract_id._build_rental_payment_xlsx_buffer(
+            self.rental_start_date,
+            self.rental_end_date,
+        )
+        contract = self.rental_contract_id
+        filename = f"BẢNG THANH TOÁN KHỐI LƯỢNG VÀ GIÁ TRỊ THUÊ {contract.code}.xlsx"
+        if self.business_xlsx_attachment_id:
+            self.business_xlsx_attachment_id.write(
+                {
+                    "name": filename,
+                    "datas": base64.b64encode(buffer.getvalue()),
+                    "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                }
+            )
+            att = self.business_xlsx_attachment_id
+        else:
+            att = self.env["ir.attachment"].create(
+                {
+                    "name": filename,
+                    "res_model": "account.move",
+                    "res_id": self.id,
+                    "type": "binary",
+                    "datas": base64.b64encode(buffer.getvalue()),
+                    "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                }
+            )
+            self.business_xlsx_attachment_id = att.id
         return {
             "type": "ir.actions.act_url",
             "url": f"/web/content/{att.id}?download=1",

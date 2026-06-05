@@ -37,27 +37,11 @@ class TransportController(http.Controller):
         if not is_internal:
             return request.redirect('/my')
 
-        Template = request.env["rental.template"].sudo()
-        tmpl = Template.search(
-            [
-                ("company_id", "=", transport.company_id.id),
-                ("template_type", "=", "equipment_receipt_xlsx"),
-                ("active", "=", True),
-            ],
-            order="is_default desc, id desc",
-            limit=1,
+        data, _source = request.env["rental.template"].sudo().get_template_bytes(
+            transport.company_id,
+            "equipment_receipt_xlsx",
         )
-        if tmpl and tmpl.file_data:
-            data = base64.b64decode(tmpl.file_data)
-            wb = load_workbook(io.BytesIO(data))
-        else:
-            template_path = get_module_resource(
-                'rental',
-                'static',
-                'file_template',
-                'equipment_delivery_receipt_template.xlsx'
-            )
-            wb = load_workbook(template_path)
+        wb = load_workbook(io.BytesIO(data))
         ws = wb.active
         # --- Replace placeholders ---
         user_timezone = pytz.timezone(http.request.env.user.tz or 'UTC')

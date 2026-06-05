@@ -1,46 +1,16 @@
 import calendar
-import base64
 import io
 from collections import defaultdict
 from datetime import date, timedelta
 
-from odoo.modules.module import get_module_resource
 from docxtpl import DocxTemplate
 
 
-def _get_company_template_stream(contract, template_type, default_filename):
-    """Return a file-like object for the template for the contract company."""
-    Template = contract.env["rental.template"]
-    company = contract.company_id
-    template = Template.search(
-        [
-            ("company_id", "=", company.id),
-            ("template_type", "=", template_type),
-            ("active", "=", True),
-        ],
-        order="is_default desc, id desc",
-        limit=1,
-    )
-    if template and template.file_data:
-        data = base64.b64decode(template.file_data)
-        return io.BytesIO(data)
-
-    # Fallback to module static file
-    template_path = get_module_resource(
-        "rental",
-        "static",
-        "file_template",
-        default_filename,
-    )
-    return template_path
-
-
 def render_rental_contract_docx(contract):
-    # Load template and render
-    template_stream = _get_company_template_stream(
-        contract,
-        template_type="contract_docx",
-        default_filename="rental_contract_template.docx",
+    # Load template and render (company upload or module default)
+    template_stream = contract.env["rental.template"].get_template_path_or_stream(
+        contract.company_id,
+        "contract_docx",
     )
     today = date.today()
     doc = DocxTemplate(template_stream)

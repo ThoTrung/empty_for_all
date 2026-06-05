@@ -59,6 +59,33 @@ def _sum_linear_meters(cell_qty_by_prod, prod_ids, lengths_by_prod):
     return total
 
 
+def _product_label_for_length(info):
+    if not isinstance(info, dict):
+        return ""
+    return (info.get("variant_name") or info.get("prod_name") or info.get("name") or "").strip()
+
+
+def _is_linear_meter_uom_name(uom_name):
+    normalized = (uom_name or "").casefold()
+    return "mét dài" in normalized or "met dai" in normalized
+
+
+def _group_needs_md_column(env, prods, prod_order):
+    """True when the template group should show a Tổng MD column."""
+    if len(prod_order) > 1:
+        return True
+    if len(prod_order) != 1:
+        return False
+    pid = prod_order[0]
+    info = prods.get(pid, {})
+    if _parse_length_meters(_product_label_for_length(info)) is not None:
+        return True
+    product = env["product.product"].browse(pid)
+    if product.exists():
+        return _is_linear_meter_uom_name(product._get_staff_display_uom().name)
+    return False
+
+
 class RentalTransportMatrix(models.Model):
     """
     Persisted "confirmation table for rental volume" for a contract + date range.
@@ -206,13 +233,14 @@ class RentalTransportMatrix(models.Model):
                     )
                     for pid in prod_order
                 }
+                needs_md = _group_needs_md_column(rec.env, prods, prod_order)
                 groups_meta.append({
                     "tmpl_id": tmpl_id,
                     "tmpl_name": tmpl_info["tmpl_name"],
                     "products": prods,
                     "prod_order": prod_order,
                     "lengths": lengths,
-                    "multi": len(prod_order) > 1,
+                    "needs_md": needs_md,
                 })
 
             def _cells_from_transports(transport_set):
@@ -253,7 +281,7 @@ class RentalTransportMatrix(models.Model):
             def _append_group_qty_md_cells(tds, cell_qty, td_qty_class, td_md_class):
                 """Append qty (+ optional Tổng MD) cells for each template group."""
                 for g in groups_meta:
-                    if g["multi"]:
+                    if g["needs_md"]:
                         for pid in g["prod_order"]:
                             val = cell_qty.get(pid, 0) or ""
                             tds.append(
@@ -278,7 +306,7 @@ class RentalTransportMatrix(models.Model):
             head2 = []
             for g in groups_meta:
                 n = len(g["prod_order"])
-                if g["multi"]:
+                if g["needs_md"]:
                     head1.append(
                         f"<th colspan='{n + 1}' class='text-center rental-matrix-col-product'>"
                         f"{esc(g['tmpl_name'])}</th>"
@@ -296,10 +324,10 @@ class RentalTransportMatrix(models.Model):
                     pinfo = g["products"][g["prod_order"][0]]
                     label = pinfo["prod_name"]
                     head1.append(
-                        f"<th rowspan='2' class='text-center rental-matrix-col-name-narrow rental-matrix-th-wrap'>"
+                        f"<th rowspan='2' class='text-center rental-matrix-col-product rental-matrix-th-wrap'>"
                         f"{esc(label)}</th>"
                     )
-            need_second_row = any(g["multi"] for g in groups_meta)
+            need_second_row = any(g["needs_md"] for g in groups_meta)
 
             body_rows = []
             row_index = 0
@@ -337,25 +365,25 @@ class RentalTransportMatrix(models.Model):
             css = """
 <style>
 .rental-matrix-wrap { overflow: auto; max-height: calc(100vh - 320px); }
-.rental-matrix { border-collapse: collapse; table-layout: fixed; width: 100%; }
+.rental-matrix { border-collapse: collapse; table-layout: auto; width: max-content; min-width: 100%; }
 .rental-matrix th, .rental-matrix td { border: 1px solid #ddd; padding: 4px 6px; vertical-align: middle; }
 .rental-matrix thead th { background: #f6f6f6; font-weight: 600; }
-.rental-matrix-col-stt { width: 2.5em; min-width: 2.5em; max-width: 3em; }
-.rental-matrix-col-date { width: 5.5em; min-width: 5em; max-width: 6.5em; }
-.rental-matrix-col-plate { width: 6em; min-width: 5.5em; max-width: 7.5em; }
-.rental-matrix-col-qty { width: 3.2em; min-width: 3em; max-width: 4em; white-space: nowrap; }
-.rental-matrix-col-name-narrow { width: 4.5em; min-width: 3.5em; max-width: 5.5em; }
-.rental-matrix-col-md { width: 3.8em; min-width: 3.5em; max-width: 4.5em; background: #e8f5e9; white-space: nowrap; }
+.rental-matrix-col-stt { width: 2.5em; min-width: 2.5em; }
+.rental-matrix-col-date { width: 5.5em; min-width: 5em; }
+.rental-matrix-col-plate { width: 7em; min-width: 6em; }
+.rental-matrix-col-qty { min-width: 3.5em; white-space: nowrap; }
+.rental-matrix-col-md { min-width: 4em; background: #e8f5e9; white-space: nowrap; }
 .rental-matrix th.rental-matrix-th-wrap,
-.rental-matrix th.rental-matrix-col-name-narrow {
+.rental-matrix th.rental-matrix-col-product {
     white-space: normal !important;
     word-break: break-word;
     overflow-wrap: anywhere;
     line-height: 1.25;
     hyphens: auto;
+    min-width: 3.5em;
+    max-width: 8em;
 }
-.rental-matrix td.rental-matrix-col-name-narrow { white-space: nowrap; }
-.rental-matrix th.rental-matrix-col-product { white-space: normal; word-break: break-word; line-height: 1.2; }
+.rental-matrix th.rental-matrix-col-product { line-height: 1.2; }
 .rental-matrix-row-total { background: #f0f0f0; font-weight: 600; }
 .rental-matrix-row-opening { background: #fafafa; }
 .text-end { text-align: right; }

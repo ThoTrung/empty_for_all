@@ -1,11 +1,27 @@
-from odoo import models, fields, api, _
+# -*- coding: utf-8 -*-
+import base64
+import io
+
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.modules.module import get_module_resource
+
+# Fallback static files when no company template is uploaded.
+TEMPLATE_DEFAULT_FILES = {
+    "contract_docx": "rental_contract_template.docx",
+    "contract_quotation_xlsx": "quotation_template.xlsx",
+    "transport_matrix_xlsx": "transport_matrix_template.xlsx",
+    "rental_invoice_xlsx": "rental_invoice_template.xlsx",
+    "debt_confirmation_xlsx": "debt_confirmation_comparison_table_template.xlsx",
+    "equipment_receipt_xlsx": "equipment_delivery_receipt_template.xlsx",
+}
 
 
 class RentalTemplate(models.Model):
     _name = "rental.template"
     _description = "Mẫu tài liệu cho thuê"
     _inherit = ["mc.group.mixin"]
+    _order = "company_id, template_type, is_default desc, id desc"
 
     name = fields.Char(string="Tên mẫu", required=True)
     company_id = fields.Many2one(
@@ -17,38 +33,49 @@ class RentalTemplate(models.Model):
     )
     template_type = fields.Selection(
         selection=[
-            ("contract_docx", "Contract (DOCX)"),
-            ("contract_quotation_xlsx", "Contract Quotation (XLSX)"),
-            ("transport_matrix_xlsx", "Transport Matrix (XLSX)"),
-            ("rental_invoice_xlsx", "Rental Invoice (XLSX)"),
-            ("debt_confirmation_xlsx", "Debt Confirmation (XLSX)"),
-            ("equipment_receipt_xlsx", "Equipment Delivery Receipt (XLSX)"),
+            ("contract_docx", "Hợp đồng thuê (DOCX)"),
+            ("contract_quotation_xlsx", "Bảng báo giá vật tư (XLSX)"),
+            ("transport_matrix_xlsx", "Bảng xác nhận khối lượng (XLSX)"),
+            ("rental_invoice_xlsx", "Bảng thanh toán tiền thuê (XLSX)"),
+            ("debt_confirmation_xlsx", "Bảng đối chiếu xác nhận công nợ (XLSX)"),
+            ("equipment_receipt_xlsx", "Phiếu giao nhận thiết bị (XLSX)"),
         ],
         string="Loại mẫu",
         required=True,
         index=True,
     )
+    template_usage = fields.Char(
+        string="Dùng khi",
+        compute="_compute_template_usage",
+        help="Nút / thao tác trên hệ thống sẽ dùng mẫu này (theo công ty).",
+    )
     file_data = fields.Binary(
         string="File mẫu",
         required=True,
         attachment=True,
-        help="Upload file Word/Excel dùng làm mẫu.",
+        help="Tải lên file Word (.docx) hoặc Excel (.xlsx). "
+             "Nếu không upload, hệ thống dùng file mẫu mặc định đi kèm module.",
     )
     file_name = fields.Char(string="Tên file gốc")
     is_default = fields.Boolean(
         string="Mặc định cho loại này",
-        help="If several templates exist for the same company and type, "
-        "the default one will be chosen first.",
+        help="Cùng công ty và loại mẫu: chỉ nên có một bản ghi được đánh dấu mặc định. "
+             "Khi tải file, hệ thống ưu tiên bản mặc định.",
     )
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        (
-            "template_unique_per_file_company",
-            "unique(company_id, template_type, is_default)",
-            "Only one default template per company and type is allowed.",
-        ),
-    ]
+    @api.depends("template_type")
+    def _compute_template_usage(self):
+        usage_map = {
+            "contract_docx": "In / tải hợp đồng thuê (DOCX, PDF)",
+            "contract_quotation_xlsx": "Tải bảng báo giá trên hợp đồng",
+            "transport_matrix_xlsx": "Bảng xác nhận khối lượng — Download Excel",
+            "rental_invoice_xlsx": "Bảng thanh toán — xuất Excel / Tải bảng thanh toán chi tiết",
+            "debt_confirmation_xlsx": "Xuất bảng đối chiếu xác nhận công nợ",
+            "equipment_receipt_xlsx": "Tải phiếu giao nhận thiết bị (phiếu vận chuyển)",
+        }
+        for rec in self:
+            rec.template_usage = usage_map.get(rec.template_type, "")
 
     @api.constrains("file_data")
     def _check_file_present(self):
@@ -56,3 +83,90 @@ class RentalTemplate(models.Model):
             if not rec.file_data:
                 raise ValidationError(_("Bạn phải tải lên file mẫu."))
 
+    @api.constrains("is_default", "company_id", "template_type", "active")
+    def _check_single_default_per_type(self):
+        for rec in self.filtered(lambda r: r.is_default and r.active):
+            dup = self.search(
+                [
+                    ("company_id", "=", rec.company_id.id),
+                    ("template_type", "=", rec.template_type),
+                    ("is_default", "=", True),
+                    ("active", "=", True),
+                    ("id", "!=", rec.id),
+                ],
+                limit=1,
+            )
+            if dup:
+                raise ValidationError(
+                    _(
+                        "Đã có mẫu mặc định cho loại «%(type)s» tại công ty %(company)s: %(name)s.",
+                        type=dict(rec._fields["template_type"].selection).get(rec.template_type),
+                        company=rec.company_id.display_name,
+                        name=dup.name,
+                    )
+                )
+
+    @api.model
+    def _resolve_active_template(self, company, template_type):
+        """Best matching uploaded template for company + type."""
+        if not company or not template_type:
+            return self.browse()
+        return self.search(
+            [
+                ("company_id", "=", company.id),
+                ("template_type", "=", template_type),
+                ("active", "=", True),
+            ],
+            order="is_default desc, id desc",
+            limit=1,
+        )
+
+    @api.model
+    def get_template_bytes(self, company, template_type):
+        """
+        File bytes for export/print: company upload first, else module static file.
+        Returns (data, source) with source in ('upload', 'static').
+        """
+        template = self._resolve_active_template(company, template_type)
+        if template and template.file_data:
+            return base64.b64decode(template.file_data), "upload"
+
+        default_filename = TEMPLATE_DEFAULT_FILES.get(template_type)
+        if not default_filename:
+            raise ValidationError(_("Unknown template type: %s") % template_type)
+
+        template_path = get_module_resource(
+            "rental",
+            "static",
+            "file_template",
+            default_filename,
+        )
+        if not template_path:
+            raise ValidationError(
+                _(
+                    "Chưa có mẫu «%(type)s» cho công ty %(company)s và không tìm thấy file mặc định %(fname)s.",
+                    type=template_type,
+                    company=company.display_name if company else "",
+                    fname=default_filename,
+                )
+            )
+        with open(template_path, "rb") as f:
+            return f.read(), "static"
+
+    @api.model
+    def get_template_stream(self, company, template_type):
+        """File-like object for docxtpl / openpyxl loaders."""
+        data, _source = self.get_template_bytes(company, template_type)
+        return io.BytesIO(data)
+
+    @api.model
+    def get_template_path_or_stream(self, company, template_type):
+        """
+        Backward-compatible helper for DocxTemplate: stream if uploaded, else filesystem path.
+        """
+        template = self._resolve_active_template(company, template_type)
+        if template and template.file_data:
+            return self.get_template_stream(company, template_type)
+
+        default_filename = TEMPLATE_DEFAULT_FILES.get(template_type)
+        return get_module_resource("rental", "static", "file_template", default_filename)

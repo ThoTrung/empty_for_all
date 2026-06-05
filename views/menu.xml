@@ -93,10 +93,11 @@
               action="action_ser_res_partner_my_company_profile"
               sequence="0"/>
     <menuitem id="menu_rental_template"
-              name="Templates"
+              name="Mẫu tài liệu cho thuê"
               parent="menu_setting_master"
               action="action_rental_template"
-              sequence="5"/>
+              sequence="5"
+              groups="rental.group_rental_staff"/>
     <menuitem id="menu_rental_product_template_set"
               name="Mẫu sản phẩm hợp đồng"
               parent="menu_setting_master"

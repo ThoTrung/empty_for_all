@@ -2,6 +2,34 @@
 from copy import copy
 from openpyxl.utils import get_column_letter
 
+from .xlsx_template_utils import apply_product_column_styles, clone_cell_style
+
+
+def extend_product_column_styles(
+    ws,
+    start_product_col,
+    last_product_col,
+    template_last_col,
+    header_rows,
+    data_start_row,
+    data_end_row,
+    total_row=None,
+    ref_col=None,
+):
+    """Backward-compatible wrapper — styles all product columns from ref_col."""
+    apply_product_column_styles(
+        ws,
+        start_col=start_product_col,
+        last_col=last_product_col,
+        header_rows=header_rows,
+        ref_col=ref_col or start_product_col,
+        data_start_row=data_start_row,
+        data_end_row=data_end_row,
+        total_row=total_row,
+        header_wrap=True,
+    )
+
+
 def _clone_row_styles(ws, src_row, dst_row, min_col=1, max_col=None, copy_values=False):
     """
     Clone row height, cell styles, hyperlinks, comments, and horizontal merges

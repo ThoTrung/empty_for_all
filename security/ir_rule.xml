@@ -153,6 +153,17 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
+        <record id="rental_template_company_rule" model="ir.rule">
+            <field name="name">Rental Template: multi-company</field>
+            <field name="model_id" ref="rental.model_rental_template"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
         <record id="rental_product_template_set_company_rule" model="ir.rule">
             <field name="name">Rental Product Template Set: multi-company</field>
             <field name="model_id" ref="rental.model_rental_product_template_set"/>

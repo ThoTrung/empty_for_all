@@ -50,4 +50,38 @@ _(Chưa ghi nhận bug mở trong repo — bổ sung khi phát hiện trong phi�
 
 ## Resolved Bugs
 
-_(Cập nhật khi fix được merge.)_
+### [RENTAL-BUG-2026-06-04-01] Bảng xác nhận khối lượng — cột header bị đè
+
+- Date: 2026-06-04
+- Context: Form `rental.transport.matrix`, HTML `matrix_html`
+- Symptom: Nhiều cột sản phẩm thì header chữ xếp chồng, không đọc được.
+- Root cause: `table-layout: fixed; width: 100%` ép toàn bộ bảng vào viewport.
+- Fix summary: `table-layout: auto; width: max-content` + scroll ngang; bỏ `max-width` quá hẹp trên cột tên.
+- Files changed: `models/rental_transport_matrix.py`
+
+### [RENTAL-BUG-2026-06-04-02] Thiếu cột Tổng MD cho SP mét dài (1 biến thể)
+
+- Date: 2026-06-04
+- Context: Ma trận HTML + export Excel
+- Symptom: SP một biến thể có chiều dài (vd. Hộp 5*10 1,5m) không có cột Tổng MD.
+- Root cause: Chỉ nhóm ≥2 biến thể mới thêm Tổng MD.
+- Fix summary: `_group_needs_md_column()` — thêm Tổng MD khi parse được chiều dài hoặc ĐVT hiển thị là Mét dài.
+- Files changed: `models/rental_transport_matrix.py`, `controllers/rental_contract_controller.py`, tests
+
+### [RENTAL-BUG-2026-06-04-03] Export Excel ma trận — cột cuối mất format
+
+- Date: 2026-06-04
+- Context: `download_rental_contract_transport_matrix_xlsx`
+- Symptom: Sản phẩm vượt quá cột W trong template mất viền/màu header.
+- Root cause: Template chỉ style sẵn D–W; code thêm cột không clone style.
+- Fix summary: `extend_product_column_styles()` + mở rộng merge header row 14.
+- Files changed: `helper/export_excel_template.py`, `controllers/rental_contract_controller.py`
+
+### [RENTAL-BUG-2026-06-04-04] Bảng thanh toán — tiền bằng chữ sai
+
+- Date: 2026-06-04
+- Context: Nút "Tải bảng thanh toán chi tiết" / `_build_rental_payment_xlsx_buffer`
+- Symptom: Số tổng đúng (công thức Excel) nhưng dòng bằng chữ là text mẫu cố định (171.825.392đ).
+- Root cause: Cell A216 trong `rental_invoice_template.xlsx` hard-code text mẫu.
+- Fix summary: Placeholder `{{total_after_tax_string}}` + `_rental_invoice_xlsx_apply_payment_totals()` tính từ dữ liệu bảng.
+- Files changed: `models/rental_contract.py`, `static/file_template/rental_invoice_template.xlsx`

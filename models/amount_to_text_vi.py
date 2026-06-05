@@ -28,21 +28,27 @@ class AmountToTextVI(models.AbstractModel):
         if n == 0:
             return "Không {} chẵn".format(currency_name)
 
-        parts = []
+        # Collect non-zero groups (low → high), then read high → low for speech order.
+        chunks = []
         i = 0
-        while n > 0 and i < len(self.SCALES):
-            group = n % 1000
+        n_work = n
+        while n_work > 0 and i < len(self.SCALES):
+            group = n_work % 1000
             if group:
-                words = self._read_group_3(group, is_first=(len(parts) == 0))
-                scale = self.SCALES[i]
-                if scale:
-                    words = "{} {}".format(words, "ngàn" if (use_ngan and scale == "nghìn") else scale)
-                parts.append(words)
-            n //= 1000
+                chunks.append((group, i))
+            n_work //= 1000
             i += 1
 
-        # Assemble from highest scale to lowest
-        text = " ".join(reversed(parts)).strip()
+        parts = []
+        for j, (group, scale_i) in enumerate(reversed(chunks)):
+            is_leading = j == 0  # leftmost / largest group — never prefix "không trăm"
+            words = self._read_group_3(group, is_leading=is_leading)
+            scale = self.SCALES[scale_i]
+            if scale:
+                words = "{} {}".format(words, "ngàn" if (use_ngan and scale == "nghìn") else scale)
+            parts.append(words)
+
+        text = " ".join(parts).strip()
 
         # Capitalize first letter and add currency tail
         text = text[0].upper() + text[1:]
@@ -50,11 +56,11 @@ class AmountToTextVI(models.AbstractModel):
             text = "{} {} chẵn".format(text, currency_name)
         return text
 
-    def _read_group_3(self, num, is_first=False):
+    def _read_group_3(self, num, is_leading=False):
         """
         Read a 3-digit group in VI: ABC
         Rules:
-          - hundreds: A > 0 => "<A> trăm"; if A == 0 and (B>0 or C>0) and not first group at top scale => "không trăm"
+          - hundreds: A > 0 => "<A> trăm"; if A == 0 and (B>0 or C>0) and not the leading group => "không trăm"
           - tens:
               B == 0:
                  if C > 0 => "lẻ <ones>"
@@ -71,7 +77,7 @@ class AmountToTextVI(models.AbstractModel):
         # Hundreds
         if a > 0:
             words.append("{} trăm".format(self.DIGITS[a]))
-        elif (b > 0 or c > 0) and not is_first:
+        elif (b > 0 or c > 0) and not is_leading:
             words.append("không trăm")
 
         # Tens & ones
