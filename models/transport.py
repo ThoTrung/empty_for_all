@@ -420,16 +420,25 @@ class Transport(models.Model):
 
     def action_create_pickings(self):
         self.ensure_one()
+        picking = self._rental_create_picking()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.picking',
+            'view_mode': 'form',
+            'res_id': picking.id,
+            'target': 'current',
+        }
+
+    def _rental_create_picking(self):
+        """Create a stock picking for this draft transport. Returns the picking record."""
+        self.ensure_one()
         if self.state != 'draft':
             raise UserError(_("Chỉ tạo phiếu kho khi phiếu xuất nhập kho đang ở trạng thái Nháp."))
         if not self.rental_contract_id:
             raise UserError(_("Dont have contract for this transport."))
-
         if not self.transport_line_ids:
             raise UserError(_("Add at least one line before creating a picking."))
 
-        # if not self.picking_type_id or not self.location_id or not self.location_dest_id:
-        #     raise UserError(_("Please set Operation Type / Locations first."))
         scheduled_date = self.start_rental_or_return_date or fields.Datetime.now()
         self._onchange_type_set_picking_type()
         picking_vals = {
@@ -444,7 +453,6 @@ class Transport(models.Model):
         }
         picking = self.env['stock.picking'].create(picking_vals)
 
-        # Create stock moves (one per transport line)
         Move = self.env['stock.move']
         for line in self.transport_line_ids:
             if not line.product_id or line.qty <= 0:
@@ -461,21 +469,47 @@ class Transport(models.Model):
                 'description_picking': line.name or False,
             })
 
-        # Confirm and try to reserve
         picking.action_confirm()
         try:
             picking.action_assign()
         except Exception:
-            # ok if not reservable yet
             pass
+        return picking
 
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'stock.picking',
-            'view_mode': 'form',
-            'res_id': picking.id,
-            'target': 'current',
+    def _rental_validate_picking(self, picking):
+        """Validate picking at full qty; allow negative on-hand (historical Excel import)."""
+        self.ensure_one()
+        picking.ensure_one()
+        if picking.state == 'done':
+            return picking
+        if picking.state == 'cancel':
+            raise UserError(_("Phiếu kho %(name)s đã bị hủy.") % {"name": picking.display_name})
+
+        if picking.state == 'draft':
+            picking.action_confirm()
+
+        # Drop partial reservations so validation can proceed without stock on hand.
+        picking.do_unreserve()
+
+        moves = picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel'))
+        for move in moves:
+            if not move.product_uom_qty:
+                continue
+            # quantity inverse creates move lines; picked=True is required in Odoo 17 _action_done.
+            move.quantity = move.product_uom_qty
+            move.picked = True
+
+        validate_ctx = {
+            'cancel_backorder': True,
+            'skip_backorder': True,
+            'skip_sanity_check': True,
+            'skip_sms': True,
         }
+        result = picking.with_context(**validate_ctx).button_validate()
+        if isinstance(result, dict) and result.get('res_model'):
+            # No interactive wizard during import — force done (negative quants are allowed).
+            picking.with_context(cancel_backorder=True)._action_done()
+        return picking
 
     def action_cancel_transport(self):
         """Hủy phiếu: nháp → hủy/xóa phiếu kho gắn kèm; hoàn thành → tạo phiếu kho đảo (stock.return.picking)."""

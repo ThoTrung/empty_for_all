@@ -17,6 +17,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from datetime import datetime, date
 from ..helper.export_excel_template import insert_rows_below, extend_product_column_styles
+from ..helper.import_transport_matrix import build_import_template_bytes
 from ..helper.xlsx_template_utils import (
     apply_product_column_styles,
     find_transport_matrix_layout,
@@ -499,6 +500,30 @@ class RentalContractController(http.Controller):
             "end_date": fields.Date.to_string(matrix.end_date),
         }
         return self.download_rental_contract_transport_matrix_xlsx(matrix.rental_contract_id.id, **params)
+
+    @http.route(
+        '/rental/rental-contract/transport-import-template/<int:contract_id>/download',
+        type='http',
+        auth='user',
+    )
+    def download_transport_import_template_xlsx(self, contract_id, **kw):
+        contract = request.env['rental.contract'].browse(contract_id)
+        if not contract.exists():
+            return request.not_found()
+
+        user = request.env.user
+        if not user.has_group('rental.group_rental_staff'):
+            return request.redirect('/my')
+
+        buffer = io.BytesIO(build_import_template_bytes(contract, request.env))
+        buffer.seek(0)
+        filename = f"BIỂU MẪU IMPORT XUẤT NHẬP KHO {contract.code}.xlsx"
+        filename_ascii = quote(filename)
+        headers = [
+            ('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+            ('Content-Disposition', f"attachment; filename*=UTF-8''{filename_ascii}"),
+        ]
+        return request.make_response(buffer.read(), headers)
 
     # @http.route('/rental/rental-contract/invoice/<int:contract_id>/download', type='http', auth='user')
     # def download_rental_contract_invoice_xlsx(self, contract_id, **kw):

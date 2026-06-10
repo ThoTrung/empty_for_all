@@ -245,14 +245,21 @@
                                 </field>
                             </page>
                             <page string="Transports">
-                                <button name="%(action_create_invoice_wizard)d"
-                                        type="action"
-                                        string="Export confirmation table for rental volume"
-                                        class="btn-primary"
-                                        context="{
-                                            'date_range_callback': 'action_create_transport_matrix_record',
-                                        }"
-                                />
+                                <div class="d-flex gap-2 mb-2">
+                                    <button name="%(action_create_invoice_wizard)d"
+                                            type="action"
+                                            string="Export confirmation table for rental volume"
+                                            class="btn-primary"
+                                            context="{
+                                                'date_range_callback': 'action_create_transport_matrix_record',
+                                            }"
+                                    />
+                                    <button name="action_open_transport_import_wizard"
+                                            type="object"
+                                            string="Import từ Excel"
+                                            class="btn-secondary"
+                                            icon="fa-upload"/>
+                                </div>
                                 <field name="rr_transport_ids" context="{'size_class': 'modal-xl'}"/>
                             </page>
                             <page string="Price list">

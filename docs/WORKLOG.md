@@ -14,6 +14,34 @@ Chronological notes for agents and developers. Newest entries at the top.
 
 ---
 
+## 2026-06-05 — Import xuất nhập kho: picking + biểu mẫu + lỗi SP chi tiết
+
+- Author/agent: Cursor agent
+- Task: Cho phép import lại vận chuyển cũ (không chặn trùng trên HĐ); option xác nhận picking; nút tải biểu mẫu; lỗi mapping SP chi tiết (cột, gợi ý tên Odoo).
+- Files touched:
+  - `helper/import_transport_matrix.py`, `models/transport.py`
+  - `wizard/rental_transport_import_wizard.py`, `wizard/rental_transport_import_wizard.xml`
+  - `controllers/rental_contract_controller.py`, `models/rental_contract.py`
+  - `tests/test_transport_import.py`, `docs/DECISIONS.md`
+- Validation: cập nhật unit tests (chưa chạy odoo-bin).
+
+---
+
+## 2026-06-05 — Import xuất nhập kho từ Excel
+
+- Author/agent: Cursor agent
+- Task: Wizard import ma trận khối lượng → `rr.transport` trên tab Transports; cột C biển số; qty âm = nhập; trùng ngày+biển số trong file báo lỗi.
+- Files touched:
+  - `helper/import_transport_matrix.py`
+  - `wizard/rental_transport_import_wizard.py`, `wizard/rental_transport_import_wizard.xml`
+  - `models/rental_contract.py`, `views/rental_contract_view.xml`
+  - `security/ir_model_access.xml`, `__manifest__.py`
+  - `tests/test_transport_import.py`, `docs/DECISIONS.md`
+- Validation: `tests/test_transport_import.py` (chưa chạy odoo-bin trong phiên này).
+- Notes: Không tự tạo picking; cần tài xế mặc định trên wizard.
+
+---
+
 ## 2026-06-04 — Nhân viên upload mẫu tài liệu tải xuống
 
 - Author/agent: Cursor agent

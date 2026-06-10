@@ -262,6 +262,28 @@ class RentalContract(models.Model):
             'context': {'default_rental_contract_id': self.id},
         }
 
+    def action_open_transport_import_wizard(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Import xuất nhập kho từ Excel'),
+            'res_model': 'rental.transport.import.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_rental_contract_id': self.id,
+            },
+        }
+
+    def action_download_transport_import_template(self):
+        self.ensure_one()
+        url = f'/rental/rental-contract/transport-import-template/{self.id}/download'
+        return {
+            'type': 'ir.actions.act_url',
+            'url': url,
+            'target': 'self',
+        }
+
     @api.depends('b_party', 'company_id')
     def _compute_accounting_totals(self):
         # Batch all contracts in one grouped query

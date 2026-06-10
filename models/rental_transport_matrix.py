@@ -59,31 +59,14 @@ def _sum_linear_meters(cell_qty_by_prod, prod_ids, lengths_by_prod):
     return total
 
 
-def _product_label_for_length(info):
-    if not isinstance(info, dict):
-        return ""
-    return (info.get("variant_name") or info.get("prod_name") or info.get("name") or "").strip()
-
-
-def _is_linear_meter_uom_name(uom_name):
-    normalized = (uom_name or "").casefold()
-    return "mét dài" in normalized or "met dai" in normalized
-
-
 def _group_needs_md_column(env, prods, prod_order):
     """True when the template group should show a Tổng MD column."""
-    if len(prod_order) > 1:
-        return True
-    if len(prod_order) != 1:
+    if not prod_order:
         return False
-    pid = prod_order[0]
-    info = prods.get(pid, {})
-    if _parse_length_meters(_product_label_for_length(info)) is not None:
-        return True
-    product = env["product.product"].browse(pid)
-    if product.exists():
-        return _is_linear_meter_uom_name(product._get_staff_display_uom().name)
-    return False
+    product = env["product.product"].browse(prod_order[0])
+    if not product.exists():
+        return False
+    return bool(product.uom_id.is_linear_meter_variant)
 
 
 class RentalTransportMatrix(models.Model):

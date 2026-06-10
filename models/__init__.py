@@ -6,6 +6,7 @@ from . import res_company
 from . import rental_contract
 from . import product_template
 from . import product_product
+from . import uom_uom
 from . import sale_order_line
 from . import transport
 from . import stock_picking

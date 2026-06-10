@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Rental',
-    'version': '17.0.1.0.21',
+    'version': '17.0.1.0.24',
     'category': 'Rental',
     'summary': 'Rental service module.',
     'author': "Nguyễn Trung Thọ",
@@ -23,6 +23,7 @@
         'wizard/rental_transport_matrix_overlap_wizard.xml',
         'wizard/reject_confirm_wizard.xml',
         'wizard/link_child_contact_wizard.xml',
+        'wizard/rental_transport_import_wizard.xml',
 
         'data/sequence.xml',
 
@@ -41,6 +42,7 @@
         'views/rental_product_template_set_view.xml',
         'views/rental_holiday_view.xml',
         'views/product_product_view.xml',
+        'views/uom_uom_view.xml',
         'views/sale_order_views.xml',
         'views/product_template_attribute_value_view.xml',
         'views/product_attribute_view.xml',

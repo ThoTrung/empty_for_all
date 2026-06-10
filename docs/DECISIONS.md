@@ -78,6 +78,16 @@ Track architecture and implementation decisions so future agents keep consistenc
 - Alternatives considered: Chỉ JSON trên HĐ (`rr_transport_matrix_json` đã comment HTML cũ).
 - Related files/modules: `models/rental_transport_matrix.py`, `wizard/rental_transport_matrix_overlap_wizard.py`, `tests/test_rental_transport_matrix_overlap.py`
 
+### [RENTAL-DEC-2026-06-05-01] Import transport matrix Excel (inverse of export)
+
+- Date: 2026-06-05
+- Status: accepted
+- Context: Nhập khối lượng xuất/nhập kho từ file Excel giống bảng tổng hợp (mỗi dòng = một chuyến).
+- Decision: Wizard `rental.transport.import.wizard` trên tab Transports của HĐ; parser trong `helper/import_transport_matrix.py` dùng `find_transport_matrix_layout`; cột C = biển số; qty âm → `return` (lưu `abs`); trùng ngày+biển số **trong file** → báo lỗi; cho phép import lại dữ liệu cũ dù HĐ đã có phiếu cùng ngày+biển số.
+- Consequences: Mapping SP theo tên/biến thể + tab lỗi chi tiết; tùy chọn `validate_picking` tạo và xác nhận picking (unreserve + full qty + cho phép tồn âm); nút tải biểu mẫu theo SP trên HĐ.
+- Alternatives considered: Import từ menu Xuất nhập kho không gắn HĐ; chế độ skip/update khi trùng.
+- Related files/modules: `helper/import_transport_matrix.py`, `wizard/rental_transport_import_wizard.py`, `models/rental_contract.py`, `tests/test_transport_import.py`
+
 ### [RENTAL-DEC-2026-06-04-07] Multi-company via in-module `mc.group.mixin`
 
 - Date: 2026-06-04

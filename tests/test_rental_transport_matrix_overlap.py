@@ -150,6 +150,36 @@ class TestRentalTransportMatrixOverlap(TransactionCase):
 class TestRentalTransportMatrixHelpers(TransactionCase):
     """Pure helpers: length parsing, MD sum, variant sort order."""
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        md_categ = cls.env["uom.category"].create({"name": "Test length MD"})
+        unit_categ = cls.env["uom.category"].create({"name": "Test unit MD"})
+        cls._uom_linear_meter = cls.env["uom.uom"].create({
+            "name": "Mét dài (test)",
+            "category_id": md_categ.id,
+            "uom_type": "reference",
+            "is_linear_meter_variant": True,
+        })
+        cls._uom_piece = cls.env["uom.uom"].create({
+            "name": "Cái (test)",
+            "category_id": unit_categ.id,
+            "uom_type": "reference",
+            "is_linear_meter_variant": False,
+        })
+        cls._product_linear_meter = cls.env["product.template"].create({
+            "name": "Hộp 5*10 (test MD)",
+            "type": "product",
+            "uom_id": cls._uom_linear_meter.id,
+            "uom_po_id": cls._uom_linear_meter.id,
+        }).product_variant_ids[0]
+        cls._product_piece = cls.env["product.template"].create({
+            "name": "Kích chân D38* L500 (test)",
+            "type": "product",
+            "uom_id": cls._uom_piece.id,
+            "uom_po_id": cls._uom_piece.id,
+        }).product_variant_ids[0]
+
     def test_parse_length_meters(self):
         self.assertEqual(rtm._parse_length_meters("2m"), 2.0)
         self.assertEqual(rtm._parse_length_meters("1,5m"), 1.5)
@@ -173,17 +203,28 @@ class TestRentalTransportMatrixHelpers(TransactionCase):
         sorted_o = rtm._sort_products_odict(prods)
         self.assertEqual(list(sorted_o.keys()), [3, 2, 1])
 
-    def test_group_needs_md_single_variant_with_length(self):
-        prods = {10: {"variant_name": "1,5m", "prod_name": "Hộp 5*10 (1,5m)"}}
-        self.assertTrue(rtm._group_needs_md_column(self.env, prods, [10]))
+    def test_group_needs_md_single_variant_linear_meter_uom(self):
+        pid = self._product_linear_meter.id
+        prods = {pid: {"variant_name": "1,5m", "prod_name": "Hộp 5*10 (1,5m)"}}
+        self.assertTrue(rtm._group_needs_md_column(self.env, prods, [pid]))
 
-    def test_group_needs_md_single_variant_without_length(self):
-        prods = {10: {"variant_name": "", "prod_name": "Kích chân D38* L500"}}
-        self.assertFalse(rtm._group_needs_md_column(self.env, prods, [10]))
+    def test_group_needs_md_single_variant_non_linear_meter_uom(self):
+        pid = self._product_piece.id
+        prods = {pid: {"variant_name": "", "prod_name": "Kích chân D38* L500"}}
+        self.assertFalse(rtm._group_needs_md_column(self.env, prods, [pid]))
 
-    def test_group_needs_md_multi_variant(self):
+    def test_group_needs_md_multi_variant_linear_meter_uom(self):
+        pid = self._product_linear_meter.id
         prods = {
-            10: {"variant_name": "1,5m", "prod_name": "Hộp (1,5m)"},
-            11: {"variant_name": "2m", "prod_name": "Hộp (2m)"},
+            pid: {"variant_name": "1,5m", "prod_name": "Hộp (1,5m)"},
+            pid + 1: {"variant_name": "2m", "prod_name": "Hộp (2m)"},
         }
-        self.assertTrue(rtm._group_needs_md_column(self.env, prods, [10, 11]))
+        self.assertTrue(rtm._group_needs_md_column(self.env, prods, [pid, pid + 1]))
+
+    def test_group_needs_md_multi_variant_non_linear_meter_uom(self):
+        pid = self._product_piece.id
+        prods = {
+            pid: {"variant_name": "Size A", "prod_name": "Kích chân (A)"},
+            pid + 1: {"variant_name": "Size B", "prod_name": "Kích chân (B)"},
+        }
+        self.assertFalse(rtm._group_needs_md_column(self.env, prods, [pid, pid + 1]))

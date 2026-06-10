@@ -46,6 +46,7 @@
 - `create.invoice.wizard` — chọn kỳ, gọi callback trên HĐ (xuất Excel / tạo hóa đơn)
 - `rental.reject.confirm.wizard` — Leader từ chối → `need_fix`
 - `rental.transport.matrix.overlap.wizard` — xử lý khi tạo matrix trùng kỳ
+- `rental.transport.import.wizard` — import `rr.transport` từ Excel ma trận khối lượng (tab Transports trên HĐ)
 - `rental.link_child_contact.wizard` — gắn đại diện con vào công ty renter
 
 ### Services (`services/rental_contract_services.py`)
@@ -144,7 +145,7 @@ new/need_fix --[request_confirm]--> need_approve --[leader_confirm]--> leader_ap
 
 ### Xuất nhập kho → tính tiền
 
-1. Nhập `rr.transport` + lines trên HĐ.
+1. Nhập `rr.transport` + lines trên HĐ (thủ công hoặc **Import từ Excel** trên tab Transports).
 2. Xác nhận picking → transport `done`.
 3. Wizard kỳ → `action_export_invoice_excel` hoặc `action_create_rental_invoice`:
    - Gộp theo transport lines + ngày nghỉ + mode day/month.
