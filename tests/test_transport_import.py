@@ -51,7 +51,7 @@ class TestTransportImport(TransactionCase):
             "b_party": cls._b_party.id,
         })
         cls.env["rental.contract.line"].create({
-            "rental_contract_id": cls._contract.id,
+            "contract_id": cls._contract.id,
             "product_tmpl_id": cls._product.product_tmpl_id.id,
             "price_unit": 100.0,
         })
@@ -70,6 +70,35 @@ class TestTransportImport(TransactionCase):
             ws.cell(r, 2).value = row["date"]
             ws.cell(r, 3).value = row["plate"]
             ws.cell(r, 4).value = row.get("qty")
+        buf = BytesIO()
+        wb.save(buf)
+        return buf.getvalue()
+
+    def _build_user_style_workbook_bytes(self, rows, products=None, extra_rows=None):
+        """Simulate manual matrix Excel (headers row 7-8, col A=STT, B=date, C=plate)."""
+        wb = Workbook()
+        ws = wb.active
+        ws.cell(7, 1).value = "STT"
+        ws.cell(7, 2).value = "Ngày tháng"
+        ws.cell(7, 3).value = "Vận chuyển xe công"
+        products = products or [{"col": 4, "group": "Khóa giáo", "variant": "Khóa giáo"}]
+        for prod in products:
+            col = prod["col"]
+            ws.cell(7, col).value = prod.get("group") or prod["variant"]
+            ws.cell(8, col).value = prod.get("variant") or prod.get("group")
+        if extra_rows:
+            for spec in extra_rows:
+                r = spec["row"]
+                for col, val in spec.get("cells", {}).items():
+                    ws.cell(r, col).value = val
+        for idx, row in enumerate(rows):
+            r = 14 + idx
+            ws.cell(r, 1).value = idx + 1
+            ws.cell(r, 2).value = row["date"]
+            ws.cell(r, 3).value = row["plate"]
+            for col, qty in (row.get("qty_by_col") or {4: row.get("qty")}).items():
+                if qty is not None:
+                    ws.cell(r, col).value = qty
         buf = BytesIO()
         wb.save(buf)
         return buf.getvalue()
@@ -111,7 +140,30 @@ class TestTransportImport(TransactionCase):
         self.assertTrue(parsed["product_mapping_errors"])
         detail = parsed["product_mapping_errors"][0]["detail"]
         self.assertIn("SP Không Tồn Tại", detail)
-        self.assertIn("Khóa giáo", detail)
+        self.assertIn("không có sản phẩm tương ứng", detail.lower())
+
+    def test_product_in_other_company_is_mapping_error(self):
+        other_company = self.env["res.company"].create({"name": "Công ty khác Import"})
+        self.env["product.product"].with_company(other_company).create({
+            "name": "SP Công Ty Khác",
+            "type": "product",
+            "company_id": other_company.id,
+        })
+        data = self._build_workbook_bytes(
+            [{
+                "date": date(2026, 3, 22),
+                "plate": "29H-80228",
+                "qty": 10,
+            }],
+            product_header="SP Công Ty Khác",
+        )
+        parsed = parse_transport_matrix_xlsx(data, self.env, contract=self._contract)
+        self.assertTrue(parsed["product_mapping_errors"])
+        detail = parsed["product_mapping_errors"][0]["detail"]
+        self.assertIn("SP Công Ty Khác", detail)
+        self.assertIn("không có sản phẩm tương ứng", detail.lower())
+        for row in parsed["rows"]:
+            self.assertFalse(row["lines"])
 
     def test_duplicate_in_file_is_error(self):
         row = {
@@ -210,3 +262,79 @@ class TestTransportImport(TransactionCase):
         self.assertEqual(transport.state, "done")
         picking = transport.picking_ids.filtered(lambda p: p.state == "done" and not p.return_id)
         self.assertTrue(picking)
+
+    def test_user_style_layout_rows_7_8(self):
+        data = self._build_user_style_workbook_bytes([{
+            "date": date(2026, 3, 16),
+            "plate": "30B-02898",
+            "qty": 120,
+        }])
+        parsed = parse_transport_matrix_xlsx(data, self.env, contract=self._contract)
+        self.assertEqual(len(parsed["rows"]), 1)
+        row = parsed["rows"][0]
+        self.assertEqual(row["transport_type"], "delivery")
+        self.assertEqual(row["lines"], [(self._product.id, 120)])
+
+    def test_skip_opening_balance_section(self):
+        data = self._build_user_style_workbook_bytes(
+            [{
+                "date": date(2026, 3, 16),
+                "plate": "30B-02898",
+                "qty": 50,
+            }],
+            extra_rows=[
+                {"row": 9, "cells": {2: "DƯ ĐẦU KỲ - PHỐ CÀ LANMAK C SANG"}},
+                {"row": 10, "cells": {4: 999}},
+                {"row": 11, "cells": {4: 888}},
+                {"row": 13, "cells": {2: "CỘNG CHUYỂN DƯ ĐẦU T3", 4: 1887}},
+            ],
+        )
+        parsed = parse_transport_matrix_xlsx(data, self.env, contract=self._contract)
+        self.assertEqual(len(parsed["rows"]), 1)
+        self.assertEqual(parsed["rows"][0]["lines"], [(self._product.id, 50)])
+
+    def test_skip_monthly_total_row(self):
+        data = self._build_user_style_workbook_bytes(
+            [
+                {"date": date(2026, 3, 16), "plate": "30B-02898", "qty": 10},
+                {"date": "Cộng tháng 03/2026", "plate": "", "qty": 999},
+                {"date": date(2026, 4, 1), "plate": "29H-80228", "qty": 20},
+            ],
+        )
+        parsed = parse_transport_matrix_xlsx(data, self.env, contract=self._contract)
+        self.assertEqual(len(parsed["rows"]), 2)
+        self.assertEqual(parsed["rows"][0]["lines"], [(self._product.id, 10)])
+        self.assertEqual(parsed["rows"][1]["lines"], [(self._product.id, 20)])
+
+    def test_product_name_comma_decimal_matches(self):
+        product = self.env["product.product"].create({
+            "name": "Giáo nêm 2.5m",
+            "type": "product",
+        })
+        self.env["rental.contract.line"].create({
+            "contract_id": self._contract.id,
+            "product_tmpl_id": product.product_tmpl_id.id,
+            "price_unit": 10.0,
+        })
+        data = self._build_user_style_workbook_bytes(
+            [{"date": date(2026, 3, 18), "plate": "29H-80228", "qty": 7}],
+            products=[{"col": 4, "group": "Giáo nêm 2,5m", "variant": "Giáo nêm 2,5m"}],
+        )
+        parsed = parse_transport_matrix_xlsx(data, self.env, contract=self._contract)
+        self.assertEqual(len(parsed["rows"]), 1)
+        self.assertEqual(parsed["rows"][0]["lines"], [(product.id, 7)])
+
+    def test_import_skips_error_rows(self):
+        row_ok = {"date": date(2026, 6, 1), "plate": "29H-80228", "qty": 10}
+        row_dup = {"date": date(2026, 6, 2), "plate": "29H-80228", "qty": 5}
+        data = self._build_workbook_bytes([row_ok, row_dup, row_dup])
+        wizard = self.env["rental.transport.import.wizard"].create({
+            "rental_contract_id": self._contract.id,
+            "default_driver_id": self._driver.id,
+            "validate_picking": False,
+            "import_file": base64.b64encode(data),
+            "import_filename": "test.xlsx",
+        })
+        before = len(self._contract.rr_transport_ids)
+        wizard.action_import_transports()
+        self.assertEqual(len(self._contract.rr_transport_ids), before + 1)

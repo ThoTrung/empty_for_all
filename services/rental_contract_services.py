@@ -206,7 +206,7 @@ def _build_map_product_and_date_to_line(env, contract, start_date, end_date):
 
 def _merge_variant_lines_to_template_row(env, contract, tmpl, variant_lines):
     """Một dòng Excel: mẫu SP + kỳ; SL = Σ(qty×m) nếu nhiều biến thể, ngược lại Σ qty."""
-    from odoo.addons.rental.models.rental_transport_matrix import _parse_length_meters
+    from odoo.addons.rental.models.rental_transport_matrix import _linear_meter_factor_for_product
 
     Product = env["product.product"]
     variant_lines = sorted(variant_lines, key=lambda l: Product.browse(l["product_id"]).display_name)
@@ -239,10 +239,10 @@ def _merge_variant_lines_to_template_row(env, contract, tmpl, variant_lines):
     plain = 0.0
     for x in variant_lines:
         prod = Product.browse(x["product_id"])
-        length_m = _parse_length_meters(prod.display_name)
         q = x["qty"]
-        if length_m is not None:
-            md += q * length_m
+        factor = _linear_meter_factor_for_product(prod)
+        if factor is not None:
+            md += q * factor
         else:
             plain += q
     qty_disp = md + plain

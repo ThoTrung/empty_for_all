@@ -237,6 +237,7 @@ class RentalContractController(http.Controller):
                     'id': line.product_id.id,
                     'name': line.product_id.display_name,
                     'variant_name': line.product_id.product_template_variant_value_ids.name,
+                    'price_multiplier': rtm._variant_price_multiplier(line.product_id),
                 }
                 if not product_tmpl:
                     product_tmpl = {
@@ -319,9 +320,9 @@ class RentalContractController(http.Controller):
 
         def _xlsx_md_sum(cell_qty_map, tmpl_id, p_tmpl):
             total = 0.0
-            for prod_id, prod in p_tmpl['products'].items():
-                label = prod.get('variant_name') or prod.get('name') or ''
-                length = rtm._parse_length_meters(label)
+            for prod_id in p_tmpl['products']:
+                prod_rec = env['product.product'].browse(prod_id)
+                length = rtm._linear_meter_factor_for_product(prod_rec)
                 if length is None:
                     continue
                 q = cell_qty_map.get((tmpl_id, prod_id), 0) or 0

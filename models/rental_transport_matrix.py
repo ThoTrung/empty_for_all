@@ -1,37 +1,37 @@
 # -*- coding: utf-8 -*-
 
 import html
-import re
 from collections import OrderedDict
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
-# Length in meters from labels like "2m", "1,5m", "0.9m" (shared with Excel export).
-_LENGTH_M_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*m\b", re.IGNORECASE)
+
+def _variant_price_multiplier(product):
+    """Combined Price Multiplier (product of PTAV price_multiplier values)."""
+    mult = 1.0
+    for v in product.product_template_attribute_value_ids:
+        m = v.price_multiplier or 1.0
+        mult *= m if m > 0 else 1.0
+    return mult
 
 
-def _parse_length_meters(label):
-    if not label:
+def _linear_meter_factor_for_product(product):
+    """Meters factor for Tổng MD: Price Multiplier when UOM is linear meter."""
+    if not product.uom_id.is_linear_meter_variant:
         return None
-    m = _LENGTH_M_RE.search(str(label).strip())
-    if not m:
-        return None
-    num = m.group(1).replace(",", ".")
-    try:
-        return float(num)
-    except ValueError:
-        return None
+    mult = _variant_price_multiplier(product)
+    return mult if mult > 0 else None
 
 
 def _variant_sort_key_from_info(info):
-    """Sort key: parsed length (m) ascending, then label."""
+    """Sort key: Price Multiplier ascending, then label."""
     if not isinstance(info, dict):
         return (1, 0.0, "")
     label = (info.get("variant_name") or info.get("prod_name") or info.get("name") or "").strip()
-    length = _parse_length_meters(label)
-    if length is not None:
-        return (0, length, label.casefold())
+    mult = info.get("price_multiplier")
+    if mult is not None and mult > 0:
+        return (0, mult, label.casefold())
     return (1, 0.0, label.casefold())
 
 
@@ -198,6 +198,7 @@ class RentalTransportMatrix(models.Model):
                         product_tmpls[tmpl.id]["products"][prod.id] = {
                             "prod_name": prod.display_name,
                             "variant_name": prod.product_template_variant_value_ids.name,
+                            "price_multiplier": _variant_price_multiplier(prod),
                         }
                         variant_product_ids.append(prod.id)
 
@@ -211,8 +212,8 @@ class RentalTransportMatrix(models.Model):
                 prods = tmpl_info["products"]
                 prod_order = list(prods.keys())
                 lengths = {
-                    pid: _parse_length_meters(
-                        prods[pid].get("variant_name") or prods[pid].get("prod_name") or ""
+                    pid: _linear_meter_factor_for_product(
+                        rec.env["product.product"].browse(pid)
                     )
                     for pid in prod_order
                 }

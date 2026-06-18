@@ -1,0 +1,9 @@
+---
+description: Rental security / views
+globs: "{security,views}/**/*"
+alwaysApply: false
+---
+
+- New model: `ir.model.access.csv` or `ir_model_access.xml` + `ir_rule.xml` (company_id)
+- Courier: `group_rental_transport_courier` record rules on partner_id
+- Groups: `security/custom_security_groups.xml`

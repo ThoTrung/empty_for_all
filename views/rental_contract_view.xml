@@ -260,7 +260,21 @@
                                             class="btn-secondary"
                                             icon="fa-upload"/>
                                 </div>
-                                <field name="rr_transport_ids" context="{'size_class': 'modal-xl'}"/>
+                                <field name="rr_transport_ids" context="{'size_class': 'modal-xl'}">
+                                    <tree>
+                                        <field name="code"/>
+                                        <field name="start_rental_or_return_date"/>
+                                        <field name="type"/>
+                                        <field name="rental_contract_id" column_invisible="1"/>
+                                        <field name="plate"/>
+                                        <field name="driver_name"/>
+                                        <field name="driver_phone"/>
+                                        <field name="fee"/>
+                                        <field name="state" widget="badge"
+                                               decoration-success="state == 'done'"
+                                               decoration-muted="state == 'cancel'"/>
+                                    </tree>
+                                </field>
                             </page>
                             <page string="Price list">
                                 <field name="rr_transport_line_ids" readonly="1">

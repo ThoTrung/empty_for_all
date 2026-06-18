@@ -3,6 +3,7 @@
 import re
 from collections import OrderedDict
 from datetime import date, datetime
+from difflib import SequenceMatcher
 from io import BytesIO
 
 from openpyxl import Workbook, load_workbook
@@ -12,11 +13,22 @@ from odoo import _, fields
 
 from .xlsx_template_utils import find_transport_matrix_layout, replace_placeholders_in_sheet
 
-_SKIP_ROW_MARKERS = ("tồn đầu kỳ", "tổng kl cuối", "tổng kl")
+_SKIP_ROW_MARKERS = (
+    "tồn đầu kỳ",
+    "dư đầu kỳ",
+    "dư đầu",
+    "cộng chuyển dư đầu",
+    "cộng chuyển",
+    "tổng kl cuối",
+    "tổng kl",
+    "cộng tháng",
+)
+_OPENING_SECTION_START = ("dư đầu kỳ",)
+_OPENING_SECTION_END = ("cộng chuyển dư đầu",)
 _MD_HEADER = "tổng md"
-_DATE_COL = 2
-_PLATE_COL = 3
-_PRODUCT_START_COL = 4
+_DEFAULT_DATE_COL = 2
+_DEFAULT_PLATE_COL = 3
+_DEFAULT_PRODUCT_START_COL = 4
 
 
 def _normalize_text(value):
@@ -27,6 +39,14 @@ def _normalize_text(value):
 
 def _normalize_key(value):
     return _normalize_text(value).casefold()
+
+
+def _normalize_product_key(value):
+    """Normalize product labels for matching (comma decimal, spacing)."""
+    text = _normalize_key(value)
+    text = text.replace(",", ".")
+    text = re.sub(r"\s+", " ", text)
+    return text
 
 
 def _normalize_variant_token(value):
@@ -97,6 +117,155 @@ def _is_skip_row_label(value):
     return any(marker in key for marker in _SKIP_ROW_MARKERS)
 
 
+def _is_variant_dimension_token(value):
+    """True for size tokens like 3.0, 1.5 — not full product names."""
+    token = _normalize_variant_token(value)
+    if not token:
+        return False
+    return bool(re.match(r"^[\d.]+$", token))
+
+
+def _row_label_text(ws, row_idx, date_col, plate_col):
+    parts = []
+    for col in (1, date_col, plate_col):
+        val = _normalize_text(_merged_top_left_value(ws, row_idx, col))
+        if val:
+            parts.append(val)
+    return " ".join(parts).casefold()
+
+
+def _should_skip_row(ws, row_idx, date_col, plate_col):
+    for col in (1, date_col, plate_col, plate_col + 1):
+        if _is_skip_row_label(_merged_top_left_value(ws, row_idx, col)):
+            return True
+    return False
+
+
+def _sheet_has_import_layout(ws):
+    for row_idx in range(1, 41):
+        for col in range(1, 8):
+            val = _merged_top_left_value(ws, row_idx, col)
+            if isinstance(val, str):
+                key = _normalize_key(val)
+                if "chủng loại" in key or "ngày tháng" in key:
+                    return True
+    return False
+
+
+def _find_import_worksheet(wb):
+    """Pick worksheet with transport matrix headers (skip empty active sheet)."""
+    for name in wb.sheetnames:
+        ws = wb[name]
+        for row_idx in range(1, 41):
+            for col in range(1, 8):
+                val = _merged_top_left_value(ws, row_idx, col)
+                if isinstance(val, str) and "chủng loại" in val:
+                    return ws
+    for name in wb.sheetnames:
+        ws = wb[name]
+        if _sheet_has_import_layout(ws):
+            return ws
+    return wb.active
+
+
+def _row_has_variant_header_row(ws, row_idx, product_start_col):
+    max_col = min(ws.max_column or product_start_col, product_start_col + 80)
+    for col in range(product_start_col, max_col + 1):
+        text = _normalize_text(_cell_value(ws, row_idx, col))
+        if not text or _normalize_key(text) == _MD_HEADER:
+            continue
+        if _is_variant_dimension_token(text):
+            return True
+        group = _normalize_text(_walk_left_value(ws, row_idx - 1, col, min_col=product_start_col))
+        if group and _normalize_product_key(text) != _normalize_product_key(group):
+            return True
+    return False
+
+
+def _detect_import_layout(ws):
+    """
+    Detect column positions and header rows for matrix / manual Excel files.
+
+    Supports:
+    - Standard template (row «Chủng loại», headers at +1/+2, data at +3)
+    - Manual sheets (row «Ngày tháng» at col B/C with product headers same row or below)
+    """
+    for row in ws.iter_rows(min_row=1, max_row=40):
+        for cell in row:
+            val = cell.value
+            if isinstance(val, str) and "Chủng loại" in val:
+                title_row = cell.row
+                return {
+                    "date_col": _DEFAULT_DATE_COL,
+                    "plate_col": _DEFAULT_PLATE_COL,
+                    "product_start_col": _DEFAULT_PRODUCT_START_COL,
+                    "header_second_row": title_row + 1,
+                    "header_third_row": title_row + 2,
+                    "data_start_row": title_row + 3,
+                }
+
+    for row_idx in range(1, 41):
+        for col in range(1, 6):
+            val = _cell_value(ws, row_idx, col)
+            if not isinstance(val, str):
+                continue
+            if "ngày tháng" not in _normalize_key(val):
+                continue
+            date_col = col
+            plate_col = col + 1
+            product_start_col = col + 2
+            group_on_same_row = bool(
+                _normalize_text(
+                    _walk_left_value(ws, row_idx, product_start_col, min_col=product_start_col)
+                )
+            )
+            if group_on_same_row:
+                variant_row = row_idx + 1
+                if _row_has_variant_header_row(ws, variant_row, product_start_col):
+                    header_second_row = row_idx
+                    header_third_row = variant_row
+                else:
+                    header_second_row = header_third_row = row_idx
+                return {
+                    "date_col": date_col,
+                    "plate_col": plate_col,
+                    "product_start_col": product_start_col,
+                    "header_second_row": header_second_row,
+                    "header_third_row": header_third_row,
+                    "data_start_row": header_third_row + 1,
+                }
+            return {
+                "date_col": date_col,
+                "plate_col": plate_col,
+                "product_start_col": product_start_col,
+                "header_second_row": row_idx + 1,
+                "header_third_row": row_idx + 2,
+                "data_start_row": row_idx + 3,
+            }
+
+    _, header_second_row, header_third_row, data_start_row = find_transport_matrix_layout(ws)
+    return {
+        "date_col": _DEFAULT_DATE_COL,
+        "plate_col": _DEFAULT_PLATE_COL,
+        "product_start_col": _DEFAULT_PRODUCT_START_COL,
+        "header_second_row": header_second_row,
+        "header_third_row": header_third_row,
+        "data_start_row": data_start_row,
+    }
+
+
+def _resolve_plate(ws, row_idx, plate_col, max_row, window=10):
+    """Use cell plate or nearest non-empty plate in following rows (same shipment block)."""
+    plate = _normalize_text(_merged_top_left_value(ws, row_idx, plate_col))
+    if plate:
+        return plate, False
+    for r in range(row_idx + 1, min(max_row, row_idx + window) + 1):
+        below = _normalize_text(_merged_top_left_value(ws, r, plate_col))
+        if below:
+            return below, True
+    return "", False
+
+
 def _normalize_md_header():
     return _MD_HEADER
 
@@ -107,6 +276,75 @@ def _excel_label(group_name, variant_label=None):
     if variant and _normalize_key(variant) != _MD_HEADER:
         return f"{group} - {variant}"
     return group
+
+
+def _excel_name_aliases(group_name, variant_label=None):
+    """Alternate labels used on manual Excel sheets vs Odoo product names."""
+    group = _normalize_text(group_name)
+    variant = _normalize_text(variant_label)
+    labels = []
+    seen = set()
+
+    def add(text):
+        text = _normalize_text(text)
+        if not text:
+            return
+        key = _normalize_product_key(text)
+        if key in seen:
+            return
+        seen.add(key)
+        labels.append(text)
+
+    def synonymize(text):
+        result = _normalize_key(text)
+        rules = (
+            (r"giáo\s*ht", "giáo hoàn thiện"),
+            (r"giằng\s*ht", "giằng hoàn thiện"),
+            (r"bát\s*kích", "kích đầu"),
+            (r"chân\s*kích", "kích chân"),
+            (r"ống\s*nối\s*nêm", "ống nối"),
+            (r"u\s*chống\s*truyền", "u chống chuyền"),
+            (r"tuýp\s*mạ\s*kẽm\s*d48", "tuýp d48"),
+        )
+        for pattern, repl in rules:
+            result = re.sub(pattern, repl, result)
+        result = re.sub(r"1[,.]7\b", "1.7m", result)
+        return result
+
+    add(_excel_label(group, variant))
+    if variant:
+        add(f"{group} ({variant})")
+    add(group)
+
+    for label in list(labels):
+        add(synonymize(label))
+        if variant:
+            add(f"{synonymize(group)} - {variant}")
+
+    if _normalize_product_key(group) == _normalize_product_key("Mâm"):
+        add("Mâm giáo")
+
+    return labels
+
+
+def _compact_product_key(value):
+    return _normalize_product_key(value).replace(" ", "").replace("*", "")
+
+
+def _loose_product_match(needle, haystack):
+    """Match Excel shorthand to Odoo names, e.g. kích đầu L500 vs Kích đầu D38* L500."""
+    if not needle or not haystack:
+        return False
+    if needle in haystack or haystack in needle:
+        return True
+    n_len = re.search(r"l(\d+)", needle)
+    h_len = re.search(r"l(\d+)", haystack)
+    if not n_len or not h_len or n_len.group(1) != h_len.group(1):
+        return False
+    for token in ("đầu", "chân"):
+        if token in needle and token in haystack:
+            return "kích" in needle and "kích" in haystack
+    return False
 
 
 class TransportMatrixProductResolver:
@@ -120,33 +358,90 @@ class TransportMatrixProductResolver:
         self._all_template_names = []
         self._errors = {}
 
+    def _contract_company_id(self):
+        if self.contract and self.contract.company_id:
+            return self.contract.company_id.id
+        return None
+
+    def _product_models(self):
+        Product = self.env["product.product"]
+        Template = self.env["product.template"]
+        if self.contract and self.contract.company_id:
+            company = self.contract.company_id
+            Product = Product.with_company(company)
+            Template = Template.with_company(company)
+        return Product, Template
+
+    def _product_domain(self):
+        domain = [("active", "in", [True, False])]
+        cid = self._contract_company_id()
+        if cid:
+            domain += ["|", ("company_id", "=", False), ("company_id", "=", cid)]
+        return domain
+
+    def _product_allowed_for_contract(self, product):
+        cid = self._contract_company_id()
+        if not cid or not product:
+            return True
+        pc = product.company_id
+        return not pc or pc.id == cid
+
     def _index_products(self):
         if self._by_display_name:
             return
-        Product = self.env["product.product"].sudo()
-        Template = self.env["product.template"].sudo()
-        for product in Product.search([("active", "in", [True, False])]):
-            self._by_display_name[_normalize_key(product.display_name)] = product
-            self._by_display_name[_normalize_key(product.name)] = product
-        for tmpl in Template.search([("active", "in", [True, False])]):
-            key = _normalize_key(tmpl.name)
+        Product, Template = self._product_models()
+        domain = self._product_domain()
+        for product in Product.search(domain):
+            for label in (product.display_name, product.name):
+                self._by_display_name[_normalize_product_key(label)] = product
+        for tmpl in Template.search(domain):
+            key = _normalize_product_key(tmpl.name)
             self._by_template_name.setdefault(key, tmpl)
             self._all_template_names.append(tmpl.name)
 
     def _similar_template_names(self, group_name, limit=5):
         self._index_products()
-        needle = _normalize_key(group_name)
+        needle = _normalize_product_key(group_name)
         if not needle:
             return []
         scored = []
         for name in self._all_template_names:
-            key = _normalize_key(name)
+            key = _normalize_product_key(name)
+            ratio = SequenceMatcher(None, needle, key).ratio()
             if needle in key or key in needle:
-                scored.append((0, name))
+                scored.append((0.0, -ratio, name))
+            elif ratio >= 0.55:
+                scored.append((1.0, -ratio, name))
             elif needle[:4] and needle[:4] in key:
-                scored.append((1, name))
-        scored.sort(key=lambda item: (item[0], item[1].casefold()))
-        return [name for _score, name in scored[:limit]]
+                scored.append((2.0, -ratio, name))
+        scored.sort()
+        return [name for _a, _b, name in scored[:limit]]
+
+    def _match_contract_product(self, group_name, variant_label=None, threshold=0.72):
+        if not self.contract:
+            return None
+        needle = _normalize_product_key(_excel_label(group_name, variant_label))
+        if not needle:
+            return None
+        best_product = None
+        best_ratio = 0.0
+        for label in _excel_name_aliases(group_name, variant_label):
+            needle = _normalize_product_key(label)
+            for line in self.contract.rental_contract_line_ids:
+                tmpl = line.product_tmpl_id
+                if not tmpl:
+                    continue
+                for prod in tmpl.product_variant_ids:
+                    for name in (prod.display_name, tmpl.name):
+                        ratio = SequenceMatcher(
+                            None, needle, _normalize_product_key(name)
+                        ).ratio()
+                        if ratio > best_ratio:
+                            best_ratio = ratio
+                            best_product = prod
+        if best_product and best_ratio >= threshold:
+            return best_product
+        return None
 
     def _contract_product_names(self):
         if not self.contract:
@@ -162,17 +457,28 @@ class TransportMatrixProductResolver:
                 names.extend(tmpl.product_variant_ids.mapped("display_name"))
         return names
 
-    def _format_resolution_error(self, group_name, variant_label=None, col_letter=None):
+    def _format_resolution_error(self, group_name, variant_label=None, col_letter=None, header_rows=None):
         group = _normalize_text(group_name)
         variant = _normalize_text(variant_label)
         excel_label = _excel_label(group, variant)
+        header_hint = ""
+        if header_rows:
+            header_hint = _("dòng %(r1)s–%(r2)s") % {
+                "r1": header_rows[0],
+                "r2": header_rows[1],
+            }
         parts = [
             _("Tên trên Excel: «%(label)s»") % {"label": excel_label},
         ]
         if col_letter:
-            parts.append(_("Cột Excel: %(col)s (header dòng 15–16)") % {"col": col_letter})
+            parts.append(
+                _("Cột Excel: %(col)s (%(header)s)") % {
+                    "col": col_letter,
+                    "header": header_hint or _("header sản phẩm"),
+                }
+            )
 
-        tmpl = self._by_template_name.get(_normalize_key(group))
+        tmpl = self._by_template_name.get(_normalize_product_key(group))
         if tmpl:
             variant_names = tmpl.product_variant_ids.mapped("display_name")
             if variant:
@@ -194,29 +500,29 @@ class TransportMatrixProductResolver:
                         "names": "; ".join(variant_names),
                     }
                 )
+            parts.append(
+                _("Hãy sửa tên ở header Excel (%(header)s) cho khớp một tên trong Odoo ở trên.") % {
+                    "header": header_hint or _("dòng header sản phẩm"),
+                }
+            )
         else:
             parts.append(
-                _("Không tìm thấy mẫu SP «%(name)s» trong Odoo.") % {"name": group or excel_label}
+                _("Không có sản phẩm tương ứng «%(label)s» trong hệ thống.") % {
+                    "label": excel_label,
+                }
             )
-            similar = self._similar_template_names(group)
-            if similar:
-                parts.append(
-                    _("Gợi ý mẫu SP gần giống: %(names)s") % {"names": "; ".join(similar)}
-                )
-            contract_names = self._contract_product_names()
-            if contract_names:
-                parts.append(
-                    _("Sản phẩm trên hợp đồng này: %(names)s") % {
-                        "names": "; ".join(contract_names),
-                    }
-                )
-
-        parts.append(
-            _("Hãy sửa tên ở header Excel (dòng 15–16) cho khớp một tên trong Odoo ở trên.")
-        )
         return "\n".join(parts)
 
-    def resolve(self, group_name, variant_label=None, col_index=None):
+    def _finalize_product(self, product, cache_key, group, variant, col_letter, header_rows):
+        if product and self._product_allowed_for_contract(product):
+            return product, None
+        msg = self._format_resolution_error(
+            group, variant, col_letter=col_letter, header_rows=header_rows,
+        )
+        self._errors[cache_key] = msg
+        return None, msg
+
+    def resolve(self, group_name, variant_label=None, col_index=None, header_rows=None):
         self._index_products()
         group = _normalize_text(group_name)
         variant = _normalize_text(variant_label)
@@ -225,47 +531,77 @@ class TransportMatrixProductResolver:
             return None, self._errors[cache_key]
 
         col_letter = get_column_letter(col_index) if col_index else None
-        candidates = []
-        if variant and _normalize_key(variant) != _normalize_md_header():
-            candidates.append(f"{group} - {variant}")
-            candidates.append(f"{group} ({variant})")
-        candidates.append(group)
-
-        for label in candidates:
-            product = self._by_display_name.get(_normalize_key(label))
+        for label in _excel_name_aliases(group, variant):
+            product = self._by_display_name.get(_normalize_product_key(label))
             if product:
-                return product, None
+                return self._finalize_product(
+                    product, cache_key, group, variant, col_letter, header_rows,
+                )
 
-        tmpl = self._by_template_name.get(_normalize_key(group))
+        needles = [_compact_product_key(label) for label in _excel_name_aliases(group, variant)]
+        for needle in needles:
+            if len(needle) < 8:
+                continue
+            for key, product in self._by_display_name.items():
+                compact = _compact_product_key(key)
+                if _loose_product_match(needle, compact):
+                    return self._finalize_product(
+                        product, cache_key, group, variant, col_letter, header_rows,
+                    )
+
+        tmpl = self._by_template_name.get(_normalize_product_key(group))
+        if not tmpl:
+            for label in _excel_name_aliases(group, variant):
+                tmpl = self._by_template_name.get(_normalize_product_key(label.split(" - ")[0]))
+                if tmpl:
+                    break
         if tmpl:
             variants = tmpl.product_variant_ids
             if not variant and len(variants) == 1:
-                return variants[0], None
+                return self._finalize_product(
+                    variants[0], cache_key, group, variant, col_letter, header_rows,
+                )
             if variant:
                 token = _normalize_variant_token(variant)
                 for prod in variants:
-                    if _normalize_key(prod.display_name) == _normalize_key(f"{group} - {variant}"):
-                        return prod, None
+                    if _normalize_product_key(prod.display_name) == _normalize_product_key(f"{group} - {variant}"):
+                        return self._finalize_product(
+                            prod, cache_key, group, variant, col_letter, header_rows,
+                        )
                     ptav_names = prod.product_template_variant_value_ids.mapped("name")
                     for name in ptav_names:
                         if _normalize_variant_token(name) == token:
-                            return prod, None
+                            return self._finalize_product(
+                                prod, cache_key, group, variant, col_letter, header_rows,
+                            )
                     if token and token in _normalize_variant_token(prod.display_name):
-                        return prod, None
+                        return self._finalize_product(
+                            prod, cache_key, group, variant, col_letter, header_rows,
+                        )
                 if len(variants) == 1:
-                    return variants[0], None
+                    return self._finalize_product(
+                        variants[0], cache_key, group, variant, col_letter, header_rows,
+                    )
 
-        msg = self._format_resolution_error(group, variant, col_letter=col_letter)
+        contract_product = self._match_contract_product(group, variant)
+        if contract_product:
+            return self._finalize_product(
+                contract_product, cache_key, group, variant, col_letter, header_rows,
+            )
+
+        msg = self._format_resolution_error(
+            group, variant, col_letter=col_letter, header_rows=header_rows,
+        )
         self._errors[cache_key] = msg
         return None, msg
 
 
-def _build_column_map(ws, header_second_row, header_third_row):
+def _build_column_map(ws, header_second_row, header_third_row, product_start_col):
     """Map 1-based column index -> (group_name, variant_label, column_label)."""
-    max_col = ws.max_column or _PRODUCT_START_COL
+    max_col = ws.max_column or product_start_col
     columns = {}
-    for col in range(_PRODUCT_START_COL, max_col + 1):
-        group_name = _walk_left_value(ws, header_second_row, col, min_col=_PRODUCT_START_COL)
+    for col in range(product_start_col, max_col + 1):
+        group_name = _walk_left_value(ws, header_second_row, col, min_col=product_start_col)
         variant_label = _cell_value(ws, header_third_row, col)
         group_text = _normalize_text(group_name)
         variant_text = _normalize_text(variant_label)
@@ -275,8 +611,16 @@ def _build_column_map(ws, header_second_row, header_third_row):
         if _normalize_key(variant_text) == _MD_HEADER or _normalize_key(group_text) == _MD_HEADER:
             continue
 
-        if variant_text and _normalize_key(variant_text) == _normalize_key(group_text):
+        if not group_text and variant_text:
+            if _is_variant_dimension_token(variant_text):
+                continue
+            group_text = variant_text
             variant_text = ""
+        elif variant_text and _normalize_key(variant_text) == _normalize_key(group_text):
+            variant_text = ""
+        elif variant_text and not _is_variant_dimension_token(variant_text) and group_text:
+            if _normalize_product_key(variant_text) == _normalize_product_key(group_text):
+                variant_text = ""
 
         label = _excel_label(group_text, variant_text)
         columns[col] = {
@@ -310,6 +654,7 @@ def _contract_product_groups(contract, env):
                 "id": product.id,
                 "name": product.display_name,
                 "variant_name": product.product_template_variant_value_ids.mapped("name")[:1] or "",
+                "price_multiplier": rtm._variant_price_multiplier(product),
             }
 
     groups = []
@@ -363,7 +708,7 @@ def build_import_template_bytes(contract, env):
     ws.cell(header_second_row - 1, 3).value = "Biển số xe"
 
     groups = _contract_product_groups(contract, env)
-    cur_col = _PRODUCT_START_COL
+    cur_col = _DEFAULT_PRODUCT_START_COL
     for group in groups:
         p_tmpl = group["p_tmpl"]
         if group["needs_md"] and len(group["prod_order"]) > 1:
@@ -414,9 +759,17 @@ def parse_transport_matrix_xlsx(file_bytes, env, contract=None):
     Returns dict with keys: rows, errors, warnings, product_mapping_errors.
     """
     wb = load_workbook(BytesIO(file_bytes), data_only=True)
-    ws = wb.active
-    _, header_second_row, header_third_row, data_start_row = find_transport_matrix_layout(ws)
-    column_map = _build_column_map(ws, header_second_row, header_third_row)
+    ws = _find_import_worksheet(wb)
+    layout = _detect_import_layout(ws)
+    date_col = layout["date_col"]
+    plate_col = layout["plate_col"]
+    product_start_col = layout["product_start_col"]
+    header_second_row = layout["header_second_row"]
+    header_third_row = layout["header_third_row"]
+    data_start_row = layout["data_start_row"]
+    header_rows = (header_second_row, header_third_row)
+
+    column_map = _build_column_map(ws, header_second_row, header_third_row, product_start_col)
     if not column_map:
         return {
             "rows": [],
@@ -432,21 +785,41 @@ def parse_transport_matrix_xlsx(file_bytes, env, contract=None):
     product_mapping_errors = []
     seen_product_errors = set()
     seen_keys = {}
+    in_opening_section = False
 
     max_row = ws.max_row or data_start_row
     for row_idx in range(data_start_row, max_row + 1):
-        date_val = _cell_value(ws, row_idx, _DATE_COL)
-        plate_val = _cell_value(ws, row_idx, _PLATE_COL)
+        row_label = _row_label_text(ws, row_idx, date_col, plate_col)
+        if in_opening_section:
+            if any(marker in row_label for marker in _OPENING_SECTION_END):
+                in_opening_section = False
+            continue
+        if any(marker in row_label for marker in _OPENING_SECTION_START):
+            in_opening_section = True
+            continue
+        if _should_skip_row(ws, row_idx, date_col, plate_col):
+            continue
+
+        date_val = _merged_top_left_value(ws, row_idx, date_col)
         date_text = _normalize_text(date_val)
         if not date_text or _is_skip_row_label(date_text):
             continue
         if date_text.startswith("Ghi chú:"):
             continue
+        if _normalize_key(date_text).startswith("đại diện"):
+            continue
 
         transport_date = _parse_excel_date(date_val)
-        plate = _normalize_text(plate_val)
+        plate, plate_inferred = _resolve_plate(ws, row_idx, plate_col, max_row)
         row_errors = []
         row_warnings = []
+        if plate_inferred:
+            row_warnings.append(
+                _("Dòng %(row)s: biển số trống, dùng biển số %(plate)s từ dòng phía dưới.") % {
+                    "row": row_idx,
+                    "plate": plate,
+                }
+            )
 
         if not transport_date:
             row_errors.append(_("Dòng %(row)s: không đọc được ngày '%(val)s'.") % {
@@ -454,7 +827,10 @@ def parse_transport_matrix_xlsx(file_bytes, env, contract=None):
                 "val": date_val,
             })
         if not plate:
-            row_errors.append(_("Dòng %(row)s: thiếu biển số xe (cột C).") % {"row": row_idx})
+            row_errors.append(_("Dòng %(row)s: thiếu biển số xe (cột %(col)s).") % {
+                "row": row_idx,
+                "col": get_column_letter(plate_col),
+            })
 
         lines = []
         has_negative = False
@@ -472,6 +848,7 @@ def parse_transport_matrix_xlsx(file_bytes, env, contract=None):
                 col_info["group_name"],
                 col_info["variant_label"],
                 col_index=col,
+                header_rows=header_rows,
             )
             if err:
                 detail = _("Dòng %(row)s, cột %(col)s:\n%(detail)s") % {

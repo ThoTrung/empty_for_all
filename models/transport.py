@@ -340,20 +340,21 @@ class Transport(models.Model):
         }
         return action
 
-    @api.model
-    def _default_picking_type_for_type(self, t):
+    def _default_picking_type_for_type(self, t, company=None):
         """Return a sensible picking type for given type ('delivery'/'return')."""
         code = 'outgoing' if t == 'delivery' else 'incoming'
-        company = self.env.company
-        wh = self.env['stock.warehouse'].search([('company_id', '=', company.id)], limit=1)
+        company = company or self.company_id or self.env.company
+        wh_env = self.env['stock.warehouse'].sudo().with_company(company)
+        wh = wh_env.search([('company_id', '=', company.id)], limit=1)
         if wh:
             if code == 'outgoing' and wh.out_type_id:
                 return wh.out_type_id.id
             if code == 'incoming' and wh.in_type_id:
                 return wh.in_type_id.id
-        pt = self.env['stock.picking.type'].search([
+        pt_env = self.env['stock.picking.type'].sudo().with_company(company)
+        pt = pt_env.search([
             ('code', '=', code),
-            ('warehouse_id.company_id', '=', company.id)
+            ('warehouse_id.company_id', '=', company.id),
         ], limit=1)
         return pt.id if pt else False
 
@@ -395,7 +396,7 @@ class Transport(models.Model):
             wanted_code = 'outgoing' if rec.type == 'delivery' else 'incoming'
             # If current picking_type doesn’t match the desired code, replace it
             if not rec.picking_type_id or rec.picking_type_id.code != wanted_code:
-                pt_id = rec._default_picking_type_for_type(rec.type)
+                pt_id = rec._default_picking_type_for_type(rec.type, company=rec.company_id)
                 rec.picking_type_id = pt_id
             # Always refresh locations from the (new) picking type
             rec._apply_picking_type_locations()
@@ -429,6 +430,18 @@ class Transport(models.Model):
             'target': 'current',
         }
 
+    def _rental_use_stock_sudo(self):
+        return bool(self.env.context.get("rental_transport_import"))
+
+    def _rental_stock_model(self, model_name):
+        model = self.env[model_name]
+        if self._rental_use_stock_sudo():
+            company = self.company_id or self.rental_contract_id.company_id
+            model = model.sudo()
+            if company:
+                model = model.with_company(company)
+        return model
+
     def _rental_create_picking(self):
         """Create a stock picking for this draft transport. Returns the picking record."""
         self.ensure_one()
@@ -440,26 +453,31 @@ class Transport(models.Model):
             raise UserError(_("Add at least one line before creating a picking."))
 
         scheduled_date = self.start_rental_or_return_date or fields.Datetime.now()
-        self._onchange_type_set_picking_type()
+        company = self.company_id or self.rental_contract_id.company_id
+        work_self = self.with_company(company) if company else self
+        pt_id = work_self._default_picking_type_for_type(work_self.type, company=company)
+        if pt_id:
+            work_self.picking_type_id = pt_id
+        work_self._apply_picking_type_locations()
         picking_vals = {
-            'picking_type_id': self.picking_type_id.id,
-            'location_id': self.location_id.id,
-            'location_dest_id': self.location_dest_id.id,
-            'company_id': self.company_id.id,
+            'picking_type_id': work_self.picking_type_id.id,
+            'location_id': work_self.location_id.id,
+            'location_dest_id': work_self.location_dest_id.id,
+            'company_id': company.id if company else self.company_id.id,
             'rental_transport_id': self.id,
             'origin': self.code or self.name or (self.rental_contract_id and self.rental_contract_id.name) or 'Transport',
             'scheduled_date': scheduled_date,
             'partner_id': self.rental_contract_id.a_party.id,
         }
-        picking = self.env['stock.picking'].create(picking_vals)
+        picking = self._rental_stock_model("stock.picking").create(picking_vals)
 
-        Move = self.env['stock.move']
+        Move = self._rental_stock_model("stock.move")
         for line in self.transport_line_ids:
             if not line.product_id or line.qty <= 0:
                 continue
             Move.create({
                 'name': line.name or line.product_id.display_name,
-                'company_id': self.company_id.id,
+                'company_id': company.id if company else self.company_id.id,
                 'product_id': line.product_id.id,
                 'product_uom_qty': line.qty,
                 'product_uom': line.product_id.uom_id.id,
@@ -480,6 +498,11 @@ class Transport(models.Model):
         """Validate picking at full qty; allow negative on-hand (historical Excel import)."""
         self.ensure_one()
         picking.ensure_one()
+        if self._rental_use_stock_sudo():
+            company = self.company_id or self.rental_contract_id.company_id
+            picking = picking.sudo()
+            if company:
+                picking = picking.with_company(company)
         if picking.state == 'done':
             return picking
         if picking.state == 'cancel':

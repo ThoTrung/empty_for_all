@@ -1,1 +1,3 @@
 *.pyc
+tests/fixtures/*.xlsx
+tests/fixtures/*.xls

@@ -2,7 +2,7 @@
 import base64
 
 from odoo import fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 from ..helper.import_transport_matrix import parse_transport_matrix_xlsx
 
@@ -167,19 +167,24 @@ class RentalTransportImportWizard(models.TransientModel):
         self.ensure_one()
         parsed = self._parse_uploaded_file()
 
-        blocking = []
-        for row in parsed["rows"]:
-            blocking.extend(row.get("errors") or [])
-        if blocking:
+        valid_rows = [
+            r for r in parsed["rows"]
+            if r.get("lines") and not r.get("errors")
+        ]
+        skipped_rows = [
+            r for r in parsed["rows"]
+            if r.get("errors")
+        ]
+        if not valid_rows:
+            blocking = []
+            for row in skipped_rows:
+                blocking.extend(row.get("errors") or [])
             raise UserError(
-                _("Không thể import vì còn lỗi:\n%s") % "\n".join(blocking[:20])
+                _("Không có dòng hợp lệ để import.\n%s")
+                % ("\n".join(blocking[:20]) if blocking else "")
             )
 
-        valid_rows = [r for r in parsed["rows"] if r.get("lines")]
-        if not valid_rows:
-            raise UserError(_("Không có dòng vận chuyển hợp lệ để import."))
-
-        Transport = self.env["rr.transport"]
+        Transport = self.env["rr.transport"].with_context(rental_transport_import=True)
         Truck = self.env["transport.truck"]
         created = Transport
         picking_errors = []
@@ -204,7 +209,7 @@ class RentalTransportImportWizard(models.TransientModel):
                 try:
                     picking = transport._rental_create_picking()
                     transport._rental_validate_picking(picking)
-                except UserError as err:
+                except (UserError, AccessError) as err:
                     picking_errors.append(
                         _("Dòng %(row)s (%(code)s): %(err)s") % {
                             "row": row["row_number"],
@@ -229,13 +234,25 @@ class RentalTransportImportWizard(models.TransientModel):
         summary = _("Đã tạo %(n)s phiếu xuất nhập kho.") % {"n": len(created)}
         if self.validate_picking:
             summary += " " + _("Đã tạo và xác nhận phiếu kho.")
+        if skipped_rows:
+            summary += "\n" + _("Bỏ qua %(n)s dòng lỗi trong file Excel.") % {"n": len(skipped_rows)}
 
         self.write({
             "state": "done",
             "created_transport_ids": [(6, 0, created.ids)],
             "summary": summary,
         })
-        return self._open_created_transports(created)
+        return self._reload_contract_form()
+
+    def _reload_contract_form(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "rental.contract",
+            "res_id": self.rental_contract_id.id,
+            "view_mode": "form",
+            "target": "current",
+        }
 
     def _resolve_truck(self, Truck, plate):
         plate_norm = (plate or "").strip()
@@ -260,10 +277,3 @@ class RentalTransportImportWizard(models.TransientModel):
             "view_mode": "form",
             "target": "new",
         }
-
-    def _open_created_transports(self, transports):
-        action = self.env["ir.actions.actions"]._for_xml_id("rental.action_rr_transport")
-        action = dict(action)
-        action["domain"] = [("id", "in", transports.ids)]
-        action["context"] = dict(self.env.context or {})
-        return action

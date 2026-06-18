@@ -1,0 +1,10 @@
+---
+description: Rental Python conventions
+globs: "{models,services,controllers,helper,wizard,tests}/**/*.py"
+alwaysApply: false
+---
+
+- Billing logic: `services/rental_contract_services.py` only
+- Transport import: `helper/import_transport_matrix.py`
+- Picking→transport done: `models/stock_picking.py` (sudo)
+- Test: `odoo-bin -d <db> -u rental --test-enable --stop-after-init`

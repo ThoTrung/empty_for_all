@@ -180,11 +180,50 @@ class TestRentalTransportMatrixHelpers(TransactionCase):
             "uom_po_id": cls._uom_piece.id,
         }).product_variant_ids[0]
 
-    def test_parse_length_meters(self):
-        self.assertEqual(rtm._parse_length_meters("2m"), 2.0)
-        self.assertEqual(rtm._parse_length_meters("1,5m"), 1.5)
-        self.assertEqual(rtm._parse_length_meters("0.9m"), 0.9)
-        self.assertIsNone(rtm._parse_length_meters("Kích chân D38* L500"))
+    def test_variant_price_multiplier_from_ptav(self):
+        attr = self.env["product.attribute"].create(
+            {"name": "Length (test MD)", "create_variant": "always"}
+        )
+        val_15 = self.env["product.attribute.value"].create(
+            {
+                "name": "1,5m",
+                "attribute_id": attr.id,
+                "default_price_multiplier": 1.5,
+            }
+        )
+        val_20 = self.env["product.attribute.value"].create(
+            {
+                "name": "2m",
+                "attribute_id": attr.id,
+                "default_price_multiplier": 2.0,
+            }
+        )
+        tmpl = self.env["product.template"].create(
+            {
+                "name": "Hộp 5*10 (test MD variants)",
+                "type": "product",
+                "uom_id": self._uom_linear_meter.id,
+                "uom_po_id": self._uom_linear_meter.id,
+                "attribute_line_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "attribute_id": attr.id,
+                            "value_ids": [(6, 0, [val_15.id, val_20.id])],
+                        },
+                    )
+                ],
+            }
+        )
+        by_mult = {
+            rtm._variant_price_multiplier(v): v
+            for v in tmpl.product_variant_ids
+        }
+        self.assertEqual(by_mult[1.5].product_template_attribute_value_ids.price_multiplier, 1.5)
+        self.assertEqual(by_mult[2.0].product_template_attribute_value_ids.price_multiplier, 2.0)
+        self.assertEqual(rtm._linear_meter_factor_for_product(by_mult[1.5]), 1.5)
+        self.assertEqual(rtm._linear_meter_factor_for_product(self._product_piece), None)
 
     def test_sum_linear_meters(self):
         cell = {10: 200, 11: 200}
@@ -192,12 +231,12 @@ class TestRentalTransportMatrixHelpers(TransactionCase):
         lengths = {10: 1.5, 11: 2.0}
         self.assertEqual(rtm._sum_linear_meters(cell, order, lengths), 700.0)
 
-    def test_sort_products_by_length_label(self):
+    def test_sort_products_by_price_multiplier(self):
         prods = OrderedDict(
             [
-                (1, {"variant_name": "2m", "prod_name": "Hộp (2m)"}),
-                (2, {"variant_name": "1,5m", "prod_name": "Hộp (1,5m)"}),
-                (3, {"variant_name": "0,9m", "prod_name": "Hộp (0,9m)"}),
+                (1, {"variant_name": "2m", "prod_name": "Hộp (2m)", "price_multiplier": 2.0}),
+                (2, {"variant_name": "1,5m", "prod_name": "Hộp (1,5m)", "price_multiplier": 1.5}),
+                (3, {"variant_name": "0,9m", "prod_name": "Hộp (0,9m)", "price_multiplier": 0.9}),
             ]
         )
         sorted_o = rtm._sort_products_odict(prods)
