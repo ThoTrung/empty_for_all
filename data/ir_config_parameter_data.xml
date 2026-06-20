@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="config_reminder_enabled" model="ir.config_parameter">
+        <field name="key">spa_zalo_oa.reminder_enabled</field>
+        <field name="value">0</field>
+    </record>
+    <record id="config_reminder_template_id" model="ir.config_parameter">
+        <field name="key">spa_zalo_oa.reminder_template_id</field>
+        <field name="value"></field>
+    </record>
+    <record id="config_reminder_offset_value" model="ir.config_parameter">
+        <field name="key">spa_zalo_oa.reminder_offset_value</field>
+        <field name="value">2</field>
+    </record>
+    <record id="config_reminder_offset_unit" model="ir.config_parameter">
+        <field name="key">spa_zalo_oa.reminder_offset_unit</field>
+        <field name="value">hours</field>
+    </record>
+    <record id="config_batch_size" model="ir.config_parameter">
+        <field name="key">spa_zalo_oa.batch_size</field>
+        <field name="value">50</field>
+    </record>
+    <record id="config_max_retry" model="ir.config_parameter">
+        <field name="key">spa_zalo_oa.max_retry</field>
+        <field name="value">3</field>
+    </record>
+    <record id="seq_spa_zalo_message" model="ir.sequence">
+        <field name="name">Spa Zalo Message</field>
+        <field name="code">spa.zalo.message</field>
+        <field name="prefix">ZNS</field>
+        <field name="padding">6</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

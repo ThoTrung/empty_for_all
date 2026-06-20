@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_zalo_message_tree" model="ir.ui.view">
+        <field name="name">spa.zalo.message.tree</field>
+        <field name="model">spa.zalo.message</field>
+        <field name="arch" type="xml">
+            <tree string="Tin Zalo ZNS"
+                  decoration-success="state == 'sent'"
+                  decoration-danger="state == 'failed'"
+                  decoration-muted="state == 'cancel'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="phone"/>
+                <field name="event_type"/>
+                <field name="template_id"/>
+                <field name="state"/>
+                <field name="retry_count"/>
+                <field name="sent_date"/>
+                <field name="error" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_spa_zalo_message_form" model="ir.ui.view">
+        <field name="name">spa.zalo.message.form</field>
+        <field name="model">spa.zalo.message</field>
+        <field name="arch" type="xml">
+            <form string="Tin Zalo ZNS">
+                <header>
+                    <button name="action_send_now" type="object" string="Gửi ngay"
+                            class="btn-primary"
+                            invisible="state not in ('queued', 'failed')"/>
+                    <button name="action_retry" type="object" string="Thử lại"
+                            invisible="state != 'failed'"/>
+                    <button name="action_cancel" type="object" string="Hủy"
+                            invisible="state not in ('queued', 'failed')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="queued,sent,failed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="partner_id"/>
+                            <field name="phone"/>
+                            <field name="event_type"/>
+                        </group>
+                        <group>
+                            <field name="template_id"/>
+                            <field name="zalo_msg_id"/>
+                            <field name="retry_count"/>
+                            <field name="sent_date"/>
+                            <field name="source_ref"/>
+                        </group>
+                    </group>
+                    <field name="error" readonly="1"/>
+                    <field name="template_data_json"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_spa_zalo_message" model="ir.actions.act_window">
+        <field name="name">Tin Zalo (ZNS)</field>
+        <field name="res_model">spa.zalo.message</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

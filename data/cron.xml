@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="ir_cron_zalo_oa_refresh_token" model="ir.cron">
+            <field name="name">Zalo OA: Làm mới access token</field>
+            <field name="model_id" ref="model_spa_zalo_oa_account"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_refresh_tokens()</field>
+            <field name="interval_number">12</field>
+            <field name="interval_type">hours</field>
+        </record>
+
+        <record id="ir_cron_zalo_booking_reminder" model="ir.cron">
+            <field name="name">Zalo OA: Nhắc lịch hẹn khách hàng (ZNS)</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_zalo_reminders()</field>
+            <field name="interval_number">15</field>
+            <field name="interval_type">minutes</field>
+        </record>
+
+        <record id="ir_cron_zalo_process_queue" model="ir.cron">
+            <field name="name">Zalo OA: Gửi hàng đợi tin ZNS</field>
+            <field name="model_id" ref="model_spa_zalo_message"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_process_queue()</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+        </record>
+    </data>
+</odoo>

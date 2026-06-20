@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem name="Zalo OA"
+              id="menu_spa_zalo_oa_root"
+              parent="spa.menu_spa_root"
+              sequence="90"/>
+
+    <menuitem name="Tin Zalo (ZNS)"
+              id="menu_spa_zalo_message"
+              parent="menu_spa_zalo_oa_root"
+              action="action_spa_zalo_message"
+              sequence="10"/>
+
+    <menuitem name="Tài khoản Zalo OA"
+              id="menu_spa_zalo_oa_account"
+              parent="menu_spa_zalo_oa_root"
+              action="action_spa_zalo_oa_account"
+              groups="base.group_system"
+              sequence="20"/>
+</odoo>
