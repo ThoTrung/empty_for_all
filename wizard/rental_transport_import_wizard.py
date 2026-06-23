@@ -167,6 +167,18 @@ class RentalTransportImportWizard(models.TransientModel):
         self.ensure_one()
         parsed = self._parse_uploaded_file()
 
+        mapping_errors = parsed.get("product_mapping_errors") or []
+        if mapping_errors:
+            raise UserError(
+                _(
+                    "Không thể import: có %(n)s sản phẩm trong Excel không khớp với "
+                    "hệ thống. Hãy sửa tên ở header Excel cho khớp rồi import lại.\n\n%(detail)s"
+                ) % {
+                    "n": len(mapping_errors),
+                    "detail": self._build_product_mapping_summary(mapping_errors),
+                }
+            )
+
         valid_rows = [
             r for r in parsed["rows"]
             if r.get("lines") and not r.get("errors")

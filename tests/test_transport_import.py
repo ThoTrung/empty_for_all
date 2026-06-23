@@ -165,7 +165,7 @@ class TestTransportImport(TransactionCase):
         for row in parsed["rows"]:
             self.assertFalse(row["lines"])
 
-    def test_duplicate_in_file_is_error(self):
+    def test_same_day_same_plate_multiple_trips_allowed(self):
         row = {
             "date": date(2026, 3, 22),
             "plate": "29H-80228",
@@ -173,7 +173,10 @@ class TestTransportImport(TransactionCase):
         }
         data = self._build_workbook_bytes([row, row])
         parsed = parse_transport_matrix_xlsx(data, self.env, contract=self._contract)
-        self.assertTrue(any("trùng ngày" in err for err in parsed["errors"]))
+        self.assertEqual(len(parsed["rows"]), 2)
+        self.assertFalse(parsed["errors"])
+        for row in parsed["rows"]:
+            self.assertFalse(row["errors"])
 
     def test_import_allows_existing_duplicate_on_contract(self):
         self.env["rr.transport"].create({
@@ -324,10 +327,84 @@ class TestTransportImport(TransactionCase):
         self.assertEqual(len(parsed["rows"]), 1)
         self.assertEqual(parsed["rows"][0]["lines"], [(product.id, 7)])
 
+    def test_variant_size_columns_map_to_distinct_variants(self):
+        attr = self.env["product.attribute"].create({
+            "name": "Mét Import Test",
+            "create_variant": "always",
+        })
+        values = {}
+        for label in ("0,9m", "2m", "6m"):
+            values[label] = self.env["product.attribute.value"].create({
+                "name": label,
+                "attribute_id": attr.id,
+            })
+        tmpl = self.env["product.template"].create({
+            "name": "Hộp Test 5*5",
+            "type": "product",
+            "attribute_line_ids": [(0, 0, {
+                "attribute_id": attr.id,
+                "value_ids": [(6, 0, [v.id for v in values.values()])],
+            })],
+        })
+        self.env["rental.contract.line"].create({
+            "contract_id": self._contract.id,
+            "product_tmpl_id": tmpl.id,
+            "price_unit": 10.0,
+        })
+        data = self._build_user_style_workbook_bytes(
+            [{
+                "date": date(2026, 7, 1),
+                "plate": "29H-80228",
+                "qty_by_col": {4: 200, 5: 150, 6: 100},
+            }],
+            products=[
+                {"col": 4, "group": "Hộp Test 5*5", "variant": "0.9"},
+                {"col": 5, "group": "Hộp Test 5*5", "variant": "2.0"},
+                {"col": 6, "group": "Hộp Test 5*5", "variant": "6.0"},
+            ],
+        )
+        parsed = parse_transport_matrix_xlsx(data, self.env, contract=self._contract)
+        self.assertFalse(parsed["product_mapping_errors"])
+        self.assertEqual(len(parsed["rows"]), 1)
+        lines = dict(parsed["rows"][0]["lines"])
+
+        def variant_id(label):
+            variant = tmpl.product_variant_ids.filtered(
+                lambda p: label in p.product_template_variant_value_ids.mapped("name")
+            )
+            return variant.id
+
+        self.assertEqual(len(lines), 3)
+        self.assertEqual(lines[variant_id("0,9m")], 200)
+        self.assertEqual(lines[variant_id("2m")], 150)
+        self.assertEqual(lines[variant_id("6m")], 100)
+
+    def test_import_blocks_on_product_mapping_error(self):
+        data = self._build_workbook_bytes(
+            [{
+                "date": date(2026, 6, 5),
+                "plate": "29H-80228",
+                "qty": 10,
+            }],
+            product_header="SP Không Tồn Tại",
+        )
+        wizard = self.env["rental.transport.import.wizard"].create({
+            "rental_contract_id": self._contract.id,
+            "default_driver_id": self._driver.id,
+            "validate_picking": False,
+            "import_file": base64.b64encode(data),
+            "import_filename": "test.xlsx",
+        })
+        before = len(self._contract.rr_transport_ids)
+        with self.assertRaises(UserError) as ctx:
+            wizard.action_import_transports()
+        self.assertIn("SP Không Tồn Tại", str(ctx.exception))
+        self.assertEqual(len(self._contract.rr_transport_ids), before)
+
     def test_import_skips_error_rows(self):
         row_ok = {"date": date(2026, 6, 1), "plate": "29H-80228", "qty": 10}
-        row_dup = {"date": date(2026, 6, 2), "plate": "29H-80228", "qty": 5}
-        data = self._build_workbook_bytes([row_ok, row_dup, row_dup])
+        row_bad = {"date": date(2026, 6, 2), "plate": "", "qty": 5}
+        data = self._build_workbook_bytes([row_ok, row_bad])
         wizard = self.env["rental.transport.import.wizard"].create({
             "rental_contract_id": self._contract.id,
             "default_driver_id": self._driver.id,

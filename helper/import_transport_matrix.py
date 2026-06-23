@@ -55,7 +55,14 @@ def _normalize_variant_token(value):
         return ""
     text = text.casefold()
     text = re.sub(r"\s*m\b", "", text)
-    return text.replace(",", ".")
+    text = text.replace(",", ".").strip()
+    # Canonicalize pure numbers so Excel «2.0»/«1.20»/«6.0» match Odoo «2m»/«1,2m»/«6m».
+    if re.fullmatch(r"\d+(?:\.\d+)?", text):
+        num = float(text)
+        if num == int(num):
+            return str(int(num))
+        return ("%f" % num).rstrip("0").rstrip(".")
+    return text
 
 
 def _parse_excel_date(value):
@@ -392,8 +399,14 @@ class TransportMatrixProductResolver:
         Product, Template = self._product_models()
         domain = self._product_domain()
         for product in Product.search(domain):
-            for label in (product.display_name, product.name):
-                self._by_display_name[_normalize_product_key(label)] = product
+            labels = [product.display_name]
+            # product.name is the bare template name, shared by every variant.
+            # Only index it when the template has a single variant, otherwise the
+            # bare group name would collapse all columns onto one arbitrary variant.
+            if len(product.product_tmpl_id.product_variant_ids) <= 1:
+                labels.append(product.name)
+            for label in labels:
+                self._by_display_name.setdefault(_normalize_product_key(label), product)
         for tmpl in Template.search(domain):
             key = _normalize_product_key(tmpl.name)
             self._by_template_name.setdefault(key, tmpl)
@@ -522,6 +535,47 @@ class TransportMatrixProductResolver:
         self._errors[cache_key] = msg
         return None, msg
 
+    def _find_template(self, group, variant=None):
+        tmpl = self._by_template_name.get(_normalize_product_key(group))
+        if tmpl:
+            return tmpl
+        for label in _excel_name_aliases(group, variant):
+            tmpl = self._by_template_name.get(_normalize_product_key(label.split(" - ")[0]))
+            if tmpl:
+                return tmpl
+        return None
+
+    def _resolve_in_template(self, group, variant):
+        """Resolve to a specific variant of the matching template.
+
+        When a size/variant column is given, match it against the template's
+        variant values (e.g. Excel «2.0» → variant «2m»). Never collapse onto an
+        arbitrary variant when the size cannot be matched on a multi-variant
+        template.
+        """
+        tmpl = self._find_template(group, variant)
+        if not tmpl:
+            return None
+        variants = tmpl.product_variant_ids
+        if not variant:
+            return variants[0] if len(variants) == 1 else None
+
+        token = _normalize_variant_token(variant)
+        for prod in variants:
+            ptav_tokens = [
+                _normalize_variant_token(name)
+                for name in prod.product_template_variant_value_ids.mapped("name")
+            ]
+            if token and token in ptav_tokens:
+                return prod
+        target = _normalize_product_key(f"{group} - {variant}")
+        for prod in variants:
+            if _normalize_product_key(prod.display_name) == target:
+                return prod
+        if len(variants) == 1:
+            return variants[0]
+        return None
+
     def resolve(self, group_name, variant_label=None, col_index=None, header_rows=None):
         self._index_products()
         group = _normalize_text(group_name)
@@ -531,6 +585,17 @@ class TransportMatrixProductResolver:
             return None, self._errors[cache_key]
 
         col_letter = get_column_letter(col_index) if col_index else None
+
+        # When a size/variant is given, resolve within the matching template's
+        # variants first so the bare group name can never collapse every column
+        # onto a single arbitrary variant.
+        if variant:
+            prod = self._resolve_in_template(group, variant)
+            if prod is not None:
+                return self._finalize_product(
+                    prod, cache_key, group, variant, col_letter, header_rows,
+                )
+
         for label in _excel_name_aliases(group, variant):
             product = self._by_display_name.get(_normalize_product_key(label))
             if product:
@@ -549,39 +614,12 @@ class TransportMatrixProductResolver:
                         product, cache_key, group, variant, col_letter, header_rows,
                     )
 
-        tmpl = self._by_template_name.get(_normalize_product_key(group))
-        if not tmpl:
-            for label in _excel_name_aliases(group, variant):
-                tmpl = self._by_template_name.get(_normalize_product_key(label.split(" - ")[0]))
-                if tmpl:
-                    break
-        if tmpl:
-            variants = tmpl.product_variant_ids
-            if not variant and len(variants) == 1:
+        if not variant:
+            prod = self._resolve_in_template(group, variant)
+            if prod is not None:
                 return self._finalize_product(
-                    variants[0], cache_key, group, variant, col_letter, header_rows,
+                    prod, cache_key, group, variant, col_letter, header_rows,
                 )
-            if variant:
-                token = _normalize_variant_token(variant)
-                for prod in variants:
-                    if _normalize_product_key(prod.display_name) == _normalize_product_key(f"{group} - {variant}"):
-                        return self._finalize_product(
-                            prod, cache_key, group, variant, col_letter, header_rows,
-                        )
-                    ptav_names = prod.product_template_variant_value_ids.mapped("name")
-                    for name in ptav_names:
-                        if _normalize_variant_token(name) == token:
-                            return self._finalize_product(
-                                prod, cache_key, group, variant, col_letter, header_rows,
-                            )
-                    if token and token in _normalize_variant_token(prod.display_name):
-                        return self._finalize_product(
-                            prod, cache_key, group, variant, col_letter, header_rows,
-                        )
-                if len(variants) == 1:
-                    return self._finalize_product(
-                        variants[0], cache_key, group, variant, col_letter, header_rows,
-                    )
 
         contract_product = self._match_contract_product(group, variant)
         if contract_product:
@@ -784,7 +822,6 @@ def parse_transport_matrix_xlsx(file_bytes, env, contract=None):
     warnings = []
     product_mapping_errors = []
     seen_product_errors = set()
-    seen_keys = {}
     in_opening_section = False
 
     max_row = ws.max_row or data_start_row
@@ -874,20 +911,6 @@ def parse_transport_matrix_xlsx(file_bytes, env, contract=None):
                     "row": row_idx,
                 }
             )
-
-        if transport_date and plate:
-            dup_key = (transport_date, plate.casefold())
-            if dup_key in seen_keys:
-                row_errors.append(
-                    _("Dòng %(row)s: trùng ngày %(date)s và biển số %(plate)s với dòng %(other)s trong file.") % {
-                        "row": row_idx,
-                        "date": transport_date,
-                        "plate": plate,
-                        "other": seen_keys[dup_key],
-                    }
-                )
-            else:
-                seen_keys[dup_key] = row_idx
 
         if not lines and not row_errors:
             warnings.append(_("Dòng %(row)s: không có sản phẩm, bỏ qua.") % {"row": row_idx})
