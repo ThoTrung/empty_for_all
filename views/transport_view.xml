@@ -145,7 +145,7 @@
                             <field name="driver_phone" readonly="state in ['done', 'cancel']" placeholder="0987654321"/>
                             <field name="transport_truck_id" readonly="state in ['done', 'cancel']" placeholder="30M-09090"/>
                             <field name="equipment_load" readonly="state in ['done', 'cancel']"/>
-                            <field name="fee" readonly="state in ['done', 'cancel']"/>
+                            <field name="fee" readonly="state == 'cancel'"/>
                         </group>
                     </group>
                     <notebook>
@@ -180,7 +180,7 @@
                                 string="Export Equipment Delivery Receipt"
                                 class="btn-success"
                         />
-                        <button special="save" string="Save" class="btn-primary" data-hotkey="s" invisible="state != 'draft'" groups="rental.group_rental_staff"/>
+                        <button special="save" string="Save" class="btn-primary" data-hotkey="s" invisible="state == 'cancel'" groups="rental.group_rental_staff"/>
                         <button name="action_create_pickings" type="object" string="Create Picking" invisible="state != 'draft'" groups="rental.group_rental_staff"/>
                         <button special="cancel" string="Discard" class="btn-secondary" data-hotkey="x"/>
                     </footer>

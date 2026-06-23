@@ -467,7 +467,26 @@ class RentalContract(models.Model):
 
         replace_placeholders_in_sheet(ws, replacements)
 
-    def _payment_table_subtotal(self, bob_map, map_map):
+    def _rental_period_transport_fee_lines(self, start_date, end_date):
+        """Phí vận chuyển của các phiếu xuất/nhập kho phát sinh trong kỳ (ngày tính thuê trong khoảng)."""
+        self.ensure_one()
+        transports = self.rr_transport_ids.filtered(
+            lambda t: t.state != "cancel"
+            and t.fee
+            and t.start_rental_or_return_date
+            and start_date <= t.start_rental_or_return_date <= end_date
+        ).sorted("start_rental_or_return_date")
+        return [
+            {
+                "date": t.start_rental_or_return_date,
+                "code": t.code or "",
+                "type": t.type,
+                "amount": t.fee or 0.0,
+            }
+            for t in transports
+        ]
+
+    def _payment_table_subtotal(self, bob_map, map_map, fee_lines=None):
         """Sum line amounts written to column I of the payment table."""
         total = 0.0
         for bucket in (bob_map, map_map):
@@ -476,13 +495,15 @@ class RentalContract(models.Model):
             for _tmpl_id in bucket:
                 for line in bucket[_tmpl_id].get("lines", []):
                     total += line.get("total_amount") or 0.0
+        for fee_line in fee_lines or []:
+            total += fee_line.get("amount") or 0.0
         return total
 
-    def _rental_invoice_xlsx_apply_payment_totals(self, ws, bob_map, map_map):
+    def _rental_invoice_xlsx_apply_payment_totals(self, ws, bob_map, map_map, fee_lines=None):
         """Fill summary placeholders and amount-in-words anywhere in the sheet."""
         from ..helper.xlsx_template_utils import replace_placeholders_in_sheet
 
-        subtotal = self._payment_table_subtotal(bob_map, map_map)
+        subtotal = self._payment_table_subtotal(bob_map, map_map, fee_lines)
         vat = round(subtotal * 0.08)
         total_after_tax = int(round(subtotal + vat))
         amount_words = self.env["amount_to_text.vi"].vn_amount_to_text(total_after_tax)
@@ -511,7 +532,7 @@ class RentalContract(models.Model):
             key=lambda tid: self.env["product.template"].browse(tid).display_name or "",
         )
 
-    def _rental_invoice_xlsx_write_table(self, ws, bob_map, map_map):
+    def _rental_invoice_xlsx_write_table(self, ws, bob_map, map_map, fee_lines=None):
         """bob_map / map_map: theo product.template (gộp biến thể cho Excel)."""
         start_row = 13
         max_row = 200
@@ -563,6 +584,21 @@ class RentalContract(models.Model):
                 ws.cell(r, 6).font = Font(bold=True)
                 count += 1
 
+        if fee_lines:
+            ws.cell(start_row + count, 4).value = "Phí vận chuyển"
+            ws.cell(start_row + count, 4).font = Font(bold=True)
+            count += 1
+            for fee_line in fee_lines:
+                r = start_row + count
+                ws.cell(r, 2).value = fee_line["date"].strftime("%d/%m/%Y")
+                type_label = _("Nhập") if fee_line.get("type") == "return" else _("Xuất")
+                ws.cell(r, 4).value = _("Phí vận chuyển %(code)s (%(type)s)") % {
+                    "code": fee_line.get("code") or "",
+                    "type": type_label,
+                }
+                ws.cell(r, 9).value = fee_line["amount"]
+                count += 1
+
         for r in range(start_row + count, start_row + max_row):
             ws.row_dimensions[r].hidden = True
 
@@ -572,11 +608,12 @@ class RentalContract(models.Model):
         bob_map, map_map = rcs.calc_rental_payment_table_grouped_by_template(
             self.env, self, start_date, end_date
         )
+        fee_lines = self._rental_period_transport_fee_lines(start_date, end_date)
         wb = self._rental_invoice_xlsx_load_workbook()
         ws = wb.active
         self._rental_invoice_xlsx_apply_placeholders(ws, start_date, end_date)
-        self._rental_invoice_xlsx_write_table(ws, bob_map, map_map)
-        self._rental_invoice_xlsx_apply_payment_totals(ws, bob_map, map_map)
+        self._rental_invoice_xlsx_write_table(ws, bob_map, map_map, fee_lines)
+        self._rental_invoice_xlsx_apply_payment_totals(ws, bob_map, map_map, fee_lines)
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
