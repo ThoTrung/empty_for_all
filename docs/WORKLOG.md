@@ -1,6 +1,4 @@
-# Worklog (3 entry mới nhất)
-
-> Cũ hơn: `archive/WORKLOG_ARCHIVE.md`. Template ghi entry mới ở dưới.
+# Worklog (giữ ~3 entry mới; cũ hơn xoá bớt)
 
 ## 2026-06-05 — Import: picking option + biểu mẫu + lỗi SP chi tiết
 

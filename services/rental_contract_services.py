@@ -3,6 +3,7 @@ import io
 from collections import defaultdict
 from datetime import date, timedelta
 
+from dateutil.relativedelta import relativedelta
 from docxtpl import DocxTemplate
 
 
@@ -73,13 +74,18 @@ def render_rental_contract_docx(contract):
     return doc
 
 
-def contract_line_ratios_by_template(contract):
-    """Giá dòng HĐ / list_price mẫu — dùng để quy đổi giá kho khi khác báo giá."""
+def contract_line_ratios_by_template(contract, as_of_date=None):
+    """Giá dòng HĐ / list_price mẫu — dùng để quy đổi giá kho khi khác báo giá.
+
+    as_of_date: nếu truyền vào, dùng đơn giá có hiệu lực tại ngày đó (TH1 — giá đổi
+    theo thời gian). Mặc định dùng đơn giá gốc của dòng báo giá.
+    """
     ratios = {}
     for rc_line in contract.rental_contract_line_ids:
         tmpl = rc_line.product_tmpl_id
         lp = tmpl.list_price or 0.0
-        ratios[tmpl.id] = (rc_line.price_unit / lp) if lp else 1.0
+        price = rc_line._effective_price_unit(as_of_date)
+        ratios[tmpl.id] = (price / lp) if lp else 1.0
     return ratios
 
 
@@ -147,26 +153,90 @@ def rental_days_between_with_holiday(env, company, start_date, end_date, include
     return max(days - holiday_days, 0)
 
 
-def _build_map_product_and_date_to_line(env, contract, start_date, end_date):
-    """Chi tiết theo product.product + ngày bắt đầu (trước khi gộp mẫu cho Excel)."""
+def _minimum_rental_months(contract, product):
+    """Kỳ thuê tối thiểu (tháng) áp cho một sản phẩm: ưu tiên ghi đè ở dòng báo giá."""
+    tmpl = product.product_tmpl_id
+    line = contract.rental_contract_line_ids.filtered(
+        lambda l: l.product_tmpl_id == tmpl
+    )[:1]
+    if line and line.minimum_rental_months:
+        return line.minimum_rental_months
+    return contract.minimum_rental_months or 0
+
+
+def _build_billing_events(env, contract, as_of_date):
+    """Quy đổi các phiếu xuất/nhập thành các "sự kiện tính tiền" có dấu.
+
+    - Xuất (delivery): sự kiện +billable_qty tại ngày giao, mở một "lô" thuê.
+    - Nhập (return): khớp LIFO với các lô đang mở (lô MỚI NHẤT trước). Với mỗi phần
+      khớp, ngày kết thúc tính tiền = max(ngày trả thực tế, ngày giao + kỳ tối thiểu)
+      → đảm bảo trả sớm vẫn tính đủ kỳ tối thiểu (TH2).
+    - Phần chuyển dư (non_billable_qty) không tạo lô, không tính tiền (TH3).
+
+    Trả về list dict: {product, product_id, date, qty(signed)}.
+    """
     transport_lines = env["rr.transport.line"].search(
         [
             ("transport_id", "in", contract.rr_transport_ids.ids),
-            ("start_rental_or_return_date", "<=", end_date),
+            ("start_rental_or_return_date", "<=", as_of_date),
         ],
         order="start_rental_or_return_date ASC, id ASC",
     )
-    map_product_id_2_ratio_price = contract_line_ratios_by_template(contract)
-    map_product_and_date_to_line = {}
+    open_lots = defaultdict(list)  # product_id -> list of [deliver_date, qty_remaining, min_end]
+    events = []
     for line in transport_lines:
+        billable = line.billable_qty
+        if not billable:
+            continue
+        product = line.product_id
+        pid = product.id
+        line_date = line.start_rental_or_return_date
         is_return = line.transport_id.type == "return"
-        original_start_date = line.start_rental_or_return_date
+        if not is_return:
+            min_months = _minimum_rental_months(contract, product)
+            min_end = line_date + relativedelta(months=min_months) if min_months else line_date
+            open_lots[pid].append([line_date, billable, min_end])
+            events.append({"product": product, "product_id": pid, "date": line_date, "qty": billable})
+            continue
+        # Return: khớp LIFO
+        remaining = billable
+        while remaining > 0 and open_lots[pid]:
+            lot = open_lots[pid][-1]
+            take = min(remaining, lot[1])
+            eff_return = max(line_date, lot[2])
+            events.append({"product": product, "product_id": pid, "date": eff_return, "qty": -take})
+            lot[1] -= take
+            remaining -= take
+            if lot[1] <= 0:
+                open_lots[pid].pop()
+        if remaining > 0:
+            # Trả nhiều hơn số đang mở (dữ liệu lệch): hạch toán phần dư tại ngày trả thực.
+            events.append({"product": product, "product_id": pid, "date": line_date, "qty": -remaining})
+    return events
+
+
+def _build_map_product_and_date_to_line(env, contract, start_date, end_date):
+    """Chi tiết theo product.product + ngày bắt đầu (trước khi gộp mẫu cho Excel).
+
+    Dùng "sự kiện tính tiền" (lô-aware) để hỗ trợ kỳ tối thiểu (TH2) và chuyển dư (TH3).
+    Khi không có kỳ tối thiểu/chuyển dư, kết quả tương đương cách tính theo SL ròng cũ.
+    """
+    map_product_id_2_ratio_price = contract_line_ratios_by_template(contract, end_date)
+    events = _build_billing_events(env, contract, end_date)
+    map_product_and_date_to_line = {}
+    for event in events:
+        product = event["product"]
+        qty = event["qty"]
+        original_start_date = event["date"]
+        # Sự kiện sau kỳ (vd ngày trả bị đẩy ra tương lai do kỳ tối thiểu) không ảnh
+        # hưởng kỳ này — bỏ qua để không tạo dòng rỗng / trừ nhầm số lượng.
+        if original_start_date > end_date:
+            continue
         this_line_start_date = original_start_date
         if this_line_start_date < start_date:
             this_line_start_date = start_date
 
-        key = f"{line.product_id.id}_{this_line_start_date.strftime('%Y%m%d')}"
-        qty = line.qty * (-1 if is_return else 1)
+        key = f"{product.id}_{this_line_start_date.strftime('%Y%m%d')}"
         is_bob_line = original_start_date <= start_date
         include_start_day = (
             contract.include_start_day_bob if is_bob_line else contract.include_start_day_current
@@ -178,10 +248,10 @@ def _build_map_product_and_date_to_line(env, contract, start_date, end_date):
             end_date,
             include_start_day=include_start_day,
         )
-        tmpl_id = line.product_id.product_tmpl_id.id
+        tmpl_id = product.product_tmpl_id.id
         ratio = map_product_id_2_ratio_price.get(tmpl_id, 1.0)
-        unit_price_day = unit_price_for_transport_line(contract, line.product_id, ratio, end_date)
-        unit_price_month = monthly_price_for_transport_line(line.product_id, ratio)
+        unit_price_day = unit_price_for_transport_line(contract, product, ratio, end_date)
+        unit_price_month = monthly_price_for_transport_line(product, ratio)
         display_unit_price = (
             unit_price_day if contract.rental_billing_mode == "day" else unit_price_month
         )
@@ -189,14 +259,14 @@ def _build_map_product_and_date_to_line(env, contract, start_date, end_date):
             map_product_and_date_to_line[key] = {
                 "start_date": this_line_start_date,
                 "end_date": end_date,
-                "product_name": line.product_id.display_name,
-                "uom_name": line.product_id._get_staff_display_uom().name,
+                "product_name": product.display_name,
+                "uom_name": product._get_staff_display_uom().name,
                 "qty": qty,
                 "rental_days": rental_days,
                 "unit_price": unit_price_day,
                 "display_unit_price": display_unit_price,
                 "total_amount": rental_days * qty * unit_price_day,
-                "product_id": line.product_id.id,
+                "product_id": product.id,
             }
         else:
             map_product_and_date_to_line[key]["qty"] += qty

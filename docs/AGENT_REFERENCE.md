@@ -43,21 +43,15 @@ Risks: controller `sudo()`; `rental_contract_id` on transport has `groups=staff`
 
 ## Depends & tests
 
-Manifest: `base,web,stock,sale,sale_management` — needs `account`,`mail` at runtime
-
-Python: `openpyxl`, `docxtpl`, `docx2pdf`/LibreOffice
+Python libs: `openpyxl`, `docxtpl`, `docx2pdf`/LibreOffice
 
 Tests: `test_rental_holiday_days`, `test_rental_transport_matrix_overlap`, `test_transport_import`
 
 ## Pitfalls
 
-| Issue | Fix |
-|-------|-----|
-| Missing account/mail depends | Add to manifest or pre-install |
-| `rental.invoice.line` compute calls `write()` | Assign fields directly |
-| Controller sudo IDOR | Check `company_id in env.companies` |
-| Courier missing contract field | Use `rental_contract_summary`/picking |
-| No rental.template | Fallback `static/file_template/` |
+- Courier missing contract field → use `rental_contract_summary`/picking
+- No rental.template → fallback `static/file_template/`
+- Tech debt (account/mail depends, invoice.line `write()`, sudo IDOR) → `BUG_LOG.md`
 
 ## After change
 

@@ -157,6 +157,8 @@
                                     <field name="staff_display_uom_id" string="Đơn vị hiển thị"/>
                                     <field name="uom_id" optional="hide" string="ĐVT (mẫu/kho)"/>
                                     <field name="qty"/>
+                                    <field name="non_billable_qty"/>
+                                    <field name="billable_qty" optional="show"/>
                                 </tree>
                             </field>
                         </page>

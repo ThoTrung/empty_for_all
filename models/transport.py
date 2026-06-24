@@ -1,6 +1,6 @@
 # models/transport.py
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 import logging
 from datetime import date
 
@@ -633,9 +633,40 @@ class TransportLine(models.Model):
         readonly=True,
     )
     qty = fields.Integer(string="Quantity", default=1, tracking=True)
+    non_billable_qty = fields.Integer(
+        string="SL chuyển dư (không tính tiền)",
+        default=0,
+        tracking=True,
+        help="Phần số lượng giao/trả nhưng KHÔNG tính tiền thuê (ví dụ chuyển dư cho khách). "
+             "Vẫn xuất/nhập kho đủ số lượng vật lý, nhưng bảng thanh toán chỉ tính phần còn lại.",
+    )
+    billable_qty = fields.Integer(
+        string="SL tính tiền",
+        compute="_compute_billable_qty",
+        store=True,
+        help="Số lượng dùng để tính tiền thuê = Quantity − SL chuyển dư.",
+    )
     name = fields.Char(string="Description")
 
     # No contract lock enforcement here; only rental.contract base info is locked.
+
+    @api.depends("qty", "non_billable_qty")
+    def _compute_billable_qty(self):
+        for line in self:
+            line.billable_qty = (line.qty or 0) - (line.non_billable_qty or 0)
+
+    @api.constrains("qty", "non_billable_qty")
+    def _check_non_billable_qty(self):
+        for line in self:
+            if line.non_billable_qty < 0:
+                raise ValidationError(_("SL chuyển dư không được âm."))
+            if line.non_billable_qty > line.qty:
+                raise ValidationError(
+                    _("SL chuyển dư (%(nb)s) không được lớn hơn số lượng (%(qty)s).") % {
+                        "nb": line.non_billable_qty,
+                        "qty": line.qty,
+                    }
+                )
 
     @api.depends(
         "product_id",

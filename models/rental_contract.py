@@ -11,7 +11,7 @@ from openpyxl.styles import Font
 from odoo import models, fields, api, _
 from collections import defaultdict
 import html
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 logger = logging.getLogger(__name__)
 from ..services import rental_contract_services as rcs
 
@@ -58,6 +58,19 @@ class RentalContract(models.Model):
         default=False,
         tracking=True,
         help="Khi bật, số ngày thuê của phần Thuê kỳ này sẽ tính bao gồm cả Ngày thuê.",
+    )
+    minimum_rental_months = fields.Integer(
+        string="Kỳ thuê tối thiểu (tháng)",
+        default=2,
+        tracking=True,
+        help="Quy định thuê tối thiểu. Nếu trả sản phẩm trước khi đủ số tháng này (tính từ "
+             "ngày giao của lô tương ứng) thì vẫn tính tiền đủ kỳ tối thiểu. Đặt 0 để tắt.",
+    )
+    price_change_ids = fields.One2many(
+        'rental.contract.line.price',
+        'contract_id',
+        string="Điều chỉnh giá theo thời gian",
+        help="Các mốc thay đổi đơn giá thuê có hiệu lực từ một ngày nhất định.",
     )
 
     company_partner_id = fields.Many2one(
@@ -755,6 +768,8 @@ class RentalContract(models.Model):
             # The key will be product_id and the start_date.
             # If more lines have the same product_id and start_date ==> sum them
             for line in rec.rr_transport_line_ids:
+                if not line.billable_qty:
+                    continue
                 invoice_date = line.start_rental_or_return_date
                 if invoice_date < start_date:
                     # We start invoice from start_date
@@ -772,11 +787,11 @@ class RentalContract(models.Model):
                         map_product_and_date_to_line[key] = {
                             'start_date': invoice_date,
                             'product_id': line.product_id.id,
-                            'qty': line.qty,
+                            'qty': line.billable_qty,
                             'unit_price': unit_price,
                         }
                     else:
-                        map_product_and_date_to_line[key]['qty'] += line.qty
+                        map_product_and_date_to_line[key]['qty'] += line.billable_qty
 
             if map_product_and_date_to_line:
                 for key in map_product_and_date_to_line:
@@ -1283,6 +1298,16 @@ class RentalContractLine(models.Model):
     standard_price = fields.Float(string="Standard Price")
     compensation_price = fields.Float(string="Compensation Price")
     uom_id = fields.Many2one('uom.uom', 'Unit of Measure')
+    minimum_rental_months = fields.Integer(
+        string="Kỳ tối thiểu (tháng)",
+        default=0,
+        help="Ghi đè kỳ thuê tối thiểu riêng cho sản phẩm này. 0 = dùng theo hợp đồng.",
+    )
+    price_history_ids = fields.One2many(
+        'rental.contract.line.price',
+        'contract_line_id',
+        string="Lịch sử điều chỉnh giá",
+    )
 
     @api.onchange('product_tmpl_id')
     def _onchange_product_tmpl_id(self):
@@ -1296,8 +1321,62 @@ class RentalContractLine(models.Model):
             line.compensation_price = pt.compensation_price or 0
             line.uom_id = pt.uom_id or 0
 
+    def _effective_price_unit(self, as_of_date=None):
+        """Đơn giá thuê hiệu lực tại as_of_date (mốc gần nhất có date_from <= as_of_date).
+
+        Nếu chưa có mốc nào áp dụng (hoặc không truyền ngày) thì dùng price_unit gốc
+        (giá ban đầu của hợp đồng).
+        """
+        self.ensure_one()
+        if as_of_date and self.price_history_ids:
+            applicable = self.price_history_ids.filtered(
+                lambda h: h.date_from and h.date_from <= as_of_date
+            ).sorted('date_from')
+            if applicable:
+                return applicable[-1].price_unit
+        return self.price_unit
+
     # Intentionally no contract lock enforcement here.
     # Requirement: only lock selected tabs (handled at UI level + rental.contract.write lock).
+
+
+class RentalContractLinePrice(models.Model):
+    _name = "rental.contract.line.price"
+    _description = "Điều chỉnh đơn giá thuê theo thời gian"
+    _order = "date_from, id"
+
+    contract_line_id = fields.Many2one(
+        'rental.contract.line',
+        string="Dòng báo giá",
+        required=True,
+        ondelete='cascade',
+        index=True,
+    )
+    contract_id = fields.Many2one(
+        related='contract_line_id.contract_id',
+        store=True,
+        index=True,
+        readonly=True,
+    )
+    company_id = fields.Many2one(related='contract_line_id.company_id', store=True, index=True, readonly=True)
+    company_group_id = fields.Many2one(
+        related='contract_line_id.company_group_id', store=True, index=True, readonly=True
+    )
+    currency_id = fields.Many2one(related='contract_line_id.currency_id', readonly=True)
+    product_tmpl_id = fields.Many2one(
+        related='contract_line_id.product_tmpl_id',
+        string="Sản phẩm",
+        store=True,
+        readonly=True,
+    )
+    date_from = fields.Date(string="Hiệu lực từ ngày", required=True)
+    price_unit = fields.Float(string="Đơn giá thuê mới", required=True)
+
+    @api.constrains('price_unit')
+    def _check_price_unit(self):
+        for rec in self:
+            if rec.price_unit < 0:
+                raise ValidationError(_("Đơn giá thuê không được âm."))
 
 
 class ConstructionWork(models.Model):
