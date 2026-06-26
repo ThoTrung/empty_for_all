@@ -30,7 +30,8 @@ class Transport(models.Model):
     )
     type = fields.Selection([
         ('delivery', 'Delivery'),
-        ('return', 'Return')
+        ('return', 'Return'),
+        ('compensation', 'Đền bù'),
     ], string="Type", default='delivery', required=True, tracking=3)
     driver_id = fields.Many2one(
         'res.partner',
@@ -198,7 +199,7 @@ class Transport(models.Model):
         contract = self.rental_contract_id
         if not contract:
             return self.env['res.partner'], self.env['res.partner']
-        if self.type == 'return':
+        if self.type in ('return', 'compensation'):
             return contract.a_party, contract.b_party
         return contract.b_party, contract.a_party
 
@@ -227,7 +228,7 @@ class Transport(models.Model):
                 continue
             contract = self.env['rental.contract'].browse(rc_id)
             typ = vals.get('type', 'delivery')
-            deliv, recv = (contract.a_party, contract.b_party) if typ == 'return' else (contract.b_party, contract.a_party)
+            deliv, recv = (contract.a_party, contract.b_party) if typ in ('return', 'compensation') else (contract.b_party, contract.a_party)
             if 'deliverer_partner_id' not in vals and deliv:
                 vals['deliverer_partner_id'] = deliv.id
             if 'receiver_partner_id' not in vals and recv:
@@ -421,6 +422,21 @@ class Transport(models.Model):
 
     def action_create_pickings(self):
         self.ensure_one()
+        # Đền bù: dòng hỏng 100% (mất/hỏng hoàn toàn) không quay về kho. Nếu toàn bộ
+        # dòng đều 100% thì không tạo phiếu nhập kho nào, chỉ đóng phiếu đền bù.
+        if self.type == 'compensation' and not self._compensation_lines_to_stock():
+            if self.state == 'draft':
+                self.write({'state': 'done'})
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _("Đền bù"),
+                    'message': _("Tất cả sản phẩm hỏng/mất 100% nên không tạo phiếu nhập kho."),
+                    'type': 'success',
+                    'sticky': False,
+                },
+            }
         picking = self._rental_create_picking()
         return {
             'type': 'ir.actions.act_window',
@@ -429,6 +445,11 @@ class Transport(models.Model):
             'res_id': picking.id,
             'target': 'current',
         }
+
+    def _compensation_lines_to_stock(self):
+        """Các dòng đền bù còn nhập lại kho (tỉ lệ hỏng < 100%)."""
+        self.ensure_one()
+        return self.transport_line_ids.filtered(lambda l: l._compensation_returns_to_stock())
 
     def _rental_use_stock_sudo(self):
         return bool(self.env.context.get("rental_transport_import"))
@@ -471,8 +492,17 @@ class Transport(models.Model):
         }
         picking = self._rental_stock_model("stock.picking").create(picking_vals)
 
+        # Đền bù: chỉ nhập lại kho phần hỏng < 100%; phần hỏng/mất 100% không tạo move.
+        lines = self.transport_line_ids
+        if self.type == 'compensation':
+            lines = self._compensation_lines_to_stock()
+            if not lines:
+                raise UserError(
+                    _("Tất cả sản phẩm hỏng/mất 100% nên không có gì để nhập kho.")
+                )
+
         Move = self._rental_stock_model("stock.move")
-        for line in self.transport_line_ids:
+        for line in lines:
             if not line.product_id or line.qty <= 0:
                 continue
             Move.create({
@@ -646,6 +676,31 @@ class TransportLine(models.Model):
         store=True,
         help="Số lượng dùng để tính tiền thuê = Quantity − SL chuyển dư.",
     )
+    transport_type = fields.Selection(
+        related="transport_id.type",
+        string="Loại phiếu",
+        store=True,
+    )
+    damage_ratio = fields.Selection(
+        [
+            ('100', '100%'),
+            ('50', '50%'),
+            ('30', '30%'),
+            ('15', '15%'),
+        ],
+        string="% Đền bù",
+        default='100',
+        tracking=True,
+        help="Tỉ lệ hỏng/đền bù của sản phẩm (chỉ dùng cho phiếu Đền bù). "
+             "100% = mất/hỏng hoàn toàn (không nhập lại kho).",
+    )
+    fine_amount = fields.Float(
+        string="Tổng tiền phạt",
+        default=0.0,
+        tracking=True,
+        help="Tiền đền bù = Số lượng × giá đền bù 1 sản phẩm × % đền bù. "
+             "Mặc định tính tự động, cho phép nhân viên sửa.",
+    )
     name = fields.Char(string="Description")
 
     # No contract lock enforcement here; only rental.contract base info is locked.
@@ -654,6 +709,27 @@ class TransportLine(models.Model):
     def _compute_billable_qty(self):
         for line in self:
             line.billable_qty = (line.qty or 0) - (line.non_billable_qty or 0)
+
+    def _damage_ratio_value(self):
+        """Tỉ lệ hỏng dạng số (0-100). Mặc định 100 nếu chưa đặt."""
+        self.ensure_one()
+        return int(self.damage_ratio) if self.damage_ratio else 100
+
+    def _compensation_returns_to_stock(self):
+        """Dòng đền bù còn nhập lại kho khi tỉ lệ hỏng < 100%."""
+        self.ensure_one()
+        if self.transport_id.type != 'compensation':
+            return True
+        return self._damage_ratio_value() < 100
+
+    @api.onchange('product_id', 'qty', 'damage_ratio', 'transport_type')
+    def _onchange_compensation_fine_amount(self):
+        for line in self:
+            if line.transport_id.type != 'compensation':
+                continue
+            ratio = line._damage_ratio_value() / 100.0
+            price = line.product_id.compensation_price or 0.0
+            line.fine_amount = (line.qty or 0) * price * ratio
 
     @api.constrains("qty", "non_billable_qty")
     def _check_non_billable_qty(self):

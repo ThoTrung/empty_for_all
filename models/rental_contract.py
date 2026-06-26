@@ -7,7 +7,7 @@ import base64
 from werkzeug.urls import url_encode
 import logging
 import io
-from openpyxl.styles import Font
+from openpyxl.styles import Font, PatternFill
 from odoo import models, fields, api, _
 from collections import defaultdict
 import html
@@ -58,6 +58,22 @@ class RentalContract(models.Model):
         default=False,
         tracking=True,
         help="Khi bật, số ngày thuê của phần Thuê kỳ này sẽ tính bao gồm cả Ngày thuê.",
+    )
+    minimum_rental_billing_mode = fields.Selection(
+        [
+            ("upfront", "Tính đủ kỳ tối thiểu vào tháng trả hàng"),
+            ("spread", "Rải kỳ tối thiểu theo từng tháng"),
+        ],
+        string="Cách tính kỳ tối thiểu",
+        default="upfront",
+        required=True,
+        tracking=True,
+        help="Cách xử lý phần trả sớm chưa đủ kỳ tối thiểu:\n"
+             "• Tính đủ kỳ tối thiểu vào tháng trả hàng (mặc định): ngay tại bảng thanh toán "
+             "của tháng KH trả hàng, phần SL trả sẽ được tính tiền cho tới hết kỳ tối thiểu "
+             "(ví dụ thuê 10/06, trả 20/06, kỳ 2 tháng → tính luôn 10/06→10/08 trong bảng tháng 6).\n"
+             "• Rải kỳ tối thiểu theo từng tháng: phần trả sớm vẫn được coi là đang thuê cho tới "
+             "hết kỳ tối thiểu và tính tiền dàn trải qua từng tháng tương ứng.",
     )
     minimum_rental_months = fields.Integer(
         string="Kỳ thuê tối thiểu (tháng)",
@@ -539,14 +555,173 @@ class RentalContract(models.Model):
                 elif "Bằng chữ" in val or "bằng chữ" in val:
                     cell.value = f"(Bằng chữ: {amount_words}/.)"
 
-    def _sorted_payment_table_keys(self, tmpl_id_2_line):
-        return sorted(
-            tmpl_id_2_line.keys(),
-            key=lambda tid: self.env["product.template"].browse(tid).display_name or "",
-        )
+    # Chỉ tô vàng dòng "Cộng" cho dễ nhìn; các tiêu đề phụ chỉ in đậm.
+    _FILL_YELLOW = PatternFill("solid", fgColor="FFFF00")
 
-    def _rental_invoice_xlsx_write_table(self, ws, bob_map, map_map, fee_lines=None):
-        """bob_map / map_map: theo product.template (gộp biến thể cho Excel)."""
+    @staticmethod
+    def _font_like(cell, color):
+        base = cell.font
+        return Font(name=base.name, size=base.size, bold=base.bold, italic=base.italic, color=color)
+
+    def _red_font_like(self, cell):
+        """Font đỏ (dòng trả hàng)."""
+        return self._font_like(cell, "FFFF0000")
+
+    def _blue_font_like(self, cell):
+        """Font xanh nhạt (dòng chuyển thừa trả lại — không tính tiền)."""
+        return self._font_like(cell, "FF5B9BD5")
+
+    @staticmethod
+    def _fill_row(ws, r, col_from, col_to, fill):
+        for c in range(col_from, col_to + 1):
+            ws.cell(r, c).fill = fill
+
+    def _write_subheader(self, ws, r, text):
+        cell = ws.cell(r, 4)
+        cell.value = text
+        cell.font = Font(bold=True)
+
+    def _write_billing_line(self, ws, start_row, count, line, content):
+        """Một dòng tính tiền: ngày bắt đầu → kết thúc, SL, số ngày, đơn giá, thành tiền."""
+        r = start_row + count
+        ws.cell(r, 2).value = line["start_date"].strftime("%d/%m/%Y")
+        ws.cell(r, 3).value = line["end_date"].strftime("%d/%m/%Y")
+        ws.cell(r, 4).value = content
+        ws.cell(r, 5).value = line["uom_name"]
+        ws.cell(r, 6).value = line["qty"]
+        ws.cell(r, 7).value = line["rental_days"]
+        ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
+        ws.cell(r, 9).value = line["total_amount"]
+        return count + 1
+
+    def _write_aggregated_return_row(self, ws, start_row, count, agg, block, content):
+        """Dòng gộp phần trả (phạt/đã trả): không ngày bắt đầu, chỉ SL + số ngày + tiền."""
+        r = start_row + count
+        ws.cell(r, 4).value = content
+        ws.cell(r, 5).value = block["uom_name"]
+        ws.cell(r, 6).value = agg["qty"]
+        ws.cell(r, 7).value = agg["rental_days"]
+        ws.cell(r, 8).value = agg.get("display_unit_price", agg["unit_price"])
+        ws.cell(r, 9).value = agg["total_amount"]
+        return count + 1
+
+    @staticmethod
+    def _return_row_content(block, agg, penalty=False):
+        """Text dòng đối ứng trả: '{SP} trả trong tháng {tháng trả} - thuê từ {ngày giao}
+        [- phạt {N} tháng]'."""
+        rd = agg.get("return_date")
+        deliver = agg.get("deliver_date")
+        text = _("%(name)s trả trong tháng %(m)s - thuê từ %(d)s") % {
+            "name": block["product_name"],
+            "m": rd.strftime("%m/%Y") if rd else "",
+            "d": deliver.strftime("%d/%m/%Y") if deliver else "",
+        }
+        if penalty and agg.get("min_months"):
+            text += _(" - phạt %s tháng") % agg["min_months"]
+        return text
+
+    def _write_product_payment_block(self, ws, block, start_row, count):
+        """Một sản phẩm = một khối: (1) đơn thuê bình thường; (2) tính toán trả hàng
+        tối thiểu (đối ứng giao/trả + phần trả bị phạt); (3) chuyển thừa (không tính
+        tiền); (4) dòng Cộng SL đang thuê."""
+        # Phần 1: đơn thuê bình thường (dư đầu kỳ gộp 1 dòng + lô thuê kỳ này không bị trả).
+        for line in block["normal_lines"]:
+            content = line["product_name"]
+            if line.get("is_bob"):
+                content = _("%s (dư đầu kỳ)") % content
+            count = self._write_billing_line(ws, start_row, count, line, content)
+
+        rc = block["return_calc"]
+        if rc:
+            # Sub-block A: SL đã thuê để đối ứng (giao + trả) — KHÔNG số ngày, KHÔNG tiền.
+            self._write_subheader(
+                ws,
+                start_row + count,
+                _("Số lượng SP đã thuê để đối ứng với phần trả hàng"),
+            )
+            count += 1
+            for od in rc["offset_deliveries"]:
+                r = start_row + count
+                if od.get("is_bob"):
+                    ws.cell(r, 2).value = _("Dư đầu kỳ")
+                else:
+                    ws.cell(r, 2).value = od["date"].strftime("%d/%m/%Y")
+                ws.cell(r, 4).value = block["product_name"]
+                ws.cell(r, 5).value = block["uom_name"]
+                ws.cell(r, 6).value = od["qty"]
+                ws.cell(r, 8).value = block["display_unit_price"]
+                count += 1
+            # Phần chuyển thừa được trả lại (không tính tiền) — nguồn đối ứng, màu nhạt.
+            if rc.get("excess_return_qty"):
+                r = start_row + count
+                c2 = ws.cell(r, 2)
+                c2.value = _("Dư đầu kỳ")
+                c4 = ws.cell(r, 4)
+                c4.value = _("%s (Chuyển thừa, trả lại)") % block["product_name"]
+                c5 = ws.cell(r, 5)
+                c5.value = block["uom_name"]
+                c6 = ws.cell(r, 6)
+                c6.value = rc["excess_return_qty"]
+                c8 = ws.cell(r, 8)
+                c8.value = block["display_unit_price"]
+                for c in (c2, c4, c5, c6, c8):
+                    c.font = self._blue_font_like(c)
+                count += 1
+            for ret in rc["returns"]:
+                r = start_row + count
+                c_date = ws.cell(r, 2)
+                c_date.value = ret["date"].strftime("%d/%m/%Y")
+                c_name = ws.cell(r, 4)
+                c_name.value = _("%s (trả hàng)") % block["product_name"]
+                c_uom = ws.cell(r, 5)
+                c_uom.value = block["uom_name"]
+                c_qty = ws.cell(r, 6)
+                c_qty.value = -ret["qty"]
+                c_price = ws.cell(r, 8)
+                c_price.value = block["display_unit_price"]
+                for c in (c_date, c_name, c_uom, c_qty, c_price):
+                    c.font = self._red_font_like(c)
+                count += 1
+
+            # Sub-block B: đối ứng sản phẩm trả — phần dư còn thuê + phần trả bị phạt/đã trả.
+            self._write_subheader(ws, start_row + count, _("Đối ứng sản phẩm trả"))
+            count += 1
+            for line in rc["leftover_present"]:
+                content = _("%(name)s (dư từ lô %(d)s)") % {
+                    "name": line["product_name"],
+                    "d": line["deliver_date"].strftime("%d/%m/%Y"),
+                }
+                count = self._write_billing_line(ws, start_row, count, line, content)
+            for agg in rc["returned_rows"]:
+                count = self._write_aggregated_return_row(
+                    ws, start_row, count, agg, block, self._return_row_content(block, agg)
+                )
+            for agg in rc["penalty_rows"]:
+                count = self._write_aggregated_return_row(
+                    ws, start_row, count, agg, block, self._return_row_content(block, agg, penalty=True)
+                )
+
+        # Chuyển thừa (chuyển dư) — KHÔNG tính tiền, chỉ hiển thị để dễ quản lý.
+        if block.get("excess_qty"):
+            r = start_row + count
+            ws.cell(r, 4).value = _("Chuyển thừa đang giữ (không tính tiền)")
+            ws.cell(r, 4).font = Font(italic=True)
+            ws.cell(r, 5).value = block["uom_name"]
+            ws.cell(r, 6).value = block["excess_qty"]
+            count += 1
+
+        # Dòng Cộng: tổng SL đang thuê cuối kỳ (KHÔNG ghi cột Thành tiền để không lẫn vào tổng).
+        r = start_row + count
+        ws.cell(r, 4).value = _("Cộng (đang thuê cuối kỳ)")
+        ws.cell(r, 4).font = Font(bold=True)
+        ws.cell(r, 6).value = block["present_total_qty"]
+        ws.cell(r, 6).font = Font(bold=True)
+        self._fill_row(ws, r, 2, 9, self._FILL_YELLOW)
+        count += 1
+        return count
+
+    def _rental_invoice_xlsx_write_table(self, ws, blocks, fee_lines=None):
+        """Mỗi sản phẩm là một khối: đơn thuê bình thường + tính toán trả hàng tối thiểu."""
         start_row = 13
         max_row = 200
         count = 0
@@ -554,48 +729,9 @@ class RentalContract(models.Model):
             ws.cell(start_row - 1, 8).value = "Đơn giá thuê/\n1 tháng (chưa VAT)"
         else:
             ws.cell(start_row - 1, 8).value = "Đơn giá thuê/\n1 ngày (chưa VAT)"
-        if bob_map:
-            ws.cell(start_row + count, 4).value = "Dư đầu kỳ"
-            ws.cell(start_row + count, 4).font = Font(bold=True)
-            count += 1
-            for tmpl_id in self._sorted_payment_table_keys(bob_map):
-                product = bob_map[tmpl_id]
-                for line in product["lines"]:
-                    r = start_row + count
-                    ws.cell(r, 2).value = line["start_date"].strftime("%d/%m/%Y")
-                    ws.cell(r, 3).value = line["end_date"].strftime("%d/%m/%Y")
-                    ws.cell(r, 4).value = line["product_name"]
-                    ws.cell(r, 5).value = line["uom_name"]
-                    ws.cell(r, 6).value = line["qty"]
-                    ws.cell(r, 7).value = line["rental_days"]
-                    ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
-                    ws.cell(r, 9).value = line["total_amount"]
-                    count += 1
-                r = start_row + count
-                ws.cell(r, 6).value = product["total_qty"]
-                ws.cell(r, 6).font = Font(bold=True)
-                count += 1
-        if map_map:
-            ws.cell(start_row + count, 4).value = "Thuê kỳ này"
-            ws.cell(start_row + count, 4).font = Font(bold=True)
-            count += 1
-            for tmpl_id in self._sorted_payment_table_keys(map_map):
-                product = map_map[tmpl_id]
-                for line in product["lines"]:
-                    r = start_row + count
-                    ws.cell(r, 2).value = line["start_date"].strftime("%d/%m/%Y")
-                    ws.cell(r, 3).value = line["end_date"].strftime("%d/%m/%Y")
-                    ws.cell(r, 4).value = line["product_name"]
-                    ws.cell(r, 5).value = line["uom_name"]
-                    ws.cell(r, 6).value = line["qty"]
-                    ws.cell(r, 7).value = line["rental_days"]
-                    ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
-                    ws.cell(r, 9).value = line["total_amount"]
-                    count += 1
-                r = start_row + count
-                ws.cell(r, 6).value = product["total_qty"]
-                ws.cell(r, 6).font = Font(bold=True)
-                count += 1
+
+        for block in blocks or []:
+            count = self._write_product_payment_block(ws, block, start_row, count)
 
         if fee_lines:
             ws.cell(start_row + count, 4).value = "Phí vận chuyển"
@@ -621,11 +757,14 @@ class RentalContract(models.Model):
         bob_map, map_map = rcs.calc_rental_payment_table_grouped_by_template(
             self.env, self, start_date, end_date
         )
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self, start_date, end_date
+        )
         fee_lines = self._rental_period_transport_fee_lines(start_date, end_date)
         wb = self._rental_invoice_xlsx_load_workbook()
         ws = wb.active
         self._rental_invoice_xlsx_apply_placeholders(ws, start_date, end_date)
-        self._rental_invoice_xlsx_write_table(ws, bob_map, map_map, fee_lines)
+        self._rental_invoice_xlsx_write_table(ws, blocks, fee_lines)
         self._rental_invoice_xlsx_apply_payment_totals(ws, bob_map, map_map, fee_lines)
         buffer = io.BytesIO()
         wb.save(buffer)

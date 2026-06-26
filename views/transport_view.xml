@@ -26,6 +26,7 @@
                        widget="badge"
                        decoration-info="type=='delivery'"
                        decoration-danger="type=='return'"
+                       decoration-warning="type=='compensation'"
                        optional="show"/>
                 <field name="rental_contract_id" optional="show" groups="rental.group_rental_staff"/>
                 <field name="rental_contract_summary" optional="show" groups="rental.group_rental_transport_courier"/>
@@ -153,12 +154,21 @@
 <!--                            <field name="transport_line_ids" readonly="state in ['done', 'cancel']">-->
                             <field name="transport_line_ids" readonly="state in ['done', 'cancel']">
                                 <tree editable="bottom">
+                                    <field name="transport_type" column_invisible="1"/>
                                     <field name="product_id"/>
                                     <field name="staff_display_uom_id" string="Đơn vị hiển thị"/>
                                     <field name="uom_id" optional="hide" string="ĐVT (mẫu/kho)"/>
+                                    <field name="damage_ratio"
+                                           string="% Đền bù"
+                                           column_invisible="parent.type != 'compensation'"/>
                                     <field name="qty"/>
-                                    <field name="non_billable_qty"/>
-                                    <field name="billable_qty" optional="show"/>
+                                    <field name="non_billable_qty"
+                                           column_invisible="parent.type == 'compensation'"/>
+                                    <field name="billable_qty" optional="show"
+                                           column_invisible="parent.type == 'compensation'"/>
+                                    <field name="fine_amount"
+                                           string="Tổng tiền phạt"
+                                           column_invisible="parent.type != 'compensation'"/>
                                 </tree>
                             </field>
                         </page>

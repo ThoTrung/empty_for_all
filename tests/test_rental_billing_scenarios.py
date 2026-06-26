@@ -163,3 +163,290 @@ class TestRentalBillingScenarios(TransactionCase):
         self._make_transport("delivery", date(2026, 3, 1), [(self._product, 500, 500)])
         events = rcs._build_billing_events(self.env, self._contract, date(2026, 3, 31))
         self.assertFalse(events)
+
+    # ----- Scenario 4: minimum period billed up-front in the return month (default) -----
+    def test_upfront_same_month_return_bills_full_minimum(self):
+        # Default mode = 'upfront'. Deliver 80 on Jun 10, return 30 on Jun 20, min 2 months.
+        self.assertEqual(self._contract.minimum_rental_billing_mode, "upfront")
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 80, 0)])
+        self._make_transport("return", date(2026, 6, 20), [(self._product, 30, 0)])
+
+        jun = rcs._build_map_product_and_date_to_line(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        by_end = {l["end_date"]: l for l in jun.values()}
+        self.assertEqual(set(by_end), {date(2026, 6, 30), date(2026, 8, 9)})
+        # 50 still rented -> normal until end of June
+        normal = by_end[date(2026, 6, 30)]
+        self.assertEqual(normal["qty"], 50)
+        self.assertEqual(normal["rental_days"], 20)  # Jun 10 -> Jun 30
+        # 30 returned -> billed to the last day of the minimum period
+        # (Jun 10 + 2 months - 1 day = Aug 9), all settled in the June table.
+        settled = by_end[date(2026, 8, 9)]
+        self.assertEqual(settled["qty"], 30)
+        self.assertEqual(settled["start_date"], date(2026, 6, 10))
+        self.assertEqual(settled["rental_days"], 60)  # Jun 10 -> Aug 9 (handover day excluded)
+
+        # July table: the 30 returned are already settled; only the 50 still out remain.
+        jul = rcs._build_map_product_and_date_to_line(
+            self.env, self._contract, date(2026, 7, 1), date(2026, 7, 31)
+        )
+        self.assertEqual(sum(l["qty"] for l in jul.values()), 50)
+        self.assertTrue(all(l["end_date"] == date(2026, 7, 31) for l in jul.values()))
+
+    def test_upfront_next_month_return_settles_remaining_minimum(self):
+        # Deliver 80 on Jun 10, return 30 on Jul 10 (after June), min 2 months -> min_end Aug 10.
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 80, 0)])
+        self._make_transport("return", date(2026, 7, 10), [(self._product, 30, 0)])
+
+        # June: nothing returned yet -> all 80 billed normally.
+        jun = rcs._build_map_product_and_date_to_line(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        self.assertEqual(len(jun), 1)
+        self.assertEqual(list(jun.values())[0]["qty"], 80)
+
+        # July: 50 still out (normal to Jul 31) + 30 returned billed Jul 1 -> Aug 10.
+        jul = rcs._build_map_product_and_date_to_line(
+            self.env, self._contract, date(2026, 7, 1), date(2026, 7, 31)
+        )
+        by_end = {l["end_date"]: l for l in jul.values()}
+        self.assertEqual(by_end[date(2026, 7, 31)]["qty"], 50)
+        settled = by_end[date(2026, 8, 9)]
+        self.assertEqual(settled["qty"], 30)
+        self.assertEqual(settled["start_date"], date(2026, 7, 1))
+
+        # August: returned 30 already settled in July -> only the 50 still out remain.
+        aug = rcs._build_map_product_and_date_to_line(
+            self.env, self._contract, date(2026, 8, 1), date(2026, 8, 31)
+        )
+        self.assertEqual(sum(l["qty"] for l in aug.values()), 50)
+
+    def test_upfront_delivery_on_first_day_is_current_and_minimum_last_day(self):
+        # Issue 1: delivered exactly on the period's first day -> "Thuê kỳ này", not "Dư đầu kỳ".
+        # Issue 2: 2-month minimum from Jun 1 ends on Jul 31 (the last day), not Aug 1.
+        self._make_transport("delivery", date(2026, 6, 1), [(self._product, 80, 0)])
+        self._make_transport("return", date(2026, 6, 15), [(self._product, 40, 0)])
+
+        jun = rcs._build_map_product_and_date_to_line(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        # None of the lines are "Dư đầu kỳ".
+        self.assertTrue(all(not l["is_bob"] for l in jun.values()))
+        by_end = {l["end_date"]: l for l in jun.values()}
+        self.assertEqual(set(by_end), {date(2026, 6, 30), date(2026, 7, 31)})
+        self.assertEqual(by_end[date(2026, 6, 30)]["qty"], 40)
+        settled = by_end[date(2026, 7, 31)]
+        self.assertEqual(settled["qty"], 40)
+        self.assertEqual(settled["start_date"], date(2026, 6, 1))
+        # Opening day is billed (delivered on/before the period start): 2 months = 61 days.
+        self.assertEqual(settled["rental_days"], 61)  # Jun 1 -> Jul 31
+
+        # Table sections: everything sits under "Thuê kỳ này", nothing under "Dư đầu kỳ".
+        bob, cur = rcs.calc_rental_payment_table_grouped_by_template(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        self.assertFalse(bob)
+        self.assertTrue(cur)
+
+    def test_upfront_lines_grouped_by_delivery_reconcile(self):
+        # Ex2: deliveries 100 (Jun 10) + 60 (Jun 15); returns 80 (Jun 20) + 70 (Jun 25).
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 100, 0)])
+        self._make_transport("delivery", date(2026, 6, 15), [(self._product, 60, 0)])
+        self._make_transport("return", date(2026, 6, 20), [(self._product, 80, 0)])
+        self._make_transport("return", date(2026, 6, 25), [(self._product, 70, 0)])
+        lines = list(
+            rcs._build_map_product_and_date_to_line(
+                self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+            ).values()
+        )
+        # Each delivery lot reconciles with the delivered quantity.
+        by_lot = {}
+        for l in lines:
+            by_lot.setdefault(l["deliver_date"], 0)
+            by_lot[l["deliver_date"]] += l["qty"]
+        self.assertEqual(by_lot[date(2026, 6, 10)], 100)
+        self.assertEqual(by_lot[date(2026, 6, 15)], 60)
+        # Lot Jun 10: 10 still rented + 90 returned early (penalty), split by return date.
+        jun10 = [l for l in lines if l["deliver_date"] == date(2026, 6, 10)]
+        self.assertEqual(sum(l["qty"] for l in jun10 if l["kind"] == "present"), 10)
+        minimum10 = [l for l in jun10 if l["kind"] == "minimum"]
+        self.assertEqual(sum(l["qty"] for l in minimum10), 90)
+        self.assertEqual(
+            {l["return_date"] for l in minimum10}, {date(2026, 6, 20), date(2026, 6, 25)}
+        )
+        # Lot Jun 15: fully returned early.
+        jun15 = [l for l in lines if l["deliver_date"] == date(2026, 6, 15)]
+        self.assertTrue(all(l["kind"] == "minimum" for l in jun15))
+        self.assertEqual(sum(l["qty"] for l in jun15), 60)
+
+    def test_payment_blocks_layout_matches_mockup(self):
+        # Theo ảnh nhân viên: tồn 2.000 (thuê cả kỳ) + giao 1.400/1.076, trả 1.650/700.
+        self._make_transport("delivery", date(2026, 3, 15), [(self._product, 2000, 0)])
+        self._make_transport("delivery", date(2026, 4, 5), [(self._product, 1400, 0)])
+        self._make_transport("delivery", date(2026, 4, 6), [(self._product, 1076, 0)])
+        self._make_transport("return", date(2026, 4, 27), [(self._product, 1650, 0)])
+        self._make_transport("return", date(2026, 4, 28), [(self._product, 700, 0)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 4, 1), date(2026, 4, 30)
+        )
+        self.assertEqual(len(blocks), 1)
+        block = blocks[0]
+        # Phần 1: chỉ lô tồn 2.000 (không bị trả) là đơn thuê bình thường.
+        self.assertEqual(sum(l["qty"] for l in block["normal_lines"]), 2000)
+        rc = block["return_calc"]
+        self.assertIsNotNone(rc)
+        # Sub-block A: lô đối ứng = 1.400 (05/04) + 1.076 (06/04); trả gộp theo ngày.
+        self.assertEqual(
+            {(o["date"], o["qty"]) for o in rc["offset_deliveries"]},
+            {(date(2026, 4, 5), 1400), (date(2026, 4, 6), 1076)},
+        )
+        self.assertEqual(
+            {(r["date"], r["qty"]) for r in rc["returns"]},
+            {(date(2026, 4, 27), 1650), (date(2026, 4, 28), 700)},
+        )
+        # Sub-block B: phần dư còn thuê 126 (lô 05/04) + phần phạt 2.350.
+        self.assertEqual(sum(l["qty"] for l in rc["leftover_present"]), 126)
+        self.assertEqual(sum(a["qty"] for a in rc["penalty_rows"]), 2350)
+        self.assertFalse(rc["returned_rows"])  # tất cả đều bị phạt
+        # Cộng đang thuê cuối kỳ = 2.000 + 126 = 2.126.
+        self.assertEqual(block["present_total_qty"], 2126)
+
+    def test_payment_blocks_merge_bob_and_exact_offset(self):
+        # Nhiều lô dư đầu kỳ (cùng hiển thị 01->30) phải gộp 1 dòng; trả đối ứng dư
+        # đầu kỳ chỉ tách đúng số lượng cần lấy, phần còn lại vẫn nằm ở dư đầu kỳ.
+        for d, q in [(15, 500), (16, 200), (17, 300), (18, 500), (19, 500)]:
+            self._make_transport("delivery", date(2026, 3, d), [(self._product, q, 0)])
+        self._make_transport("return", date(2026, 4, 27), [(self._product, 600, 0)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 4, 1), date(2026, 4, 30)
+        )
+        block = blocks[0]
+        # Dư đầu kỳ gộp 1 dòng = 2000 - 600 đối ứng = 1400.
+        self.assertEqual(len(block["normal_lines"]), 1)
+        self.assertTrue(block["normal_lines"][0]["is_bob"])
+        self.assertEqual(block["normal_lines"][0]["qty"], 1400)
+        rc = block["return_calc"]
+        # Đối ứng chỉ lấy đúng 600 từ dư đầu kỳ.
+        bob_off = [o for o in rc["offset_deliveries"] if o.get("is_bob")]
+        self.assertEqual(len(bob_off), 1)
+        self.assertEqual(bob_off[0]["qty"], 600)
+        self.assertEqual(sum(r["qty"] for r in rc["returns"]), 600)
+        self.assertEqual(
+            sum(a["qty"] for a in rc["penalty_rows"]) + sum(a["qty"] for a in rc["returned_rows"]),
+            600,
+        )
+        self.assertEqual(block["present_total_qty"], 1400)
+
+    def test_excess_shown_in_blocks_and_not_billed(self):
+        # Giao 100, chuyển thừa 20 -> tính tiền 80, hiển thị chuyển thừa đang giữ 20.
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 100, 20)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        block = blocks[0]
+        self.assertEqual(block["excess_qty"], 20)
+        self.assertEqual(block["present_total_qty"], 80)
+
+    def test_fully_excess_block_shows_excess_only(self):
+        # Giao 50 toàn bộ chuyển thừa -> không có dòng tính tiền nhưng vẫn hiện chuyển thừa.
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 50, 50)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(blocks[0]["excess_qty"], 50)
+        self.assertEqual(blocks[0]["present_total_qty"], 0)
+        self.assertFalse(blocks[0]["normal_lines"])
+
+    def test_return_deducts_excess_first_no_penalty(self):
+        # Giao 120 (chuyển thừa 20) -> tính tiền 100. Trả 30: trừ 20 chuyển thừa trước
+        # (không phạt), còn 10 mới vào logic phạt.
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 120, 20)])
+        self._make_transport("return", date(2026, 6, 20), [(self._product, 30, 0)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        block = blocks[0]
+        self.assertEqual(block["excess_qty"], 0)        # 20 chuyển thừa đã trả hết
+        self.assertEqual(block["present_total_qty"], 90)  # 100 - 10 vào logic phạt
+        rc = block["return_calc"]
+        self.assertEqual(sum(a["qty"] for a in rc["penalty_rows"]), 10)
+        # Dòng trả ĐỎ hiển thị ĐỦ số vật lý = 30 (10 tính tiền + 20 chuyển thừa).
+        self.assertEqual(sum(r["qty"] for r in rc["returns"]), 30)
+        # Phần chuyển thừa trả lại được tách riêng làm nguồn đối ứng.
+        self.assertEqual(rc["excess_return_qty"], 20)
+
+    def test_return_fully_excess_shows_physical_and_excess_return(self):
+        # Giao 120 (chuyển thừa 20). Trả đúng 20 -> toàn bộ là chuyển thừa, không phạt.
+        # Dòng trả phải hiện đủ 20 (vật lý) và excess_return_qty = 20.
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 120, 20)])
+        self._make_transport("return", date(2026, 6, 20), [(self._product, 20, 0)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        block = blocks[0]
+        self.assertEqual(block["excess_qty"], 0)
+        self.assertEqual(block["present_total_qty"], 100)
+        rc = block["return_calc"]
+        self.assertIsNotNone(rc)
+        self.assertEqual(rc["excess_return_qty"], 20)
+        self.assertEqual(sum(r["qty"] for r in rc["returns"]), 20)
+        self.assertEqual(sum(a["qty"] for a in rc["penalty_rows"]), 0)
+
+    def test_penalty_row_carries_text_fields(self):
+        # Dòng đối ứng trả mang đủ field cho text: ngày giao, ngày trả, số tháng phạt.
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 100, 0)])
+        self._make_transport("return", date(2026, 6, 20), [(self._product, 30, 0)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        rc = blocks[0]["return_calc"]
+        self.assertEqual(len(rc["penalty_rows"]), 1)
+        agg = rc["penalty_rows"][0]
+        self.assertEqual(agg["deliver_date"], date(2026, 6, 10))
+        self.assertEqual(agg["return_date"], date(2026, 6, 20))
+        self.assertEqual(agg["min_months"], 2)
+
+    def test_payment_blocks_no_return_has_no_return_calc(self):
+        # Không trả trong kỳ -> chỉ có đơn thuê bình thường, không có khối tính trả tối thiểu.
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 100, 0)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        self.assertEqual(len(blocks), 1)
+        self.assertIsNone(blocks[0]["return_calc"])
+        self.assertEqual(blocks[0]["present_total_qty"], 100)
+
+    def test_upfront_return_after_minimum_is_not_penalty(self):
+        # Delivered Jun 1, returned Sep 5 (after the 2-month minimum) -> normal return, no penalty.
+        self._make_transport("delivery", date(2026, 6, 1), [(self._product, 100, 0)])
+        self._make_transport("return", date(2026, 9, 5), [(self._product, 30, 0)])
+        sep = list(
+            rcs._build_map_product_and_date_to_line(
+                self.env, self._contract, date(2026, 9, 1), date(2026, 9, 30)
+            ).values()
+        )
+        self.assertFalse([l for l in sep if l["kind"] == "minimum"])
+        returned = [l for l in sep if l["kind"] == "returned"]
+        self.assertEqual(sum(l["qty"] for l in returned), 30)
+        # billed only up to the actual return date (no minimum extension)
+        self.assertTrue(all(l["end_date"] == date(2026, 9, 5) for l in returned))
+
+    def test_spread_mode_still_distributes_over_months(self):
+        self._contract.minimum_rental_billing_mode = "spread"
+        self._make_transport("delivery", date(2026, 6, 10), [(self._product, 80, 0)])
+        self._make_transport("return", date(2026, 6, 20), [(self._product, 30, 0)])
+        # Return pushed to Aug 10: present 80 in June and July, net 50 only from August.
+        jun = rcs._build_map_product_and_date_to_line(
+            self.env, self._contract, date(2026, 6, 1), date(2026, 6, 30)
+        )
+        self.assertEqual(sum(l["qty"] for l in jun.values()), 80)
+        jul = rcs._build_map_product_and_date_to_line(
+            self.env, self._contract, date(2026, 7, 1), date(2026, 7, 31)
+        )
+        self.assertEqual(sum(l["qty"] for l in jul.values()), 80)
+        aug = rcs._build_map_product_and_date_to_line(
+            self.env, self._contract, date(2026, 8, 1), date(2026, 8, 31)
+        )
+        self.assertEqual(sum(l["qty"] for l in aug.values()), 50)
