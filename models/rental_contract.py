@@ -488,6 +488,8 @@ class RentalContract(models.Model):
             "{{a_company}}": self.a_party.parent_id.name or "",
             "{{a_representative}}": self.a_name or "",
             "{{a_function}}": self.a_function or "",
+            "{{a_confirmer_function}}": self.a_function or "",
+            "{{b_confirmer_function}}": self.b_function or "",
             "{{start_date}}": start_date.strftime("%d/%m/%Y"),
             "{{end_date}}": end_date.strftime("%d/%m/%Y"),
             "{{end_date_month_year}}": end_date.strftime("%m/%Y"),
@@ -515,7 +517,39 @@ class RentalContract(models.Model):
             for t in transports
         ]
 
-    def _payment_table_subtotal(self, bob_map, map_map, fee_lines=None):
+    def _rental_period_compensation_lines(self, start_date, end_date):
+        """Các dòng đền bù (tiền phạt mất/hỏng) phát sinh trong kỳ.
+
+        Lấy theo phiếu Đền bù (rr.transport.type == 'compensation', không bị hủy) có
+        ngày tính nằm trong [start_date, end_date] và có tiền phạt > 0.
+        """
+        self.ensure_one()
+        lines = self.env["rr.transport.line"].search(
+            [
+                ("transport_id", "in", self.rr_transport_ids.ids),
+                ("transport_id.type", "=", "compensation"),
+                ("transport_id.state", "!=", "cancel"),
+                ("start_rental_or_return_date", ">=", start_date),
+                ("start_rental_or_return_date", "<=", end_date),
+            ],
+            order="start_rental_or_return_date ASC, id ASC",
+        )
+        result = []
+        for line in lines:
+            if not line.fine_amount:
+                continue
+            result.append({
+                "date": line.start_rental_or_return_date,
+                "product_id": line.product_id.id,
+                "product_name": line.product_id.display_name,
+                "uom_name": line.product_id._get_staff_display_uom().name,
+                "qty": line.qty or 0,
+                "damage_ratio": line._damage_ratio_value(),
+                "amount": line.fine_amount or 0.0,
+            })
+        return result
+
+    def _payment_table_subtotal(self, bob_map, map_map, fee_lines=None, compensation_lines=None):
         """Sum line amounts written to column I of the payment table."""
         total = 0.0
         for bucket in (bob_map, map_map):
@@ -526,13 +560,15 @@ class RentalContract(models.Model):
                     total += line.get("total_amount") or 0.0
         for fee_line in fee_lines or []:
             total += fee_line.get("amount") or 0.0
+        for comp_line in compensation_lines or []:
+            total += comp_line.get("amount") or 0.0
         return total
 
-    def _rental_invoice_xlsx_apply_payment_totals(self, ws, bob_map, map_map, fee_lines=None):
+    def _rental_invoice_xlsx_apply_payment_totals(self, ws, bob_map, map_map, fee_lines=None, compensation_lines=None):
         """Fill summary placeholders and amount-in-words anywhere in the sheet."""
         from ..helper.xlsx_template_utils import replace_placeholders_in_sheet
 
-        subtotal = self._payment_table_subtotal(bob_map, map_map, fee_lines)
+        subtotal = self._payment_table_subtotal(bob_map, map_map, fee_lines, compensation_lines)
         vat = round(subtotal * 0.08)
         total_after_tax = int(round(subtotal + vat))
         amount_words = self.env["amount_to_text.vi"].vn_amount_to_text(total_after_tax)
@@ -740,7 +776,7 @@ class RentalContract(models.Model):
             for fee_line in fee_lines:
                 r = start_row + count
                 ws.cell(r, 2).value = fee_line["date"].strftime("%d/%m/%Y")
-                type_label = _("Nhập") if fee_line.get("type") == "return" else _("Xuất")
+                type_label = _("Nhập") if fee_line.get("type") in ("return", "compensation") else _("Xuất")
                 ws.cell(r, 4).value = _("Phí vận chuyển %(code)s (%(type)s)") % {
                     "code": fee_line.get("code") or "",
                     "type": type_label,
@@ -750,6 +786,61 @@ class RentalContract(models.Model):
 
         for r in range(start_row + count, start_row + max_row):
             ws.row_dimensions[r].hidden = True
+
+    @staticmethod
+    def _rental_invoice_get_sheet(wb, name):
+        """Tìm sheet theo tên (không phân biệt hoa/thường, bỏ khoảng trắng đầu/cuối)."""
+        target = (name or "").strip().lower()
+        for sheet in wb.worksheets:
+            if (sheet.title or "").strip().lower() == target:
+                return sheet
+        return None
+
+    def _rental_invoice_xlsx_write_compensation_sheet(self, ws, compensation_lines):
+        """Ghi bảng tiền đền bù (mất/hỏng) sang sheet 'GT đền bù' + tổng cộng riêng."""
+        from ..helper.xlsx_template_utils import replace_placeholders_in_sheet
+
+        start_row = 13
+        max_row = 200
+        count = 0
+        for comp_line in compensation_lines:
+            r = start_row + count
+            ws.cell(r, 2).value = comp_line["date"].strftime("%d/%m/%Y")
+            ws.cell(r, 4).value = _("%(name)s - đền bù %(ratio)s%% (mất/hỏng)") % {
+                "name": comp_line.get("product_name") or "",
+                "ratio": comp_line.get("damage_ratio") or 0,
+            }
+            ws.cell(r, 5).value = comp_line.get("uom_name") or ""
+            qty = comp_line.get("qty") or 0
+            amount = comp_line.get("amount") or 0.0
+            ws.cell(r, 6).value = qty
+            ws.cell(r, 8).value = (amount / qty) if qty else amount
+            ws.cell(r, 9).value = amount
+            count += 1
+
+        for r in range(start_row + count, start_row + max_row):
+            ws.row_dimensions[r].hidden = True
+
+        subtotal = sum((c.get("amount") or 0.0) for c in compensation_lines)
+        vat = round(subtotal * 0.08)
+        total_after_tax = int(round(subtotal + vat))
+        amount_words = self.env["amount_to_text.vi"].vn_amount_to_text(total_after_tax)
+        replace_placeholders_in_sheet(
+            ws,
+            {
+                "{{total_after_tax_string}}": amount_words,
+                "{{subtotal_before_tax}}": int(round(subtotal)),
+                "{{vat_amount}}": int(round(vat)),
+                "{{total_after_tax}}": total_after_tax,
+            },
+        )
+        for row in ws.iter_rows():
+            for cell in row:
+                val = cell.value
+                if not isinstance(val, str):
+                    continue
+                if "Bằng chữ" in val or "bằng chữ" in val:
+                    cell.value = f"(Bằng chữ: {amount_words}/.)"
 
     def _build_rental_payment_xlsx_buffer(self, start_date, end_date):
         """Bảng thanh toán gộp theo mẫu SP (cùng file gắn Business XLSX trên hóa đơn)."""
@@ -761,11 +852,26 @@ class RentalContract(models.Model):
             self.env, self, start_date, end_date
         )
         fee_lines = self._rental_period_transport_fee_lines(start_date, end_date)
+        compensation_lines = self._rental_period_compensation_lines(start_date, end_date)
         wb = self._rental_invoice_xlsx_load_workbook()
+        # Thay placeholder chung (công ty, đại diện, ngày, chức vụ người xác nhận...) cho
+        # mọi sheet, gồm 'GT thuê' và 'GT đền bù'.
+        for sheet in wb.worksheets:
+            self._rental_invoice_xlsx_apply_placeholders(sheet, start_date, end_date)
+
+        # Sheet 'GT thuê' (active): tiền thuê + phí vận chuyển (không gồm đền bù).
         ws = wb.active
-        self._rental_invoice_xlsx_apply_placeholders(ws, start_date, end_date)
         self._rental_invoice_xlsx_write_table(ws, blocks, fee_lines)
         self._rental_invoice_xlsx_apply_payment_totals(ws, bob_map, map_map, fee_lines)
+
+        # Sheet 'GT đền bù': chỉ ghi khi có đền bù, ngược lại bỏ sheet cho gọn.
+        comp_ws = self._rental_invoice_get_sheet(wb, "GT đền bù")
+        if comp_ws is not None:
+            if compensation_lines:
+                self._rental_invoice_xlsx_write_compensation_sheet(comp_ws, compensation_lines)
+            elif len(wb.worksheets) > 1:
+                wb.remove(comp_ws)
+
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
@@ -866,6 +972,35 @@ class RentalContract(models.Model):
                 'quantity': qty,
                 'price_unit': price_unit,
                 'discount': discount,
+                'account_id': income_account.id,
+                'tax_ids': [(6, 0, taxes.ids)],
+            }))
+
+        # Dòng tiền đền bù (mất/hỏng) — tách riêng cho từng phiếu đền bù trong kỳ.
+        for comp_line in self._rental_period_compensation_lines(start_date, end_date):
+            product = Product.browse(comp_line['product_id'])
+            if not product.exists():
+                continue
+            accounts = product._get_product_accounts()
+            income_account = accounts.get('income')
+            if not income_account:
+                raise UserError(_("No income account set for %s") % product.display_name)
+            if fpos:
+                income_account = fpos.map_account(income_account)
+            taxes = product.taxes_id.filtered(lambda t: t.company_id == self.company_id)
+            if fpos:
+                taxes = fpos.map_tax(taxes)
+            comp_qty = comp_line.get('qty') or 0
+            comp_amount = comp_line.get('amount') or 0.0
+            comp_price_unit = (comp_amount / comp_qty) if comp_qty else comp_amount
+            invoice_lines.append((0, 0, {
+                'product_id': product.id,
+                'name': _("%(name)s - đền bù %(ratio)s%% (mất/hỏng)") % {
+                    "name": product.display_name,
+                    "ratio": comp_line.get('damage_ratio') or 0,
+                },
+                'quantity': comp_qty or 1,
+                'price_unit': comp_price_unit,
                 'account_id': income_account.id,
                 'tax_ids': [(6, 0, taxes.ids)],
             }))

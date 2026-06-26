@@ -93,6 +93,14 @@
 
                             <field name="deliverer_partner_id"
                                    string="Người giao hàng"
+                                   invisible="type == 'compensation'"
+                                   readonly="state in ['done', 'cancel']"
+                                   domain="['|', ('id', '=', delivering_party), ('parent_id', '=?', delivering_party_parent_id)]"
+                                   context="{'no_parent_prefix': True}"
+                            />
+                            <field name="deliverer_partner_id"
+                                   string="Người xác nhận"
+                                   invisible="type != 'compensation'"
                                    readonly="state in ['done', 'cancel']"
                                    domain="['|', ('id', '=', delivering_party), ('parent_id', '=?', delivering_party_parent_id)]"
                                    context="{'no_parent_prefix': True}"
@@ -111,6 +119,14 @@
                             <field name="rp_party_phone" string="Số điện thoại" readonly="1"/>
                             <field name="receiver_partner_id"
                                    string="Người nhận hàng"
+                                   invisible="type == 'compensation'"
+                                   readonly="state in ['done', 'cancel']"
+                                   domain="['|', ('id', '=', receiving_party), ('parent_id', '=?', receiving_party_parent_id)]"
+                                   context="{'no_parent_prefix': True}"
+                            />
+                            <field name="receiver_partner_id"
+                                   string="Người xác nhận"
+                                   invisible="type != 'compensation'"
                                    readonly="state in ['done', 'cancel']"
                                    domain="['|', ('id', '=', receiving_party), ('parent_id', '=?', receiving_party_parent_id)]"
                                    context="{'no_parent_prefix': True}"
