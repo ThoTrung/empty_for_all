@@ -12,24 +12,32 @@
                         <field name="spa_zalo_reminder_enabled"/>
                         <div class="content-group mt16" invisible="not spa_zalo_reminder_enabled">
                             <div class="row mt8">
-                                <label string="Template ID nhắc lịch" class="col-lg-4 o_light_label"/>
+                                <label for="spa_zalo_reminder_template_id" string="Template ID nhắc lịch" class="col-lg-4 o_light_label"/>
                                 <field name="spa_zalo_reminder_template_id" style="width: 14rem;"/>
                             </div>
                             <div class="row mt8">
-                                <label string="Nhắc trước" class="col-lg-4 o_light_label"/>
+                                <label for="spa_zalo_reminder_offset_value" string="Nhắc trước" class="col-lg-4 o_light_label"/>
                                 <field name="spa_zalo_reminder_offset_value" class="text-right" style="width: 5rem;"/>
                                 <field name="spa_zalo_reminder_offset_unit" style="width: 7rem;"/>
                             </div>
                             <div class="row mt8">
-                                <label string="Số tin / lượt cron" class="col-lg-4 o_light_label"/>
+                                <label for="spa_zalo_batch_size" string="Số tin / lượt cron" class="col-lg-4 o_light_label"/>
                                 <field name="spa_zalo_batch_size" class="text-right" style="width: 5rem;"/>
                             </div>
                             <div class="row mt8">
-                                <label string="Số lần thử lại tối đa" class="col-lg-4 o_light_label"/>
+                                <label for="spa_zalo_max_retry" string="Số lần thử lại tối đa" class="col-lg-4 o_light_label"/>
                                 <field name="spa_zalo_max_retry" class="text-right" style="width: 5rem;"/>
                             </div>
                             <div class="row mt8">
-                                <label string="Tài khoản OA đang dùng" class="col-lg-4 o_light_label"/>
+                                <label for="spa_zalo_whitelist_enabled" string="Chế độ whitelist (test)" class="col-lg-4 o_light_label"/>
+                                <field name="spa_zalo_whitelist_enabled"/>
+                            </div>
+                            <div class="row mt8" invisible="not spa_zalo_whitelist_enabled">
+                                <label for="spa_zalo_whitelist_phones" string="SĐT whitelist (phân tách dấu phẩy)" class="col-lg-4 o_light_label"/>
+                                <field name="spa_zalo_whitelist_phones" style="width: 24rem;"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="spa_zalo_oa_account_id" string="Tài khoản OA đang dùng" class="col-lg-4 o_light_label"/>
                                 <field name="spa_zalo_oa_account_id"/>
                             </div>
                             <div class="text-muted mt8">

@@ -158,6 +158,64 @@ class TestZaloOa(TransactionCase):
         self.assertEqual(msg.event_type, "booking_reminder")
         self.assertEqual(msg.template_id, "tpl_reminder")
 
+    def _make_booking_in_window(self, partner):
+        offering = self.env["spa.booking.non_session_offering"].create(
+            {"name": "Tư vấn", "duration_minutes": 60}
+        )
+        return self.env["spa.service.booking"].create(
+            {
+                "partner_id": partner.id,
+                "booking_kind": "non_session",
+                "non_session_offering_id": offering.id,
+                "start_datetime": fields.Datetime.now() + timedelta(hours=2),
+                "duration": 60,
+            }
+        )
+
+    def _enable_reminder(self):
+        self.ICP.set_param("spa_zalo_oa.reminder_enabled", "1")
+        self.ICP.set_param("spa_zalo_oa.reminder_template_id", "tpl_reminder")
+        self.ICP.set_param("spa_zalo_oa.reminder_offset_unit", "hours")
+        self.ICP.set_param("spa_zalo_oa.reminder_offset_value", "48")
+
+    # ---------------- whitelist mode ----------------
+    def test_whitelist_blocks_non_listed(self):
+        self._enable_reminder()
+        self.ICP.set_param("spa_zalo_oa.whitelist_enabled", "1")
+        # Danh sách chỉ chứa số khác với self.partner (0905123456 -> 84905123456).
+        self.ICP.set_param("spa_zalo_oa.whitelist_phones", "0911000000")
+        booking = self._make_booking_in_window(self.partner)
+        self.env["spa.service.booking"]._cron_send_zalo_reminders()
+        # Ngoài whitelist: KHÔNG đánh dấu, KHÔNG tạo tin -> vẫn nhắc được khi chạy thật.
+        self.assertFalse(booking.zalo_reminder_sent)
+        self.assertFalse(
+            self.Message.search(
+                [("source_ref", "=", "spa.service.booking,%s" % booking.id)]
+            )
+        )
+
+    def test_whitelist_allows_listed(self):
+        self._enable_reminder()
+        self.ICP.set_param("spa_zalo_oa.whitelist_enabled", "1")
+        # Nhập dạng 0xxx, vẫn khớp số đã chuẩn hóa 84905123456.
+        self.ICP.set_param("spa_zalo_oa.whitelist_phones", "0905123456, 0911000000")
+        booking = self._make_booking_in_window(self.partner)
+        self.env["spa.service.booking"]._cron_send_zalo_reminders()
+        self.assertTrue(booking.zalo_reminder_sent)
+        msg = self.Message.search(
+            [("source_ref", "=", "spa.service.booking,%s" % booking.id)]
+        )
+        self.assertEqual(len(msg), 1)
+
+    def test_whitelist_disabled_sends_to_all(self):
+        self._enable_reminder()
+        self.ICP.set_param("spa_zalo_oa.whitelist_enabled", "0")
+        self.ICP.set_param("spa_zalo_oa.whitelist_phones", "0911000000")
+        booking = self._make_booking_in_window(self.partner)
+        self.env["spa.service.booking"]._cron_send_zalo_reminders()
+        # Whitelist tắt -> danh sách bị bỏ qua, khách thường vẫn nhận.
+        self.assertTrue(booking.zalo_reminder_sent)
+
     def test_booking_reminder_outside_window(self):
         self.ICP.set_param("spa_zalo_oa.reminder_enabled", "1")
         self.ICP.set_param("spa_zalo_oa.reminder_template_id", "tpl_reminder")

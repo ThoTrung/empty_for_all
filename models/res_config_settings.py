@@ -34,6 +34,17 @@ class ResConfigSettings(models.TransientModel):
         default=3,
         config_parameter="spa_zalo_oa.max_retry",
     )
+    spa_zalo_whitelist_enabled = fields.Boolean(
+        string="Chế độ whitelist (chỉ gửi cho SĐT trong danh sách)",
+        config_parameter="spa_zalo_oa.whitelist_enabled",
+    )
+    spa_zalo_whitelist_phones = fields.Char(
+        string="Danh sách SĐT whitelist",
+        config_parameter="spa_zalo_oa.whitelist_phones",
+        help="Phân tách bằng dấu phẩy. Khi bật chế độ whitelist, cron nhắc lịch chỉ "
+        "gửi cho các số này; khách ngoài danh sách không bị đánh dấu nên vẫn được "
+        "nhắc bình thường khi tắt chế độ này.",
+    )
     spa_zalo_oa_account_id = fields.Many2one(
         "spa.zalo.oa.account",
         string="Tài khoản Zalo OA",

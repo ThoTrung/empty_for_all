@@ -9,6 +9,8 @@ from datetime import timedelta
 
 from odoo import api, fields, models
 
+from odoo.addons.spa.helper.duplicate_utils import normalize_phone
+
 _logger = logging.getLogger(__name__)
 
 
@@ -85,6 +87,23 @@ class SpaServiceBooking(models.Model):
                 )
 
     @api.model
+    def _zalo_whitelist_phones(self):
+        """Tập SĐT (đã chuẩn hóa 84...) được phép nhận tin khi bật chế độ whitelist.
+
+        Trả về `None` khi chế độ whitelist tắt (nghĩa là không giới hạn người nhận).
+        """
+        ICP = self.env["ir.config_parameter"].sudo()
+        if ICP.get_param("spa_zalo_oa.whitelist_enabled", "0") != "1":
+            return None
+        raw = ICP.get_param("spa_zalo_oa.whitelist_phones", "") or ""
+        phones = set()
+        for part in raw.replace(";", ",").split(","):
+            norm = normalize_phone(part.strip())
+            if norm:
+                phones.add(norm)
+        return phones
+
+    @api.model
     def _cron_send_zalo_reminders(self):
         """Cron: nhắc lịch KH qua Zalo khi lịch đã vào khoảng "trước N giờ/ngày"."""
         ICP = self.env["ir.config_parameter"].sudo()
@@ -99,5 +118,18 @@ class SpaServiceBooking(models.Model):
             ("start_datetime", "<=", threshold),
         ]
         bookings = self.search(domain)
+        # Chế độ whitelist (test trên production): chỉ gửi cho các SĐT trong danh
+        # sách; booking ngoài danh sách KHÔNG được đánh dấu để vẫn nhắc khi chạy thật.
+        whitelist = self._zalo_whitelist_phones()
+        if whitelist is not None:
+            bookings = bookings.filtered(
+                lambda b: normalize_phone(
+                    b.partner_id.mobile or b.partner_id.phone or ""
+                ) in whitelist
+            )
+            _logger.info(
+                "spa_zalo_oa: whitelist bật, còn %s booking khớp danh sách.",
+                len(bookings),
+            )
         if bookings:
             bookings._enqueue_zalo_reminder()
