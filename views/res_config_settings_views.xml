@@ -8,6 +8,7 @@
             <field name="arch" type="xml">
                 <xpath expr="//block[@id='spa_setting']" position="inside">
                     <setting string="Zalo ZNS: Nhắc lịch hẹn khách hàng"
+                             groups="spa.group_clic_admin"
                              help="Tự động gửi tin nhắc lịch cho khách hàng qua Zalo OA (ZNS).">
                         <field name="spa_zalo_reminder_enabled"/>
                         <div class="content-group mt16" invisible="not spa_zalo_reminder_enabled">

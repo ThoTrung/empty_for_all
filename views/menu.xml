@@ -15,6 +15,6 @@
               id="menu_spa_zalo_oa_account"
               parent="menu_spa_zalo_oa_root"
               action="action_spa_zalo_oa_account"
-              groups="base.group_system"
+              groups="spa.group_clic_admin"
               sequence="20"/>
 </odoo>
