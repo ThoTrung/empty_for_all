@@ -348,10 +348,12 @@ class RentalTransportMatrix(models.Model):
 
             css = """
 <style>
-.rental-matrix-wrap { overflow-x: auto; overflow-y: visible; }
+.rental-matrix-wrap { overflow: visible; }
 .rental-matrix { border-collapse: collapse; table-layout: auto; width: max-content; min-width: 100%; }
 .rental-matrix th, .rental-matrix td { border: 1px solid #ddd; padding: 4px 6px; vertical-align: middle; }
-.rental-matrix thead th { background: #f6f6f6; font-weight: 600; }
+/* Cố định header: dính lên đầu khi cuộn toàn trang. */
+.rental-matrix thead { position: sticky; top: 0; z-index: 5; }
+.rental-matrix thead th { background: #f6f6f6; font-weight: 600; box-shadow: inset 0 1px 0 #ddd, inset 0 -1px 0 #ddd; }
 .rental-matrix-col-stt { width: 2.5em; min-width: 2.5em; }
 .rental-matrix-col-date { width: 5.5em; min-width: 5em; }
 .rental-matrix-col-plate { width: 7em; min-width: 6em; }

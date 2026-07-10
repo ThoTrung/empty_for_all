@@ -647,7 +647,13 @@ class TransportLine(models.Model):
                                        readonly=True)
     rental_contract_id = fields.Many2one(related="transport_id.rental_contract_id", store=True)
     start_rental_or_return_date = fields.Date(related="transport_id.start_rental_or_return_date", store=True)
-    product_id = fields.Many2one('product.product', string="Product", required=True, tracking=True)
+    product_id = fields.Many2one(
+        'product.product',
+        string="Product",
+        required=True,
+        tracking=True,
+        options={'no_create': True, 'no_create_edit': True},
+    )
     product_tmpl_id = fields.Many2one(
         related='product_id.product_tmpl_id',
         store=True,

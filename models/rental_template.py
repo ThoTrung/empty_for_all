@@ -108,18 +108,37 @@ class RentalTemplate(models.Model):
 
     @api.model
     def _resolve_active_template(self, company, template_type):
-        """Best matching uploaded template for company + type."""
+        """Mẫu đã upload phù hợp nhất cho company + loại mẫu.
+
+        Ưu tiên giảm dần để LUÔN ưu tiên mẫu đã upload hơn file mặc định trong module:
+        1. Đúng công ty của bản ghi.
+        2. Cùng nhóm công ty (company_group).
+        3. Bất kỳ mẫu nào (toàn hệ thống) cùng loại — tránh trường hợp upload mẫu ở công ty
+           này nhưng hợp đồng lại thuộc công ty khác → rơi nhầm về file mặc định module.
+        """
         if not company or not template_type:
             return self.browse()
-        return self.search(
-            [
-                ("company_id", "=", company.id),
-                ("template_type", "=", template_type),
-                ("active", "=", True),
-            ],
-            order="is_default desc, id desc",
-            limit=1,
+        base_domain = [
+            ("template_type", "=", template_type),
+            ("active", "=", True),
+        ]
+        order = "is_default desc, id desc"
+        # 1) Đúng công ty
+        template = self.search(
+            base_domain + [("company_id", "=", company.id)], order=order, limit=1
         )
+        if template:
+            return template
+        # 2) Cùng nhóm công ty
+        group = company.company_group_id
+        if group:
+            template = self.search(
+                base_domain + [("company_group_id", "=", group.id)], order=order, limit=1
+            )
+            if template:
+                return template
+        # 3) Bất kỳ mẫu đã upload cùng loại
+        return self.search(base_domain, order=order, limit=1)
 
     @api.model
     def get_template_bytes(self, company, template_type):

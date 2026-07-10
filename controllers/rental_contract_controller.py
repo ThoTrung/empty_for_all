@@ -475,12 +475,22 @@ class RentalContractController(http.Controller):
                 c.fill = md_fill
                 if c.value not in (None, ""):
                     c.font = _md_bold_font(c)
+
+        # In đậm toàn bộ dòng "Tổng KL Cuối T{MM.YYYY}" của kỳ này.
+        ws.cell(r_total, 1).font = _md_bold_font(ws.cell(r_total, 1))
+        ws.cell(r_total, 2).font = _md_bold_font(ws.cell(r_total, 2))
+        for col in range(start_product_col, last_product_col + 1):
+            ws.cell(r_total, col).font = _md_bold_font(ws.cell(r_total, col))
+
         for col in range(start_product_col, last_product_col + 1):
             width = ws.column_dimensions[get_column_letter(col)].width
             if not width or width < 7:
                 ws.column_dimensions[get_column_letter(col)].width = 7.0
 
-        for r in range(start_row + row_idx, start_row + max_row):
+        # Ẩn mọi dòng thừa phía dưới dữ liệu — bao gồm cả dòng mẫu có sẵn trong template
+        # (ví dụ "Tổng KL Cuối T06.2025" nằm tận dòng ~117) để không hiển thị nhầm.
+        last_row_to_hide = max(start_row + max_row, ws.max_row)
+        for r in range(start_row + row_idx, last_row_to_hide + 1):
             ws.row_dimensions[r].hidden = True
         buffer = io.BytesIO()
         wb.save(buffer)
