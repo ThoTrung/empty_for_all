@@ -8,6 +8,7 @@
                 <field name="name"/>
                 <field name="date_from"/>
                 <field name="date_to"/>
+                <field name="rental_contract_id" optional="show"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="active"/>
             </tree>
@@ -27,7 +28,10 @@
                             <field name="date_to"/>
                         </group>
                         <group>
-                            <field name="company_id" groups="base.group_multi_company" invisible="1"/>
+                            <field name="rental_contract_id"
+                                   options="{'no_create': True}"
+                                   placeholder="Để trống = áp dụng toàn hệ thống"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                             <field name="active" invisible="1"/>
                         </group>
                     </group>

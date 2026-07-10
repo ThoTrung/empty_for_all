@@ -433,6 +433,109 @@ class TestRentalBillingScenarios(TransactionCase):
         # billed only up to the actual return date (no minimum extension)
         self.assertTrue(all(l["end_date"] == date(2026, 9, 5) for l in returned))
 
+    # ----- Scenario 5: multi-variant linear-meter pooled return matching -----
+    def _make_multivariant_meter_contract(self):
+        """Mẫu mét dài 2 biến thể (hệ số 1 và 2), HĐ kỳ tối thiểu 2 tháng."""
+        md_categ = self.env["uom.category"].create({"name": "MD pool test"})
+        uom_md = self.env["uom.uom"].create({
+            "name": "Mét dài (pool test)",
+            "category_id": md_categ.id,
+            "uom_type": "reference",
+            "is_linear_meter_variant": True,
+        })
+        attr = self.env["product.attribute"].create(
+            {"name": "Length (pool test)", "create_variant": "always"}
+        )
+        val_1 = self.env["product.attribute.value"].create(
+            {"name": "1m", "attribute_id": attr.id, "default_price_multiplier": 1.0}
+        )
+        val_2 = self.env["product.attribute.value"].create(
+            {"name": "2m", "attribute_id": attr.id, "default_price_multiplier": 2.0}
+        )
+        tmpl = self.env["product.template"].create({
+            "name": "Hộp pool test",
+            "type": "product",
+            "list_price": 1000.0,
+            "uom_id": uom_md.id,
+            "uom_po_id": uom_md.id,
+            "attribute_line_ids": [
+                (0, 0, {"attribute_id": attr.id, "value_ids": [(6, 0, [val_1.id, val_2.id])]})
+            ],
+        })
+        by_mult = {
+            v.product_template_attribute_value_ids.price_multiplier: v
+            for v in tmpl.product_variant_ids
+        }
+        v1 = by_mult[1.0]
+        v2 = by_mult[2.0]
+        contract = self.env["rental.contract"].create({
+            "a_company_party": self._a_company.id,
+            "a_party": self._a_party.id,
+            "b_company_party": self.env.company.partner_id.id,
+            "b_party": self._b_party.id,
+            "rental_billing_mode": "month",
+            "minimum_rental_months": 2,
+        })
+        return contract, tmpl, v1, v2
+
+    def _make_transport_for(self, contract, ttype, when, lines):
+        return self.env["rr.transport"].create({
+            "rental_contract_id": contract.id,
+            "type": ttype,
+            "start_rental_or_return_date": when,
+            "driver_id": self._driver.id,
+            "transport_truck_id": self._truck.id,
+            "vehicle_start_time": when,
+            "transport_line_ids": [
+                (0, 0, {"product_id": p.id, "qty": q, "non_billable_qty": nb})
+                for (p, q, nb) in lines
+            ],
+        })
+
+    def test_pooled_return_attributes_to_latest_lot_across_variants(self):
+        # Như RC00083: lô mới nhất (10/07) gồm nhiều biến thể; biến thể V2 trả vượt phần
+        # V2 của lô mới nhất. Khớp theo biến thể sẽ đẩy phần dư về lô cũ (không phạt),
+        # còn khớp gộp mét dài dồn toàn bộ về lô mới nhất (phạt đủ kỳ tối thiểu).
+        contract, tmpl, v1, v2 = self._make_multivariant_meter_contract()
+        # Lô cũ 01/04 (đã quá 2 tháng tại 08): V2 = 100 cây.
+        self._make_transport_for(contract, "delivery", date(2026, 4, 1), [(v2, 100, 0)])
+        # Lô mới 10/07: V2 = 20 cây + V1 = 200 cây (tổng 40 + 200 = 240 mét).
+        self._make_transport_for(contract, "delivery", date(2026, 7, 10), [(v2, 20, 0), (v1, 200, 0)])
+        # Trả 100 cây V2 (= 200 mét) ngày 05/08.
+        self._make_transport_for(contract, "return", date(2026, 8, 5), [(v2, 100, 0)])
+
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, contract, date(2026, 8, 1), date(2026, 8, 31)
+        )
+        block = next(b for b in blocks if b["tmpl_id"] == tmpl.id)
+        rc = block["return_calc"]
+        self.assertIsNotNone(rc)
+        penalty = sum(a["qty"] for a in rc["penalty_rows"])
+        returned = sum(a["qty"] for a in rc["returned_rows"])
+        # Gộp mét dài: toàn bộ 200 mét trả dồn về lô 10/07 -> phạt hết, không có phần trả thường.
+        self.assertEqual(penalty, 200)
+        self.assertEqual(returned, 0)
+        # Phần phạt gắn đúng lô giao 10/07.
+        self.assertEqual({a["deliver_date"] for a in rc["penalty_rows"]}, {date(2026, 7, 10)})
+
+    def test_pooled_return_spills_to_older_lot_when_latest_exhausted(self):
+        # Trả vượt cả lô mới nhất -> phần dư mới rơi về lô cũ (không phạt).
+        contract, tmpl, v1, v2 = self._make_multivariant_meter_contract()
+        self._make_transport_for(contract, "delivery", date(2026, 4, 1), [(v2, 100, 0)])  # 200 mét cũ
+        self._make_transport_for(contract, "delivery", date(2026, 7, 10), [(v1, 60, 0)])   # 60 mét mới
+        # Trả 100 cây V2 = 200 mét ngày 05/08; lô mới chỉ có 60 mét.
+        self._make_transport_for(contract, "return", date(2026, 8, 5), [(v2, 100, 0)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, contract, date(2026, 8, 1), date(2026, 8, 31)
+        )
+        block = next(b for b in blocks if b["tmpl_id"] == tmpl.id)
+        rc = block["return_calc"]
+        penalty = sum(a["qty"] for a in rc["penalty_rows"])
+        returned = sum(a["qty"] for a in rc["returned_rows"])
+        # 60 mét (lô 10/07) bị phạt + 140 mét (lô 01/04, quá kỳ) trả thường.
+        self.assertEqual(penalty, 60)
+        self.assertEqual(returned, 140)
+
     def test_spread_mode_still_distributes_over_months(self):
         self._contract.minimum_rental_billing_mode = "spread"
         self._make_transport("delivery", date(2026, 6, 10), [(self._product, 80, 0)])

@@ -56,7 +56,7 @@
             <field name="name">rental.contract.form</field>
             <field name="model">rental.contract</field>
             <field name="arch" type="xml">
-                <form>
+                <form class="o_rental_contract_form">
                     <header>
                         <field name="status" widget="statusbar"/>
                         <button
@@ -166,6 +166,7 @@
                                 </group>
                                 <group>
                                     <field name="rental_billing_mode"/>
+                                    <field name="monthly_day_basis" invisible="rental_billing_mode != 'month'"/>
                                     <field name="minimum_rental_billing_mode"/>
                                     <field name="minimum_rental_months"/>
                                 </group>
@@ -345,6 +346,25 @@
                                     </group>
                                 </div>
                                 <field name="account_move_ids" readonly="1"/>
+                            </page>
+                            <page string="Ngày nghỉ">
+                                <p class="text-muted">
+                                    Khai báo các kỳ nghỉ áp dụng riêng cho hợp đồng này. Những ngày
+                                    nghỉ này sẽ được trừ khi tính số ngày thuê (cộng thêm vào ngày
+                                    nghỉ cấu hình chung toàn hệ thống).
+                                </p>
+                                <field name="holiday_ids"
+                                       context="{'default_rental_contract_id': id, 'default_company_id': company_id}">
+                                    <tree editable="bottom">
+                                        <field name="name"/>
+                                        <field name="date_from"/>
+                                        <field name="date_to"/>
+                                        <field name="note" optional="show"/>
+                                        <field name="active" optional="hide"/>
+                                        <field name="company_id" column_invisible="1"/>
+                                        <field name="rental_contract_id" column_invisible="1"/>
+                                    </tree>
+                                </field>
                             </page>
                         </notebook>
                     </sheet>

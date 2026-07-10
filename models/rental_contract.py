@@ -47,6 +47,19 @@ class RentalContract(models.Model):
         help="Ảnh hưởng bảng thanh toán / hóa đơn: theo ngày dùng Giá thuê/ngày trên sản phẩm; "
              "theo tháng: (Giá thuê tháng / số ngày trong tháng kỳ lập hóa đơn) × số ngày × SL.",
     )
+    monthly_day_basis = fields.Selection(
+        selection=[
+            ("calendar", "Theo số ngày thực của tháng"),
+            ("fixed_30", "Cố định 30 ngày/tháng"),
+        ],
+        string="Cơ sở quy đổi giá ngày (thuê theo tháng)",
+        default="calendar",
+        required=True,
+        tracking=True,
+        help="Chỉ áp dụng khi 'Cách tính tiền thuê' = Thuê theo tháng.\n"
+             "• Theo số ngày thực: giá ngày = giá tháng ÷ số ngày của tháng kỳ thanh toán.\n"
+             "• Cố định 30 ngày: giá ngày = giá tháng ÷ 30 (không phụ thuộc vào tháng).",
+    )
     include_start_day_bob = fields.Boolean(
         string="Dư đầu kỳ: tính cả ngày thuê",
         default=True,
@@ -242,6 +255,14 @@ class RentalContract(models.Model):
     transport_matrix_count = fields.Integer(
         string='Confirmation tables',
         compute='_compute_transport_matrix_count',
+    )
+
+    holiday_ids = fields.One2many(
+        'rental.holiday',
+        'rental_contract_id',
+        string='Ngày nghỉ riêng',
+        help="Các kỳ nghỉ áp dụng riêng cho hợp đồng này (cộng thêm vào ngày nghỉ "
+             "toàn hệ thống khi tính số ngày thuê).",
     )
 
     deposit = fields.Float(string='Deposit', tracking=True)
@@ -880,7 +901,7 @@ class RentalContract(models.Model):
     def action_export_invoice_excel(self, start_date, end_date):
         self.ensure_one()
         buffer = self._build_rental_payment_xlsx_buffer(start_date, end_date)
-        filename = f"BẢNG THANH TOÁN KHỐI LƯỢNG VÀ GIÁ TRỊ THUÊ {self.code}"
+        filename = f"HSTT {end_date.strftime('%m-%Y')} - {self.code}"
         filename_ascii = quote(filename)
         att_id = self.action_create_rental_invoice(
             start_date, end_date, excel_buffer=buffer, file_name=filename_ascii
@@ -1004,6 +1025,34 @@ class RentalContract(models.Model):
                 'account_id': income_account.id,
                 'tax_ids': [(6, 0, taxes.ids)],
             }))
+
+        # Phí vận chuyển — đưa vào hóa đơn để khớp với bảng thanh toán xuất ra (Excel cộng
+        # phí vận chuyển vào tổng tiền). Trước đây hóa đơn thiếu phần này nên bị lệch.
+        fee_lines = self._rental_period_transport_fee_lines(start_date, end_date)
+        if fee_lines:
+            # Dùng chung tài khoản/thuế với dòng sản phẩm (thường VAT 8%) để tổng khớp Excel.
+            fee_account = False
+            fee_taxes = self.env['account.tax']
+            if invoice_lines:
+                first_vals = invoice_lines[0][2]
+                fee_account = self.env['account.account'].browse(first_vals['account_id'])
+                fee_tax_ids = first_vals.get('tax_ids') or []
+                if fee_tax_ids and fee_tax_ids[0][2]:
+                    fee_taxes = self.env['account.tax'].browse(fee_tax_ids[0][2])
+            if not fee_account:
+                fee_account = journal.default_account_id
+            for fee_line in fee_lines:
+                type_label = _("Nhập") if fee_line.get("type") in ("return", "compensation") else _("Xuất")
+                invoice_lines.append((0, 0, {
+                    'name': _("Phí vận chuyển %(code)s (%(type)s)") % {
+                        "code": fee_line.get("code") or "",
+                        "type": type_label,
+                    },
+                    'quantity': 1,
+                    'price_unit': fee_line.get("amount") or 0.0,
+                    'account_id': fee_account.id,
+                    'tax_ids': [(6, 0, fee_taxes.ids)],
+                }))
 
         move = self.env['account.move'].create({
             'rental_start_date': start_date,
@@ -1217,7 +1266,7 @@ class RentalContract(models.Model):
         buffer.seek(0)
 
         # Prepare response
-        filename = f"{start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')} BẢNG  ĐỐI CHIẾU XÁC NHẬN CÔNG NỢ"
+        filename = f"ĐCCN {end_date.strftime('%m-%Y')} - {self.code}"
         filename_ascii = quote(filename)  # URL-encode UTF-8 string
         attachment = self.env["ir.attachment"].create({
             "name": f"{filename}.xlsx",

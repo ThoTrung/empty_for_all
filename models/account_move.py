@@ -58,7 +58,7 @@ class AccountMove(models.Model):
             self.rental_end_date,
         )
         contract = self.rental_contract_id
-        filename = f"BẢNG THANH TOÁN KHỐI LƯỢNG VÀ GIÁ TRỊ THUÊ {contract.code}.xlsx"
+        filename = f"HSTT {self.rental_end_date.strftime('%m-%Y')} - {contract.code}.xlsx"
         if self.business_xlsx_attachment_id:
             self.business_xlsx_attachment_id.write(
                 {
@@ -98,7 +98,7 @@ class AccountMove(models.Model):
             self.rental_end_date,
         )
         contract = self.rental_contract_id
-        filename = f"BẢNG THANH TOÁN KHỐI LƯỢNG VÀ GIÁ TRỊ THUÊ {contract.code}"
+        filename = f"HSTT {self.rental_end_date.strftime('%m-%Y')} - {contract.code}"
         attachment = self.env["ir.attachment"].create(
             {
                 "name": f"{filename}.xlsx",
@@ -118,6 +118,7 @@ class AccountMove(models.Model):
     @api.depends(
         "rental_contract_id",
         "rental_contract_id.rental_billing_mode",
+        "rental_contract_id.monthly_day_basis",
         "rental_end_date",
     )
     def _compute_rental_billing_explanation(self):
@@ -128,7 +129,13 @@ class AccountMove(models.Model):
             c = move.rental_contract_id
             end = move.rental_end_date
             if c.rental_billing_mode == "month":
-                if end:
+                if c.monthly_day_basis == "fixed_30":
+                    move.rental_billing_explanation = (
+                        "Hợp đồng tính theo THÁNG (cơ sở 30 ngày cố định): đơn giá một ngày trên bảng thanh toán = "
+                        "(giá bán tháng trên biến thể × tỷ lệ đơn giá so với báo giá trên HĐ) ÷ 30 ngày. "
+                        "Thành tiền dòng hóa đơn = đơn giá × số ngày thuê × khối lượng (theo vận chuyển trong kỳ)."
+                    )
+                elif end:
                     dim = calendar.monthrange(end.year, end.month)[1]
                     move.rental_billing_explanation = (
                         "Hợp đồng tính theo THÁNG: đơn giá một ngày trên bảng thanh toán = "

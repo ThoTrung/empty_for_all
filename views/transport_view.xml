@@ -163,6 +163,7 @@
                             <field name="transport_truck_id" readonly="state in ['done', 'cancel']" placeholder="30M-09090"/>
                             <field name="equipment_load" readonly="state in ['done', 'cancel']"/>
                             <field name="fee" readonly="state == 'cancel'"/>
+                            <field name="external_invoice_code" readonly="state == 'cancel'" placeholder="Mã hóa đơn ngoài"/>
                         </group>
                     </group>
                     <notebook>
@@ -172,18 +173,22 @@
                                 <tree editable="bottom">
                                     <field name="transport_type" column_invisible="1"/>
                                     <field name="product_id"/>
-                                    <field name="staff_display_uom_id" string="Đơn vị hiển thị"/>
+                                    <field name="staff_display_uom_id" string="Đơn vị hiển thị" width="120px"/>
                                     <field name="uom_id" optional="hide" string="ĐVT (mẫu/kho)"/>
                                     <field name="damage_ratio"
                                            string="% Đền bù"
+                                           width="120px"
                                            column_invisible="parent.type != 'compensation'"/>
-                                    <field name="qty"/>
+                                    <field name="qty" width="120px"/>
                                     <field name="non_billable_qty"
+                                           width="120px"
                                            column_invisible="parent.type == 'compensation'"/>
                                     <field name="billable_qty" optional="show"
+                                           width="120px"
                                            column_invisible="parent.type == 'compensation'"/>
                                     <field name="fine_amount"
                                            string="Tổng tiền phạt"
+                                           width="120px"
                                            column_invisible="parent.type != 'compensation'"/>
                                 </tree>
                             </field>

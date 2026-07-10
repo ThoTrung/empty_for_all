@@ -10,5 +10,6 @@
 - DEC-06 — Matrix model + non-overlap constraint · `models/rental_transport_matrix.py`
 - DEC-07 — Multi-company via `mc.group.mixin` · `models/models.py`, `security/ir_rule.xml`
 - DEC-08 — Excel import transport (col C=plate, neg qty=return) · `helper/import_transport_matrix.py`, `wizard/rental_transport_import_wizard.py`
+- DEC-09 — Mẫu nhiều biến thể mét dài: khớp trả/phạt theo POOL mét dài gộp toàn mẫu (LIFO theo ngày giao), KHÔNG theo từng biến thể · `services/rental_contract_services.py` (`_apply_pooled_returns_by_template`)
 
 **New ADR:** thêm 1 dòng `DEC-NN`.

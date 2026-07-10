@@ -108,6 +108,11 @@ class Transport(models.Model):
     vehicle_start_time = fields.Datetime(string="Vehicle start time", required=True, default=date.today(), tracking=10)
     vehicle_arrival_time = fields.Datetime(string="Vehicle arrival time", tracking=11)
     fee = fields.Float(string="Transport Fee", default=0, tracking=12)
+    external_invoice_code = fields.Char(
+        string="Mã hóa đơn ngoài",
+        tracking=12,
+        help="Mã hóa đơn bên ngoài do nhân viên tự nhập.",
+    )
     # currency_id = fields.Many2one('res.currency', string='Currency', related='sale_order_id.currency_id', store=True)
     state = fields.Selection([
         ('draft', 'Draft'),

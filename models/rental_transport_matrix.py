@@ -348,7 +348,7 @@ class RentalTransportMatrix(models.Model):
 
             css = """
 <style>
-.rental-matrix-wrap { overflow: auto; max-height: calc(100vh - 320px); }
+.rental-matrix-wrap { overflow-x: auto; overflow-y: visible; }
 .rental-matrix { border-collapse: collapse; table-layout: auto; width: max-content; min-width: 100%; }
 .rental-matrix th, .rental-matrix td { border: 1px solid #ddd; padding: 4px 6px; vertical-align: middle; }
 .rental-matrix thead th { background: #f6f6f6; font-weight: 600; }
@@ -356,7 +356,7 @@ class RentalTransportMatrix(models.Model):
 .rental-matrix-col-date { width: 5.5em; min-width: 5em; }
 .rental-matrix-col-plate { width: 7em; min-width: 6em; }
 .rental-matrix-col-qty { min-width: 3.5em; white-space: nowrap; }
-.rental-matrix-col-md { min-width: 4em; background: #e8f5e9; white-space: nowrap; }
+.rental-matrix-col-md { min-width: 4em; background: #e8f5e9; white-space: nowrap; font-weight: bold; }
 .rental-matrix th.rental-matrix-th-wrap,
 .rental-matrix th.rental-matrix-col-product {
     white-space: normal !important;

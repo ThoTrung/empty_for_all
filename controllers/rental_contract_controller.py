@@ -458,9 +458,23 @@ class RentalContractController(http.Controller):
             total_row=r_total,
             header_wrap=True,
         )
+        # Cột "Tổng MD": đồng nhất với bảng xem trước (XML) — nền xanh nhạt + IN ĐẬM cho
+        # toàn cột (tiêu đề + dữ liệu + dòng tổng). Đặt SAU apply_product_column_styles vì
+        # hàm đó copy style từ cột tham chiếu (không đậm/không nền) đè lên các cột.
+        def _md_bold_font(cell):
+            base = cell.font
+            return Font(name=base.name, size=base.size, bold=True, italic=base.italic, color=base.color)
+
         for mcol in md_col_by_tmpl.values():
-            ws.cell(header_third_row, mcol).value = "Tổng MD"
-            ws.cell(header_third_row, mcol).fill = md_fill
+            header_cell = ws.cell(header_third_row, mcol)
+            header_cell.value = "Tổng MD"
+            header_cell.fill = md_fill
+            header_cell.font = _md_bold_font(header_cell)
+            for r in range(start_row, r_total + 1):
+                c = ws.cell(r, mcol)
+                c.fill = md_fill
+                if c.value not in (None, ""):
+                    c.font = _md_bold_font(c)
         for col in range(start_product_col, last_product_col + 1):
             width = ws.column_dimensions[get_column_letter(col)].width
             if not width or width < 7:
@@ -473,7 +487,7 @@ class RentalContractController(http.Controller):
         buffer.seek(0)
 
         # Prepare response
-        filename = f"BẢNG XÁC NHẬN KHỐI LƯỢNG {contract.code}.xlsx"
+        filename = f"KLCT {end_date.strftime('%m-%Y')} - {contract.code}.xlsx"
         filename_ascii = quote(filename)  # URL-encode UTF-8 string
         headers = [
             ('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
