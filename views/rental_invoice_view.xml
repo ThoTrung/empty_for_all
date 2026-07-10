@@ -53,7 +53,7 @@
                                 <field name="start_date" optional="show"/>
                                 <field name="end_date" optional="show"/>
                                 <field name="rental_days" optional="show"/>
-                                <field name="product_id" optional="show"/>
+                                <field name="product_id" optional="show" options="{'no_create': True, 'no_create_edit': True}"/>
                                 <field name="staff_display_uom_id" string="Đơn vị hiển thị" optional="show"/>
                                 <field name="uom_id" optional="hide" string="ĐVT (mẫu/kho)"/>
                                 <field name="qty" optional="show"/>

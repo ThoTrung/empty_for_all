@@ -80,12 +80,7 @@ class RentalInvoiceLine(models.Model):
     start_date = fields.Date(string='Start date')
     end_date = fields.Date(string='End date')
     rental_days = fields.Integer(string='Rental days', compute='_compute_total_price', store=True)
-    product_id = fields.Many2one(
-        'product.product',
-        string="Product",
-        required=True,
-        options={'no_create': True, 'no_create_edit': True},
-    )
+    product_id = fields.Many2one('product.product', string="Product", required=True)
     product_tmpl_id = fields.Many2one(
         related='product_id.product_tmpl_id',
         store=True,

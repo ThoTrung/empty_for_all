@@ -172,7 +172,7 @@
                             <field name="transport_line_ids" readonly="state in ['done', 'cancel']">
                                 <tree editable="bottom">
                                     <field name="transport_type" column_invisible="1"/>
-                                    <field name="product_id"/>
+                                    <field name="product_id" options="{'no_create': True, 'no_create_edit': True}"/>
                                     <field name="staff_display_uom_id" string="Đơn vị hiển thị" width="120px"/>
                                     <field name="uom_id" optional="hide" string="ĐVT (mẫu/kho)"/>
                                     <field name="damage_ratio"

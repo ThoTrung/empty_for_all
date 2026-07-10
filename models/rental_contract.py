@@ -1612,11 +1612,8 @@ class RentalContractLine(models.Model):
     partner_id = fields.Many2one(related='contract_id.a_party', store=True, readonly=True)
 
     product_tmpl_id = fields.Many2one(
-        'product.template',
-        string="Product",
-        required=True,
-        domain=[('sale_ok', '=', True), ('active', '=', True)],
-        options={'no_create': True, 'no_create_edit': True},
+        'product.template', string="Product", required=True,
+        domain=[('sale_ok', '=', True), ('active', '=', True)]
     )
     name = fields.Text(string="Description")
     product_uom_qty = fields.Integer(string="Quantity", default=1, readonly=True)

@@ -11,7 +11,11 @@ from openpyxl.utils import get_column_letter
 
 from odoo import _, fields
 
-from .xlsx_template_utils import find_transport_matrix_layout, replace_placeholders_in_sheet
+from .xlsx_template_utils import (
+    find_transport_matrix_layout,
+    replace_placeholders_in_sheet,
+    transport_matrix_date_replacements,
+)
 
 _SKIP_ROW_MARKERS = (
     "tồn đầu kỳ",
@@ -731,6 +735,7 @@ def build_import_template_bytes(contract, env):
             "{{construction_work_name}}": contract.construction_work_id.name or "",
             "{{construction_work_address}}": contract.construction_work_address or "",
         }
+        replacements.update(transport_matrix_date_replacements(None, None))
         replace_placeholders_in_sheet(ws, replacements)
         title_row, header_second_row, header_third_row, data_start_row = find_transport_matrix_layout(ws)
     except Exception:

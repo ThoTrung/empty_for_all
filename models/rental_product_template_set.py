@@ -66,7 +66,6 @@ class RentalProductTemplateSetLine(models.Model):
         string="Sản phẩm",
         required=True,
         domain=[("sale_ok", "=", True), ("active", "=", True)],
-        options={"no_create": True, "no_create_edit": True},
     )
     name = fields.Text(string="Mô tả")
     product_uom_qty = fields.Integer(string="Số lượng", default=1)
