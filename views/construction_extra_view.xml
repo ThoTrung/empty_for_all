@@ -46,5 +46,11 @@
             </form>
         </field>
     </record>
+
+    <record id="action_construction_address" model="ir.actions.act_window">
+        <field name="name">Địa chỉ công trình</field>
+        <field name="res_model">construction.address</field>
+        <field name="view_mode">tree,form</field>
+    </record>
 </odoo>
 

@@ -1,25 +1,19 @@
 # Worklog (giữ ~3 entry mới; cũ hơn xoá bớt)
 
-## 2026-06-29 — Khớp trả/phạt gộp mét dài cho mẫu nhiều biến thể
+## 2026-07-11 — Import mẫu compact (Chủng loại row 3)
 
-files: `services/rental_contract_services.py` (`_build_billing_line_dict`, `_apply_pooled_returns_by_template`, `_pooled_return_lines_for_template`), `tests/test_rental_billing_scenarios.py`, `docs/DECISIONS.md` (DEC-09)
-why: HĐ RC00083 tháng 8 — phần "Hộp 5*10 trả thuê từ 10/07 phạt 2 tháng" ra 1.696 do khớp LIFO theo TỪNG biến thể (cây 3m lô 10/07 chỉ 504, trả 964 → 460 dồn về lô 29/04 không phạt). Đổi sang POOL mét dài gộp toàn mẫu → toàn bộ phần trả dồn về lô giao mới nhất, ra 3.076 phạt (đúng kỳ vọng KH). Phần "đang thuê" giữ nguyên khớp theo biến thể.
-validation: diagnostic RC00083 (T7 3.562 / T8 3.076 phạt) + 26/26 test billing pass (clone DB rental_test). 1 fail có sẵn `test_build_import_template_bytes` (không liên quan).
+files: `helper/import_transport_matrix.py` (`_sheet_has_ghi_chu_above`), `tests/test_transport_import.py`
+why: Xác nhận parse layout bỏ header/footer dài vẫn đúng (neo «Chủng loại»); Tải biểu mẫu không ghi Ghi chú vào dòng data khi mẫu đã có note phía trên.
+validation: `test_parse_compact_layout_chung_loai_row_3`, `test_build_import_template_keeps_compact_note_out_of_data`.
 
-## 2026-06-05 — Import: picking option + biểu mẫu + lỗi SP chi tiết
+## 2026-07-11 — Tree product.template: kéo thả theo `order`
 
-`import_transport_matrix.py`, `transport.py`, `rental_transport_import_wizard.*`, `rental_contract.py`, `rental_contract_controller.py`, `test_transport_import.py`
+files: `views/product_template_view.xml` (handle + `default_order`), `models/product_template.py` (`_order`), `__manifest__.py` 17.0.1.0.35
+why: Cho phép kéo thả đổi thứ tự SP trên list; ghi vào field `order` (cùng field dùng khi xuất cột biểu mẫu import).
+validation: `-u rental`; mở Products tree, kéo handle — `order` cập nhật, list sort theo `order, id`.
 
-## 2026-06-05 — Import transport từ Excel ma trận
+## 2026-07-11 — Mẫu riêng cho Tải biểu mẫu import XNK
 
-Wizard tab Transports; col C biển số; qty âm=nhập; trùng ngày+plate trong file=lỗi. `helper/import_transport_matrix.py`, wizard, contract view, ACL.
-
----
-
-### Template (entry mới)
-
-```
-## YYYY-MM-DD — Title
-files: ...
-validation: ...
-```
+files: `models/rental_template.py` (`transport_import_xlsx`), `static/file_template/transport_import_template.xlsx`, `helper/import_transport_matrix.py`, `__manifest__.py` 17.0.1.0.34
+why: Tách khung Excel «Tải biểu mẫu» khỏi «Bảng xác nhận khối lượng» để upload header/footer riêng; fallback module copy từ transport_matrix_template.
+validation: tạo `rental.template` loại Biểu mẫu import xuất nhập kho (XLSX), đánh dấu Mặc định; `-u rental`.

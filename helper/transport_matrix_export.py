@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Build transport matrix (volume confirmation) XLSX exports."""
 import io
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill
@@ -16,11 +16,20 @@ from .xlsx_template_utils import (
     lock_product_column_widths,
     replace_placeholders_in_sheet,
     transport_matrix_date_replacements,
+    unmerge_row_span,
 )
 
 
-def build_transport_matrix_xlsx_bytes(env, contract, start_date, end_date):
-    """Return XLSX bytes for the rental volume confirmation table."""
+def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb=None):
+    """Fill the volume-confirmation sheet and return (workbook, qty-ref metadata).
+
+    Metadata keys used by the combined KLCT+HSTT export:
+    - sheet_title
+    - opening_row (or None)
+    - total_row
+    - qty_col_by_tmpl_id: template → product col or Tổng MD col
+    - data_rows_by_date: date → [row, ...] (multiple trips same day)
+    """
     rr_transport_ids = contract.rr_transport_ids.filtered_domain([
         ('start_rental_or_return_date', '>=', start_date),
         ('start_rental_or_return_date', '<=', end_date),
@@ -81,6 +90,7 @@ def build_transport_matrix_xlsx_bytes(env, contract, start_date, end_date):
 
     product_ids_2_col = {}
     md_col_by_tmpl = {}
+    qty_col_by_tmpl_id = {}
     col_idx = 4
     for g in groups_meta:
         p_tmpl_id = g['tmpl_id']
@@ -89,10 +99,12 @@ def build_transport_matrix_xlsx_bytes(env, contract, start_date, end_date):
                 product_ids_2_col[f"{p_tmpl_id}_{prod_id}"] = col_idx
                 col_idx += 1
             md_col_by_tmpl[p_tmpl_id] = col_idx
+            qty_col_by_tmpl_id[p_tmpl_id] = col_idx
             col_idx += 1
         else:
             prod_id = g['prod_order'][0]
             product_ids_2_col[f"{p_tmpl_id}_{prod_id}"] = col_idx
+            qty_col_by_tmpl_id[p_tmpl_id] = col_idx
             col_idx += 1
     last_product_col = col_idx - 1
 
@@ -104,11 +116,12 @@ def build_transport_matrix_xlsx_bytes(env, contract, start_date, end_date):
             key = (line.product_tmpl_id.id, line.product_id.id)
             total_cells[key] = total_cells.get(key, 0) + (line.qty or 0)
 
-    data, _source = env["rental.template"].sudo().get_template_bytes(
-        contract.company_id,
-        "transport_matrix_xlsx",
-    )
-    wb = load_workbook(io.BytesIO(data))
+    if wb is None:
+        data, _source = env["rental.template"].sudo().get_template_bytes(
+            contract.company_id,
+            "transport_matrix_xlsx",
+        )
+        wb = load_workbook(io.BytesIO(data))
     ws = wb.active
     replacements = {
         '{{b_company}}': contract.b_party.parent_id.name or '',
@@ -215,10 +228,19 @@ def build_transport_matrix_xlsx_bytes(env, contract, start_date, end_date):
     needed_rows = (1 if has_opening else 0) + len(rr_transport_ids) + 1
     adjust_transport_matrix_data_rows(ws, start_row, needed_rows)
 
+    # Template / insert_rows_below may clone horizontal merges across product columns
+    # (e.g. I:N). Clear them so each qty / Tổng MD cell stays independent.
+    clear_to_col = max(last_product_col, ws.max_column or last_product_col)
+    for r in range(start_row, start_row + needed_rows):
+        unmerge_row_span(ws, r, start_product_col, clear_to_col)
+
     row_idx = 0
+    opening_row = None
+    data_rows_by_date = defaultdict(list)
 
     if has_opening:
         r = start_row + row_idx
+        opening_row = r
         ws.cell(r, 1).value = row_idx + 1
         cell_tondau = ws.cell(r, 2)
         cell_tondau.value = 'Tồn đầu kỳ'
@@ -242,6 +264,8 @@ def build_transport_matrix_xlsx_bytes(env, contract, start_date, end_date):
             if col:
                 ws.cell(r, col).value = qty
         _write_md_cells(r, cell_row)
+        if transport.start_rental_or_return_date:
+            data_rows_by_date[transport.start_rental_or_return_date].append(r)
         row_idx += 1
 
     r_total = start_row + row_idx
@@ -298,6 +322,19 @@ def build_transport_matrix_xlsx_bytes(env, contract, start_date, end_date):
         total_row=r_total,
     )
 
+    meta = {
+        "sheet_title": ws.title,
+        "opening_row": opening_row,
+        "total_row": r_total,
+        "qty_col_by_tmpl_id": qty_col_by_tmpl_id,
+        "data_rows_by_date": dict(data_rows_by_date),
+    }
+    return wb, meta
+
+
+def build_transport_matrix_xlsx_bytes(env, contract, start_date, end_date):
+    """Return XLSX bytes for the rental volume confirmation table."""
+    wb, _meta = build_transport_matrix_into_workbook(env, contract, start_date, end_date)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

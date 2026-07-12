@@ -20,7 +20,7 @@
         <field name="model">product.product</field>
         <field name="inherit_id" ref="product.product_normal_form_view"/>
         <field name="arch" type="xml">
-            <!-- Tạm ẩn: mã nội bộ / vạch, chi phí, thẻ (tab Thông tin chung) -->
+            <!-- Ẩn default_code/barcode chuẩn (tab Thông tin chung); default_code hiện lại ở Product variant detail -->
             <xpath expr="//field[@name='default_code']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -61,10 +61,11 @@
                         <field name="staff_uom_category_id" invisible="1"/>
                         <field name="uom_id" domain="[('category_id.name','=','tbxd')]"/>
                         <field name="staff_display_uom_id"/>
-                        <field name="rental_price_day"/>
+                        <field name="default_code"/>
                     </group>
                     <group>
                         <field name="lst_price" string="Giá thuê theo tháng" widget="monetary" placeholder="1.000.000"/>
+                        <field name="rental_price_day" string="Giá thuê theo ngày" widget="monetary" placeholder="1.000.000"/>
                         <field name="compensation_price" widget="monetary" placeholder="1.000.000"/>
                     </group>
                 </group>
@@ -100,7 +101,7 @@
                         <field name="staff_uom_category_id" invisible="1"/>
                         <field name="uom_id" domain="[('category_id.name','=','tbxd')]"/>
                         <field name="staff_display_uom_id"/>
-                        <field name="rental_price_day"/>
+                        <field name="default_code"/>
                     </group>
                     <group>
                         <field name="product_variant_count" invisible="1"/>
@@ -109,6 +110,8 @@
                         <field name="lst_price" string="Giá thuê theo tháng" widget="monetary" placeholder="1.000.000"
                                options="{'currency_field': 'currency_id', 'field_digits': True}"
                                readonly="product_variant_count &gt; 1"/>
+                        <field name="rental_price_day" string="Giá thuê theo ngày" widget="monetary" placeholder="1.000.000"
+                               options="{'currency_field': 'currency_id', 'field_digits': True}"/>
                         <field name="compensation_price" widget="monetary" placeholder="1.000.000"
                                options="{'currency_field': 'currency_id', 'field_digits': True}"/>
                     </group>

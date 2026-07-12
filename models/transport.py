@@ -137,7 +137,7 @@ class Transport(models.Model):
         store=True,
         readonly=True,
     )
-    construction_work_address = fields.Char(
+    construction_work_address = fields.Text(
         string='Địa chỉ',
         compute='_compute_delivering_receiving_party',
         store=True,

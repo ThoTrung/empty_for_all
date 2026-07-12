@@ -17,6 +17,7 @@ def render_rental_contract_docx(contract):
     doc = DocxTemplate(template_stream)
     context = {
         'contract_code': contract.code,
+        'contract_number': contract.contract_number or '',
         'a_company_name': contract.a_party.parent_id.name,
         'a_address': contract.a_address,
         'a_name': contract.a_name,
@@ -315,11 +316,13 @@ def _build_billing_line_dict(
         "display_unit_price": display_unit_price,
         "total_amount": rental_days * qty * unit_price_day,
         "is_bob": is_bob,
+        "include_start_day": bool(include_start_day),
         "kind": kind,
         "deliver_date": deliver_date,
         "return_date": return_date,
         "min_months": min_months,
         "product_id": product.id,
+        "tmpl_id": tmpl_id,
     }
 
 
@@ -701,6 +704,7 @@ def _merge_variant_lines_to_template_row(env, contract, tmpl, variant_lines):
             "display_unit_price": display_up,
             "total_amount": total_amount,
             "is_bob": variant_lines[0].get("is_bob", False),
+            "include_start_day": variant_lines[0].get("include_start_day", False),
             "kind": variant_lines[0].get("kind", "present"),
             "deliver_date": variant_lines[0].get("deliver_date", start_date),
             "return_date": variant_lines[0].get("return_date"),
@@ -733,6 +737,7 @@ def _merge_variant_lines_to_template_row(env, contract, tmpl, variant_lines):
         "display_unit_price": display_up,
         "total_amount": total_amount,
         "is_bob": variant_lines[0].get("is_bob", False),
+        "include_start_day": variant_lines[0].get("include_start_day", False),
         "kind": variant_lines[0].get("kind", "present"),
         "deliver_date": variant_lines[0].get("deliver_date", start_date),
         "return_date": variant_lines[0].get("return_date"),
@@ -977,6 +982,8 @@ def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
                     "min_months": l.get("min_months", 0),
                     "unit_price": l["unit_price"],
                     "display_unit_price": l.get("display_unit_price", l["unit_price"]),
+                    "include_start_day": l.get("include_start_day", False),
+                    "is_bob": l.get("is_bob", False),
                 })
             else:
                 rkey = (l["deliver_date"], l.get("return_date"))
@@ -991,6 +998,8 @@ def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
                     "min_months": l.get("min_months", 0),
                     "unit_price": l["unit_price"],
                     "display_unit_price": l.get("display_unit_price", l["unit_price"]),
+                    "include_start_day": l.get("include_start_day", False),
+                    "is_bob": l.get("is_bob", False),
                 })
             agg["qty"] += l["qty"]
             agg["total_amount"] += l["total_amount"]

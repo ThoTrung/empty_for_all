@@ -13,6 +13,7 @@ class CreateInvoiceWizard(models.TransientModel):
             'action_export_transport_matrix_excel',
             'action_create_transport_matrix_record',
             'action_export_invoice_excel',
+            'action_export_klct_hstt_excel',
             # 'action_create_rental_invoice',
             'export_debt_confirmation_comparison_table',
         },

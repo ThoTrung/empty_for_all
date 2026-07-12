@@ -35,6 +35,11 @@ class RentalContract(models.Model):
     )
     name = fields.Char(string='Tên hợp đồng')
     contract_date = fields.Date(string='Contract date', default=date.today())
+    contract_number = fields.Char(
+        string='Số hợp đồng',
+        help='Số hợp đồng ghi trên văn bản (xuất khi Tải HĐ / In HĐ).',
+        tracking=True,
+    )
     rental_billing_mode = fields.Selection(
         selection=[
             ("day", "Thuê theo ngày"),
@@ -236,7 +241,16 @@ class RentalContract(models.Model):
 
     construction_work_id = fields.Many2one('construction.work', string="Gói Thầu", tracking=True, help="Each contract will be for on Construction work")
     construction_work_project_id = fields.Many2one(related='construction_work_id.project_id', string="Dự án", store=True, readonly=True)
-    construction_work_address = fields.Char(string='Địa chỉ', compute='_compute_construction_work_address', store=True)
+    construction_work_address_ids = fields.Many2many(
+        related='construction_work_id.address_ids',
+        string='Địa chỉ công trình',
+        readonly=True,
+    )
+    construction_work_address = fields.Text(
+        string='Địa chỉ công trình (text)',
+        compute='_compute_construction_work_address',
+        store=True,
+    )
 
     account_move_ids = fields.One2many(
         'account.move',
@@ -363,11 +377,15 @@ class RentalContract(models.Model):
             contract.amount_paid = total - residual
             contract.amount_due = residual
 
-    @api.depends('construction_work_id')
+    @api.depends(
+        'construction_work_id',
+        'construction_work_id.address_ids',
+        'construction_work_id.address_ids.name',
+    )
     def _compute_construction_work_address(self):
         for rec in self:
             if rec.construction_work_id and rec.construction_work_id.address_ids:
-                rec.construction_work_address = ", ".join(rec.construction_work_id.address_ids.mapped("name"))
+                rec.construction_work_address = "\n".join(rec.construction_work_id.address_ids.mapped("name"))
             else:
                 rec.construction_work_address = ""
 
@@ -638,29 +656,163 @@ class RentalContract(models.Model):
         cell.value = text
         cell.font = Font(bold=True)
 
-    def _write_billing_line(self, ws, start_row, count, line, content):
+    def _write_billing_line(
+        self,
+        ws,
+        start_row,
+        count,
+        line,
+        content,
+        use_excel_formulas=False,
+        klct_meta=None,
+        month_day_dim=0,
+    ):
         """Một dòng tính tiền: ngày bắt đầu → kết thúc, SL, số ngày, đơn giá, thành tiền."""
         r = start_row + count
-        ws.cell(r, 2).value = line["start_date"].strftime("%d/%m/%Y")
-        ws.cell(r, 3).value = line["end_date"].strftime("%d/%m/%Y")
+        if use_excel_formulas:
+            self._write_excel_date(ws.cell(r, 2), line["start_date"])
+            self._write_excel_date(ws.cell(r, 3), line["end_date"])
+        else:
+            ws.cell(r, 2).value = line["start_date"].strftime("%d/%m/%Y")
+            ws.cell(r, 3).value = line["end_date"].strftime("%d/%m/%Y")
         ws.cell(r, 4).value = content
         ws.cell(r, 5).value = line["uom_name"]
-        ws.cell(r, 6).value = line["qty"]
-        ws.cell(r, 7).value = line["rental_days"]
-        ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
-        ws.cell(r, 9).value = line["total_amount"]
+        qty_formula = None
+        if use_excel_formulas and klct_meta:
+            qty_formula = self._klct_qty_formula_for_line(klct_meta, line)
+        if qty_formula:
+            ws.cell(r, 6).value = qty_formula
+        else:
+            ws.cell(r, 6).value = line["qty"]
+        if use_excel_formulas:
+            include = line.get("include_start_day")
+            if include is None:
+                include = bool(line.get("is_bob"))
+            ws.cell(r, 7).value = (
+                f"=C{r}-B{r}+1" if include else f"=C{r}-B{r}"
+            )
+            ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
+            if self.rental_billing_mode == "month" and month_day_dim:
+                ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
+            else:
+                ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}"
+        else:
+            ws.cell(r, 7).value = line["rental_days"]
+            ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
+            ws.cell(r, 9).value = line["total_amount"]
         return count + 1
 
-    def _write_aggregated_return_row(self, ws, start_row, count, agg, block, content):
+    def _write_aggregated_return_row(
+        self,
+        ws,
+        start_row,
+        count,
+        agg,
+        block,
+        content,
+        use_excel_formulas=False,
+        month_day_dim=0,
+    ):
         """Dòng gộp phần trả (phạt/đã trả): không ngày bắt đầu, chỉ SL + số ngày + tiền."""
         r = start_row + count
         ws.cell(r, 4).value = content
         ws.cell(r, 5).value = block["uom_name"]
         ws.cell(r, 6).value = agg["qty"]
-        ws.cell(r, 7).value = agg["rental_days"]
-        ws.cell(r, 8).value = agg.get("display_unit_price", agg["unit_price"])
-        ws.cell(r, 9).value = agg["total_amount"]
+        if use_excel_formulas and agg.get("start_date") and agg.get("end_date"):
+            self._write_excel_date(ws.cell(r, 2), agg["start_date"])
+            self._write_excel_date(ws.cell(r, 3), agg["end_date"])
+            include = agg.get("include_start_day")
+            if include is None:
+                include = bool(agg.get("is_bob")) or (
+                    agg.get("deliver_date") and agg.get("start_date")
+                    and agg["deliver_date"] <= agg["start_date"]
+                )
+            ws.cell(r, 7).value = (
+                f"=C{r}-B{r}+1" if include else f"=C{r}-B{r}"
+            )
+            ws.cell(r, 8).value = agg.get("display_unit_price", agg["unit_price"])
+            if self.rental_billing_mode == "month" and month_day_dim:
+                ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
+            else:
+                ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}"
+        else:
+            ws.cell(r, 7).value = agg["rental_days"]
+            ws.cell(r, 8).value = agg.get("display_unit_price", agg["unit_price"])
+            ws.cell(r, 9).value = agg["total_amount"]
         return count + 1
+
+    @staticmethod
+    def _write_excel_date(cell, value):
+        """Write a Python date as an Excel date with DD/MM/YYYY display format."""
+        cell.value = value
+        cell.number_format = "DD/MM/YYYY"
+
+    @staticmethod
+    def _excel_sheet_ref(sheet_title):
+        """Quote sheet name for formula references when needed."""
+        title = sheet_title or ""
+        if any(ch in title for ch in (" ", "-", "'")):
+            safe = title.replace("'", "''")
+            return f"'{safe}'"
+        return title
+
+    @classmethod
+    def _klct_qty_formula_for_line(cls, klct_meta, line):
+        """Build F-column formula pointing at KLCT qty (or Tổng MD) for this billing line."""
+        if not klct_meta:
+            return None
+        tmpl_id = line.get("tmpl_id")
+        if not tmpl_id:
+            return None
+        col = (klct_meta.get("qty_col_by_tmpl_id") or {}).get(tmpl_id)
+        if not col:
+            return None
+        from openpyxl.utils import get_column_letter
+
+        letter = get_column_letter(col)
+        sheet_ref = cls._excel_sheet_ref(klct_meta.get("sheet_title") or "")
+        if line.get("is_bob"):
+            opening_row = klct_meta.get("opening_row")
+            if not opening_row:
+                return None
+            return f"={sheet_ref}!{letter}{opening_row}"
+        deliver_date = line.get("deliver_date")
+        rows = (klct_meta.get("data_rows_by_date") or {}).get(deliver_date) or []
+        if not rows:
+            return None
+        if len(rows) == 1:
+            return f"={sheet_ref}!{letter}{rows[0]}"
+        refs = ",".join(f"{sheet_ref}!{letter}{r}" for r in rows)
+        return f"=SUM({refs})"
+
+    @staticmethod
+    def _copy_xlsx_sheet(src_ws, dest_wb, title):
+        """Copy a worksheet (values, styles, merges, dimensions) into another workbook."""
+        import copy
+
+        dest_ws = dest_wb.create_sheet(title=title)
+        for row in src_ws.iter_rows():
+            for cell in row:
+                new_cell = dest_ws.cell(row=cell.row, column=cell.column, value=cell.value)
+                if cell.has_style:
+                    new_cell.font = copy.copy(cell.font)
+                    new_cell.border = copy.copy(cell.border)
+                    new_cell.fill = copy.copy(cell.fill)
+                    new_cell.number_format = cell.number_format
+                    new_cell.protection = copy.copy(cell.protection)
+                    new_cell.alignment = copy.copy(cell.alignment)
+        for merged in list(src_ws.merged_cells.ranges):
+            dest_ws.merge_cells(str(merged))
+        for col_letter, dim in src_ws.column_dimensions.items():
+            dest_ws.column_dimensions[col_letter].width = dim.width
+            dest_ws.column_dimensions[col_letter].hidden = dim.hidden
+        for idx, dim in src_ws.row_dimensions.items():
+            dest_ws.row_dimensions[idx].height = dim.height
+            dest_ws.row_dimensions[idx].hidden = dim.hidden
+        dest_ws.sheet_view.showGridLines = src_ws.sheet_view.showGridLines
+        if src_ws.freeze_panes:
+            dest_ws.freeze_panes = src_ws.freeze_panes
+        return dest_ws
 
     @staticmethod
     def _return_row_content(block, agg, penalty=False):
@@ -677,7 +829,16 @@ class RentalContract(models.Model):
             text += _(" - phạt %s tháng") % agg["min_months"]
         return text
 
-    def _write_product_payment_block(self, ws, block, start_row, count):
+    def _write_product_payment_block(
+        self,
+        ws,
+        block,
+        start_row,
+        count,
+        use_excel_formulas=False,
+        klct_meta=None,
+        month_day_dim=0,
+    ):
         """Một sản phẩm = một khối: (1) đơn thuê bình thường; (2) tính toán trả hàng
         tối thiểu (đối ứng giao/trả + phần trả bị phạt); (3) chuyển thừa (không tính
         tiền); (4) dòng Cộng SL đang thuê."""
@@ -686,7 +847,16 @@ class RentalContract(models.Model):
             content = line["product_name"]
             if line.get("is_bob"):
                 content = _("%s (dư đầu kỳ)") % content
-            count = self._write_billing_line(ws, start_row, count, line, content)
+            count = self._write_billing_line(
+                ws,
+                start_row,
+                count,
+                line,
+                content,
+                use_excel_formulas=use_excel_formulas,
+                klct_meta=klct_meta,
+                month_day_dim=month_day_dim,
+            )
 
         rc = block["return_calc"]
         if rc:
@@ -748,14 +918,37 @@ class RentalContract(models.Model):
                     "name": line["product_name"],
                     "d": line["deliver_date"].strftime("%d/%m/%Y"),
                 }
-                count = self._write_billing_line(ws, start_row, count, line, content)
+                count = self._write_billing_line(
+                    ws,
+                    start_row,
+                    count,
+                    line,
+                    content,
+                    use_excel_formulas=use_excel_formulas,
+                    klct_meta=None,
+                    month_day_dim=month_day_dim,
+                )
             for agg in rc["returned_rows"]:
                 count = self._write_aggregated_return_row(
-                    ws, start_row, count, agg, block, self._return_row_content(block, agg)
+                    ws,
+                    start_row,
+                    count,
+                    agg,
+                    block,
+                    self._return_row_content(block, agg),
+                    use_excel_formulas=use_excel_formulas,
+                    month_day_dim=month_day_dim,
                 )
             for agg in rc["penalty_rows"]:
                 count = self._write_aggregated_return_row(
-                    ws, start_row, count, agg, block, self._return_row_content(block, agg, penalty=True)
+                    ws,
+                    start_row,
+                    count,
+                    agg,
+                    block,
+                    self._return_row_content(block, agg, penalty=True),
+                    use_excel_formulas=use_excel_formulas,
+                    month_day_dim=month_day_dim,
                 )
 
         # Chuyển thừa (chuyển dư) — KHÔNG tính tiền, chỉ hiển thị để dễ quản lý.
@@ -777,7 +970,15 @@ class RentalContract(models.Model):
         count += 1
         return count
 
-    def _rental_invoice_xlsx_write_table(self, ws, blocks, fee_lines=None):
+    def _rental_invoice_xlsx_write_table(
+        self,
+        ws,
+        blocks,
+        fee_lines=None,
+        use_excel_formulas=False,
+        klct_meta=None,
+        month_day_dim=0,
+    ):
         """Mỗi sản phẩm là một khối: đơn thuê bình thường + tính toán trả hàng tối thiểu."""
         start_row = 13
         max_row = 200
@@ -788,7 +989,15 @@ class RentalContract(models.Model):
             ws.cell(start_row - 1, 8).value = "Đơn giá thuê/\n1 ngày (chưa VAT)"
 
         for block in blocks or []:
-            count = self._write_product_payment_block(ws, block, start_row, count)
+            count = self._write_product_payment_block(
+                ws,
+                block,
+                start_row,
+                count,
+                use_excel_formulas=use_excel_formulas,
+                klct_meta=klct_meta,
+                month_day_dim=month_day_dim,
+            )
 
         if fee_lines:
             ws.cell(start_row + count, 4).value = "Phí vận chuyển"
@@ -912,16 +1121,232 @@ class RentalContract(models.Model):
             "target": "self",
         }
 
-        # params = {
-        #     'start_date': fields.Date.to_string(start_date),
-        #     'end_date': fields.Date.to_string(end_date),
-        # }
-        # url = f"/rental/rental-contract/invoice/{self.id}/download?{url_encode(params)}"
-        # return {
-        #     'type': 'ir.actions.act_url',
-        #     'url': url,
-        #     'target': 'self',  # or 'new' to open in new tab
-        # }
+    def _build_klct_hstt_xlsx_buffer(self, start_date, end_date):
+        """One workbook: sheet KLCT {mm-YYYY} + sheet HSTT {mm-YYYY} with Excel formulas.
+
+        Returns (buffer, hstt_subtotal) where hstt_subtotal matches the HSTT sheet
+        footer (rent + transport fees, before VAT; excludes compensation sheet).
+        """
+        self.ensure_one()
+        from ..helper.transport_matrix_export import build_transport_matrix_into_workbook
+
+        period_label = end_date.strftime("%m-%Y")
+        klct_title = f"KLCT {period_label}"
+        hstt_title = f"HSTT {period_label}"
+
+        wb, klct_meta = build_transport_matrix_into_workbook(
+            self.env, self, start_date, end_date
+        )
+        wb.active.title = klct_title
+        klct_meta["sheet_title"] = klct_title
+        # Drop any extra sheets from the volume template (keep KLCT only).
+        for sheet in list(wb.worksheets):
+            if sheet.title != klct_title:
+                wb.remove(sheet)
+
+        bob_map, map_map = rcs.calc_rental_payment_table_grouped_by_template(
+            self.env, self, start_date, end_date
+        )
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self, start_date, end_date
+        )
+        fee_lines = self._rental_period_transport_fee_lines(start_date, end_date)
+        compensation_lines = self._rental_period_compensation_lines(start_date, end_date)
+        month_day_dim = rcs.month_day_basis(self, end_date) if self.rental_billing_mode == "month" else 0
+        hstt_subtotal = self._payment_table_subtotal(bob_map, map_map, fee_lines)
+
+        inv_wb = self._rental_invoice_xlsx_load_workbook()
+        for sheet in inv_wb.worksheets:
+            self._rental_invoice_xlsx_apply_placeholders(sheet, start_date, end_date)
+
+        hstt_src = inv_wb.active
+        self._rental_invoice_xlsx_write_table(
+            hstt_src,
+            blocks,
+            fee_lines,
+            use_excel_formulas=True,
+            klct_meta=klct_meta,
+            month_day_dim=month_day_dim,
+        )
+        self._rental_invoice_xlsx_apply_payment_totals(hstt_src, bob_map, map_map, fee_lines)
+        self._copy_xlsx_sheet(hstt_src, wb, hstt_title)
+
+        # Optional compensation sheet as 3rd sheet (same rule as standalone HSTT export).
+        comp_ws = self._rental_invoice_get_sheet(inv_wb, "GT đền bù")
+        if comp_ws is not None and compensation_lines:
+            self._rental_invoice_xlsx_write_compensation_sheet(comp_ws, compensation_lines)
+            self._copy_xlsx_sheet(comp_ws, wb, "GT đền bù")
+
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer, hstt_subtotal
+
+    def _get_or_create_hstt_total_product(self, end_date):
+        """Service product 'Tổng thanh toán: mm-YYYY' with default 8% sale tax."""
+        self.ensure_one()
+        period = end_date.strftime("%m-%Y")
+        name = _("Tổng thanh toán: %s") % period
+        Product = self.env["product.product"]
+        product = Product.search([
+            ("name", "=", name),
+            ("company_id", "in", [False, self.company_id.id]),
+        ], limit=1)
+        if product:
+            return product
+
+        tax = self.env["account.tax"].search([
+            ("company_id", "=", self.company_id.id),
+            ("type_tax_use", "=", "sale"),
+            ("amount", "=", 8.0),
+            ("amount_type", "=", "percent"),
+            ("active", "=", True),
+        ], limit=1)
+        if not tax:
+            tax = self.env["account.tax"].create({
+                "name": "8%",
+                "amount": 8.0,
+                "amount_type": "percent",
+                "type_tax_use": "sale",
+                "company_id": self.company_id.id,
+            })
+
+        # Prefer income account from a contract line product; else journal default.
+        income_account = False
+        for cl in self.rental_contract_line_ids:
+            variant = cl.product_tmpl_id.product_variant_id
+            if not variant:
+                continue
+            income_account = variant._get_product_accounts().get("income")
+            if income_account:
+                break
+        if not income_account:
+            journal = self.env["account.journal"].search([
+                ("type", "=", "sale"),
+                ("company_id", "=", self.company_id.id),
+            ], limit=1)
+            income_account = journal.default_account_id if journal else False
+
+        vals = {
+            "name": name,
+            "type": "service",
+            "list_price": 0.0,
+            "sale_ok": True,
+            "purchase_ok": False,
+            "company_id": self.company_id.id,
+            "taxes_id": [(6, 0, tax.ids)],
+        }
+        if income_account:
+            vals["property_account_income_id"] = income_account.id
+        return Product.create(vals)
+
+    def _create_rental_invoice_from_hstt_total(
+        self, start_date, end_date, excel_buffer, file_name, subtotal
+    ):
+        """Create out_invoice with a single line matching the HSTT Excel subtotal."""
+        self.ensure_one()
+        partner = self.a_party
+        product = self._get_or_create_hstt_total_product(end_date)
+
+        journal = self.env["account.journal"].search([
+            ("type", "=", "sale"),
+            ("company_id", "=", self.company_id.id),
+        ], limit=1)
+        if not journal:
+            raise UserError(_("No Sale journal found for %s") % self.company_id.display_name)
+
+        fpos = partner.property_account_position_id
+        accounts = product._get_product_accounts()
+        income_account = accounts.get("income") or journal.default_account_id
+        if not income_account:
+            raise UserError(_("No income account set for %s") % product.display_name)
+        if fpos:
+            income_account = fpos.map_account(income_account)
+        taxes = product.taxes_id.filtered(lambda t: t.company_id == self.company_id)
+        if not taxes:
+            taxes = self.env["account.tax"].search([
+                ("company_id", "=", self.company_id.id),
+                ("type_tax_use", "=", "sale"),
+                ("amount", "=", 8.0),
+                ("amount_type", "=", "percent"),
+                ("active", "=", True),
+            ], limit=1)
+        if fpos:
+            taxes = fpos.map_tax(taxes)
+
+        move = self.env["account.move"].create({
+            "rental_start_date": start_date,
+            "rental_end_date": end_date,
+            "move_type": "out_invoice",
+            "partner_id": partner.id,
+            "rental_contract_id": self.id,
+            "invoice_date": fields.Date.context_today(self),
+            "journal_id": journal.id,
+            "invoice_line_ids": [(0, 0, {
+                "product_id": product.id,
+                "name": product.display_name,
+                "quantity": 1,
+                "price_unit": subtotal,
+                "account_id": income_account.id,
+                "tax_ids": [(6, 0, taxes.ids)],
+            })],
+        })
+
+        attachment = self.env["ir.attachment"].create({
+            "name": f"{file_name}.xlsx" if not str(file_name).endswith(".xlsx") else file_name,
+            "res_model": "account.move",
+            "res_id": move.id,
+            "type": "binary",
+            "datas": base64.b64encode(excel_buffer.getvalue()),
+            "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
+        move.business_xlsx_attachment_id = attachment.id
+        return attachment.id
+
+    def action_export_klct_hstt_excel(self, start_date, end_date):
+        """Create volume matrix + invoice (1 line = HSTT total) + download combined XLSX."""
+        self.ensure_one()
+        Matrix = self.env["rental.transport.matrix"]
+        overlap_domain = [
+            ("rental_contract_id", "=", self.id),
+            ("start_date", "<=", end_date),
+            ("end_date", ">=", start_date),
+        ]
+        if Matrix.search_count(overlap_domain):
+            wiz = self.env["rental.transport.matrix.overlap.wizard"].create({
+                "rental_contract_id": self.id,
+            })
+            return {
+                "type": "ir.actions.act_window",
+                "name": _("Trùng khoảng thời gian"),
+                "res_model": "rental.transport.matrix.overlap.wizard",
+                "view_mode": "form",
+                "target": "new",
+                "res_id": wiz.id,
+            }
+
+        Matrix.create({
+            "rental_contract_id": self.id,
+            "start_date": start_date,
+            "end_date": end_date,
+            "name": f"Confirmation table {self.code}: {start_date.strftime('%d/%m/%Y')} → {end_date.strftime('%d/%m/%Y')}",
+        })
+
+        buffer, hstt_subtotal = self._build_klct_hstt_xlsx_buffer(start_date, end_date)
+        filename = f"KLCT-HSTT {end_date.strftime('%m-%Y')} - {self.code}"
+        # Match Excel HSTT footer {{subtotal_before_tax}} = int(round(subtotal)).
+        att_id = self._create_rental_invoice_from_hstt_total(
+            start_date,
+            end_date,
+            excel_buffer=buffer,
+            file_name=filename,
+            subtotal=float(int(round(hstt_subtotal))),
+        )
+        return {
+            "type": "ir.actions.act_url",
+            "url": f"/web/content/{att_id}?download=1",
+            "target": "self",
+        }
 
     def action_open_account_moves(self):
         self.ensure_one()

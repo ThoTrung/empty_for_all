@@ -30,6 +30,7 @@
                         />
                     </header>
                     <field name="code" optional="show"/>
+                    <field name="contract_number" optional="show"/>
                     <field name="contract_date" optional="show"/>
                     <field name="name" optional="hide"/>
                     <field name="status"
@@ -163,6 +164,7 @@
                             <group>
                                 <group>
                                     <field name="contract_date" placeholder="01/01/2025"/>
+                                    <field name="contract_number" placeholder="125 /HĐKT/XDMT – TLP"/>
                                 </group>
                                 <group>
                                     <field name="rental_billing_mode"/>
@@ -214,8 +216,13 @@
                                         <separator string="Công trình" class="text-info text-medium"/>
                                         <field name="construction_work_id" options="{'no_quick_create': True}" readonly="not can_edit"/>
                                         <field name="construction_work_project_id" readonly="1"/>
-                                        <field name="construction_work_address" readonly="1"/>
+                                        <field name="construction_work_address" invisible="1"/>
                                     </group>
+                                    <field name="construction_work_address_ids" readonly="1">
+                                        <tree create="0" delete="0" edit="0">
+                                            <field name="name" string="Địa chỉ công trình"/>
+                                        </tree>
+                                    </field>
                                 </group>
                                 <group>
                                     <field name="note" readonly="not can_edit"/>
@@ -270,14 +277,6 @@
                             </page>
                             <page string="Transports">
                                 <div class="d-flex gap-2 mb-2">
-                                    <button name="%(action_create_invoice_wizard)d"
-                                            type="action"
-                                            string="Export confirmation table for rental volume"
-                                            class="btn-primary"
-                                            context="{
-                                                'date_range_callback': 'action_create_transport_matrix_record',
-                                            }"
-                                    />
                                     <button name="action_open_transport_import_wizard"
                                             type="object"
                                             string="Import từ Excel"
@@ -324,10 +323,10 @@
 <!--                                        />-->
                                         <button name="%(action_create_invoice_wizard)d"
                                                 type="action"
-                                                string="Xuất bảng thanh toán tiền thuê"
+                                                string="Xuất KLCT + HSTT"
                                                 class="btn-success me-2"
                                                 context="{
-                                                    'date_range_callback': 'action_export_invoice_excel',
+                                                    'date_range_callback': 'action_export_klct_hstt_excel',
                                                 }"
                                         />
                                         <button name="%(action_create_invoice_wizard)d"

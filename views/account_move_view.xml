@@ -24,7 +24,7 @@
                         type="object"
                         class="oe_stat_button"
                         icon="fa-download"
-                        string="Tải bảng thanh toán chi tiết"
+                        string="Tải KLCT + HSTT"
                         invisible="business_xlsx_attachment_id==False"
                 >
                   <field name="business_xlsx_attachment_id" widget="statinfo" invisible="1"/>

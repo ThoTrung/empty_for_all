@@ -40,13 +40,12 @@ class RentalTransportImportWizard(models.TransientModel):
         required=True,
         readonly=True,
     )
-    import_file = fields.Binary(string="File Excel", required=True)
+    import_file = fields.Binary(string="File Excel")
     import_filename = fields.Char(string="Tên file")
     default_driver_id = fields.Many2one(
         "res.partner",
         string="Tài xế mặc định",
         domain="[('customer_type', '=', 'driver')]",
-        required=True,
     )
     auto_create_truck = fields.Boolean(
         string="Tự tạo xe nếu chưa có",
@@ -111,6 +110,10 @@ class RentalTransportImportWizard(models.TransientModel):
 
     def action_parse_file(self):
         self.ensure_one()
+        if not self.import_file:
+            raise UserError(_("Vui lòng chọn file Excel."))
+        if not self.default_driver_id:
+            raise UserError(_("Vui lòng chọn tài xế mặc định."))
         parsed = self._parse_uploaded_file()
 
         preview_commands = [(5, 0, 0)]
@@ -165,6 +168,10 @@ class RentalTransportImportWizard(models.TransientModel):
 
     def action_import_transports(self):
         self.ensure_one()
+        if not self.import_file:
+            raise UserError(_("Vui lòng chọn file Excel."))
+        if not self.default_driver_id:
+            raise UserError(_("Vui lòng chọn tài xế mặc định."))
         parsed = self._parse_uploaded_file()
 
         mapping_errors = parsed.get("product_mapping_errors") or []

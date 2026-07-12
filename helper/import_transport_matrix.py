@@ -12,7 +12,10 @@ from openpyxl.utils import get_column_letter
 from odoo import _, fields
 
 from .xlsx_template_utils import (
+    apply_product_column_styles,
+    find_transport_matrix_footer_row,
     find_transport_matrix_layout,
+    lock_product_column_widths,
     replace_placeholders_in_sheet,
     transport_matrix_date_replacements,
 )
@@ -674,52 +677,80 @@ def _build_column_map(ws, header_second_row, header_third_row, product_start_col
     return columns
 
 
-def _contract_product_groups(contract, env):
-    """Build product groups from contract quotation lines (template + variants)."""
+def _variant_sort_key_by_lst_price(info):
+    """Sort key: monthly rental price (lst_price) ascending, then label."""
+    if not isinstance(info, dict):
+        return (0.0, "")
+    label = (info.get("variant_name") or info.get("name") or "").strip()
+    return (float(info.get("lst_price") or 0.0), label.casefold())
+
+
+def _sort_products_by_lst_price(products_odict):
+    items = sorted(products_odict.items(), key=lambda kv: _variant_sort_key_by_lst_price(kv[1]))
+    return OrderedDict(items)
+
+
+def _company_product_groups(contract, env):
+    """Build product groups from all active company templates, ordered by template.order."""
     from odoo.addons.rental.models import rental_transport_matrix as rtm
 
-    product_tmpls = OrderedDict()
-    for line in contract.rental_contract_line_ids:
-        tmpl = line.product_tmpl_id
-        if not tmpl:
-            continue
-        entry = product_tmpls.get(tmpl.id)
-        if not entry:
-            entry = {
-                "product_tmpl_id": tmpl.id,
-                "product_tmpl_name": tmpl.display_name,
-                "products": OrderedDict(),
-            }
-            product_tmpls[tmpl.id] = entry
-        for product in tmpl.product_variant_ids:
-            entry["products"][product.id] = {
-                "id": product.id,
-                "name": product.display_name,
-                "variant_name": product.product_template_variant_value_ids.mapped("name")[:1] or "",
-                "price_multiplier": rtm._variant_price_multiplier(product),
-            }
+    templates = env["product.template"].search(
+        [
+            ("active", "=", True),
+            ("company_id", "=", contract.company_id.id),
+        ],
+        order="order, id",
+    )
 
     groups = []
-    for tmpl_id, p_tmpl in product_tmpls.items():
-        p_tmpl["products"] = rtm._sort_products_odict(OrderedDict(p_tmpl["products"]))
-        prod_order = list(p_tmpl["products"].keys())
-        prods = p_tmpl["products"]
-        needs_md = rtm._group_needs_md_column(env, prods, prod_order)
+    for tmpl in templates:
+        products = OrderedDict()
+        for product in tmpl.product_variant_ids:
+            variant_names = product.product_template_variant_value_ids.mapped("name")
+            products[product.id] = {
+                "id": product.id,
+                "name": product.display_name,
+                "variant_name": variant_names[0] if variant_names else "",
+                "lst_price": product.lst_price or 0.0,
+                "price_multiplier": rtm._variant_price_multiplier(product),
+            }
+        if not products:
+            continue
+        products = _sort_products_by_lst_price(products)
+        prod_order = list(products.keys())
+        needs_md = rtm._group_needs_md_column(env, products, prod_order)
         groups.append({
-            "tmpl_id": tmpl_id,
-            "p_tmpl": p_tmpl,
+            "tmpl_id": tmpl.id,
+            "p_tmpl": {
+                "product_tmpl_id": tmpl.id,
+                "product_tmpl_name": tmpl.display_name,
+                "products": products,
+            },
             "prod_order": prod_order,
             "needs_md": needs_md,
         })
     return groups
 
 
+def _sheet_has_ghi_chu_above(ws, before_row):
+    """True if a «Ghi chú» cell already exists above the data table."""
+    max_row = max(1, (before_row or 1) - 1)
+    for row in ws.iter_rows(min_row=1, max_row=max_row):
+        for cell in row:
+            val = cell.value
+            if isinstance(val, str) and _normalize_key(val).startswith("ghi chú"):
+                return True
+    return False
+
+
 def build_import_template_bytes(contract, env):
     """Generate an empty import template for a rental contract."""
+    from openpyxl.styles import Font, PatternFill
+
     try:
         data, _source = env["rental.template"].sudo().get_template_bytes(
             contract.company_id,
-            "transport_matrix_xlsx",
+            "transport_import_xlsx",
         )
         wb = load_workbook(BytesIO(data))
         ws = wb.active
@@ -750,8 +781,19 @@ def build_import_template_bytes(contract, env):
     ws.cell(header_second_row - 1, 2).value = "Ngày tháng"
     ws.cell(header_second_row - 1, 3).value = "Biển số xe"
 
-    groups = _contract_product_groups(contract, env)
-    cur_col = _DEFAULT_PRODUCT_START_COL
+    groups = _company_product_groups(contract, env)
+    start_product_col = _DEFAULT_PRODUCT_START_COL
+    cur_col = start_product_col
+    md_cols = []
+    md_fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+
+    # Clear template merges in the product area so we can rebuild for any width.
+    for rng in list(ws.merged_cells.ranges):
+        if rng.min_row == title_row and rng.min_col >= start_product_col:
+            ws.unmerge_cells(str(rng))
+        elif rng.min_row in (header_second_row, header_third_row) and rng.min_col >= start_product_col:
+            ws.unmerge_cells(str(rng))
+
     for group in groups:
         p_tmpl = group["p_tmpl"]
         if group["needs_md"] and len(group["prod_order"]) > 1:
@@ -769,7 +811,9 @@ def build_import_template_bytes(contract, env):
                 label = prod.get("variant_name") or prod.get("name")
                 ws.cell(header_third_row, cur_col + offset).value = label
                 offset += 1
-            ws.cell(header_third_row, cur_col + offset).value = "Tổng MD"
+            md_col = cur_col + offset
+            ws.cell(header_third_row, md_col).value = "Tổng MD"
+            md_cols.append(md_col)
             cur_col += span
         else:
             prod_id = group["prod_order"][0]
@@ -783,12 +827,54 @@ def build_import_template_bytes(contract, env):
             ws.cell(header_second_row, cur_col).value = prod["name"]
             cur_col += 1
 
+    last_product_col = cur_col - 1
+    if last_product_col >= start_product_col:
+        ws.merge_cells(
+            start_row=title_row,
+            start_column=start_product_col,
+            end_row=title_row,
+            end_column=last_product_col,
+        )
+        footer_row = find_transport_matrix_footer_row(ws, min_row=data_start_row)
+        data_end_row = (
+            (footer_row - 1) if footer_row and footer_row > data_start_row else data_start_row + 2
+        )
+        apply_product_column_styles(
+            ws,
+            start_col=start_product_col,
+            last_col=last_product_col,
+            header_rows=[title_row, header_second_row, header_third_row],
+            ref_col=start_product_col,
+            data_start_row=data_start_row,
+            data_end_row=data_end_row,
+            header_wrap=True,
+        )
+        lock_product_column_widths(ws, start_product_col, last_product_col, ref_col=start_product_col)
+
+        def _md_bold_font(cell):
+            base = cell.font
+            return Font(name=base.name, size=base.size, bold=True, italic=base.italic, color=base.color)
+
+        for mcol in md_cols:
+            header_cell = ws.cell(header_third_row, mcol)
+            header_cell.value = "Tổng MD"
+            header_cell.fill = md_fill
+            header_cell.font = _md_bold_font(header_cell)
+            for r in range(data_start_row, data_end_row + 1):
+                ws.cell(r, mcol).fill = md_fill
+
     ws.cell(data_start_row, 1).value = 1
     ws.cell(data_start_row, 2).value = "dd/mm/yyyy"
     ws.cell(data_start_row, 3).value = "29H-00000"
-    ws.cell(data_start_row + 1, 2).value = _(
+    note_text = _(
         "Ghi chú: số lượng dương = xuất (giao), số âm = nhập (trả). Cột C = biển số xe."
     )
+    if not _sheet_has_ghi_chu_above(ws, data_start_row):
+        # Never write into the data area (compact shell uses early rows for trips).
+        if title_row > 1 and not _normalize_text(ws.cell(title_row - 1, 1).value):
+            ws.cell(title_row - 1, 1).value = note_text
+        elif title_row > 1 and not _normalize_text(ws.cell(title_row - 1, 2).value):
+            ws.cell(title_row - 1, 2).value = note_text
 
     buffer = BytesIO()
     wb.save(buffer)

@@ -4,6 +4,7 @@ from odoo import models, fields, api, _
 
 class ProductTemplate(models.Model):
     _inherit = "product.template"
+    _order = "order, id"
 
     detailed_type = fields.Selection(default="product")
 
@@ -31,6 +32,12 @@ class ProductTemplate(models.Model):
         default=lambda self: self.env.company,  # default current company
         index=True,
         ondelete='restrict',
+    )
+
+    order = fields.Integer(
+        string="Thứ tự",
+        default=10,
+        help="Thứ tự cột khi xuất biểu mẫu bảng khối lượng (import Excel).",
     )
 
     def _recompute_variant_extras_from_multipliers(self):

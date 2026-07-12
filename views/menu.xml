@@ -25,11 +25,16 @@
               action="action_move_out_invoice_and_refund_type"
               parent="menu_contract_master"
               sequence="3"/>
-    <menuitem name="Construction work"
+    <menuitem name="Gói thầu / Công trình"
               id="menu_construction_work"
               action="action_construction_work"
               parent="menu_contract_master"
               sequence="5"/>
+    <menuitem name="Địa chỉ công trình"
+              id="menu_construction_address"
+              action="action_construction_address"
+              parent="menu_contract_master"
+              sequence="6"/>
 
     <menuitem id="menu_stock_master"
               name="Stock"

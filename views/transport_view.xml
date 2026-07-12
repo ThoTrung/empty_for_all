@@ -144,7 +144,7 @@
                             <!-- <field name="construction_work_id" readonly="state in ['done', 'cancel']"/> -->
                             <field name="construction_work_id" readonly="1"/>
                             <field name="construction_work_project_id" readonly="1"/>
-                            <field name="construction_work_address" readonly="1"/>
+                            <field name="construction_work_address" readonly="1" widget="text"/>
                             <field name="equipment_carrier" readonly="state in ['done', 'cancel']"/>
                             <field name="equipment_carrier_name"/>
                             <field name="vehicle_start_time" readonly="state in ['done', 'cancel']" placeholder="11/02/2025 07:00:00"/>

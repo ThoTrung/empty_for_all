@@ -20,8 +20,12 @@
                     <group>
                             <field name="name" />
                             <field name="project_id" options="{'no_create': False}"/>
-                            <field name="address_ids" widget="many2many_tags" options="{'no_create': False}"/>
                     </group>
+                    <field name="address_ids" string="Địa chỉ công trình" options="{'no_create': False}">
+                        <tree>
+                            <field name="name"/>
+                        </tree>
+                    </field>
                 </sheet>
             </form>
         </field>
@@ -29,7 +33,7 @@
 
     <!-- Action & Menu -->
     <record id="action_construction_work" model="ir.actions.act_window">
-        <field name="name">Construction work</field>
+        <field name="name">Gói thầu / Công trình</field>
         <field name="res_model">construction.work</field>
         <field name="view_mode">tree,form</field>
     </record>

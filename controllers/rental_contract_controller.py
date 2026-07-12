@@ -118,7 +118,8 @@ class RentalContractController(http.Controller):
         output.seek(0)
 
         # Prepare response
-        filename = f"Hợp đồng_{contract.name}.docx"
+        label = contract.contract_number or contract.code
+        filename = f"Hợp đồng_{label}.docx"
         filename_ascii = quote(filename)  # URL-encode UTF-8 string
         headers = [
             ('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
@@ -170,7 +171,8 @@ class RentalContractController(http.Controller):
             with open(output_pdf_path, 'rb') as pdf_file:
                 pdf_data = pdf_file.read()
 
-        filename = f"Hợp đồng_{contract.name}.pdf"
+        label = contract.contract_number or contract.code
+        filename = f"Hợp đồng_{label}.pdf"
         filename_ascii = quote(filename)  # URL-encode UTF-8 string
         headers = [
             ('Content-Type', 'application/pdf'),

@@ -34,7 +34,7 @@ class AccountMove(models.Model):
     )
 
     def action_download_business_xlsx(self):
-        """Regenerate payment table from current company template, then download."""
+        """Regenerate KLCT+HSTT workbook (2 sheets) from current templates, then download."""
         self.ensure_one()
         if not (
             self.rental_contract_id
@@ -53,12 +53,14 @@ class AccountMove(models.Model):
                 "url": f"/web/content/{att.id}?download=1",
                 "target": "self",
             }
-        buffer = self.rental_contract_id._build_rental_payment_xlsx_buffer(
+        buffer, _subtotal = self.rental_contract_id._build_klct_hstt_xlsx_buffer(
             self.rental_start_date,
             self.rental_end_date,
         )
         contract = self.rental_contract_id
-        filename = f"HSTT {self.rental_end_date.strftime('%m-%Y')} - {contract.code}.xlsx"
+        filename = (
+            f"KLCT-HSTT {self.rental_end_date.strftime('%m-%Y')} - {contract.code}.xlsx"
+        )
         if self.business_xlsx_attachment_id:
             self.business_xlsx_attachment_id.write(
                 {

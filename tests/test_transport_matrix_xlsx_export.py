@@ -124,3 +124,30 @@ class TestTransportMatrixXlsxExport(TransactionCase):
         dim = ws.column_dimensions[get_column_letter(4)]
         self.assertTrue(dim.width)
         self.assertFalse(dim.bestFit)
+
+    def test_data_rows_have_no_product_column_merges(self):
+        """Inserted/cloned template rows must not keep horizontal merges on qty cols."""
+        start_date = date(2026, 6, 1)
+        end_date = date(2026, 6, 30)
+        # Enough trips to force insert_rows_below (template data area is small).
+        for day, qty in ((2, 10), (5, 20), (8, 30), (12, 40), (15, 50), (20, 60)):
+            self._create_transport(date(2026, 6, day), qty)
+        # Opening balance row as well.
+        self._create_transport(date(2026, 5, 20), 100)
+
+        wb, _data = self._export_workbook(start_date, end_date)
+        ws = wb.active
+        _title, _h2, _h3, start_row = find_transport_matrix_layout(ws)
+        # opening + 6 transports + total
+        data_end = start_row + 7
+        for rng in list(ws.merged_cells.ranges):
+            if rng.min_row < start_row or rng.min_row > data_end:
+                continue
+            if rng.min_row != rng.max_row:
+                continue
+            # Only B:C label merges are allowed on data/total rows.
+            if rng.min_col >= 4 or rng.max_col >= 4:
+                self.fail(
+                    "Unexpected product-column merge %s on data row %s"
+                    % (rng, rng.min_row)
+                )

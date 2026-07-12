@@ -5,6 +5,12 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_tree_view"/>
         <field name="arch" type="xml">
+            <xpath expr="//tree" position="attributes">
+                <attribute name="default_order">order, id</attribute>
+            </xpath>
+            <xpath expr="//field[@name='priority']" position="before">
+                <field name="order" widget="handle"/>
+            </xpath>
             <xpath expr="//tree" position="inside">
                 <field name="use_variant_multiplier"/>
                 <field name="compensation_price"/>
@@ -39,6 +45,7 @@
                 <attribute name="string">Giá thuê theo tháng</attribute>
             </xpath>
             <xpath expr="//field[@name='list_price']" position="after">
+                <field name="order"/>
                 <label for="rental_price_day" string="Giá thuê theo ngày"/>
                 <field name="rental_price_day" widget="monetary"/>
                 <label for="compensation_price"/>
@@ -99,13 +106,22 @@
             <xpath expr="//sheet/notebook" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
+            <!-- Hide standard default_code (after categ_id in notebook); show under uom_id below -->
+            <xpath expr="//field[@name='default_code']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='barcode']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <group string="Product detail">
                     <group>
                         <field name="categ_id"/>
                         <field name="uom_id" domain="[('category_id.name','=','tbxd')]"/>  # Remember to create uom in inventory setting with category name is: tbxd - (thiết bị xây dựng)
+                        <field name="default_code"/>
                     </group>
                     <group>
+                        <field name="order"/>
                         <field name="list_price" string="Giá thuê theo tháng" placeholder="1.000.000"/>
                         <field name="rental_price_day" string="Giá thuê theo ngày" placeholder="1.000.000"/>
                         <field name="compensation_price" placeholder="1.000.000"/>
@@ -128,16 +144,6 @@
                     to the loss of their possible customizations.
                 </p>
             </xpath>
-
-
-<!--            <xpath expr="//field[@name='default_code']" position="attributes">-->
-<!--                <attribute name="invisible">1</attribute>-->
-<!--            </xpath>-->
-
-<!--            &lt;!&ndash; Hide Barcode &ndash;&gt;-->
-<!--            <xpath expr="//field[@name='barcode']" position="attributes">-->
-<!--                <attribute name="invisible">1</attribute>-->
-<!--            </xpath>-->
         </field>
     </record>
 

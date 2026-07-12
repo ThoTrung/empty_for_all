@@ -6,3 +6,5 @@ from . import test_amount_to_text_vi
 from . import test_transport_import
 from . import test_transport_matrix_xlsx_export
 from . import test_rental_billing_scenarios
+from . import test_klct_hstt_combined_export
+from . import test_construction_work_address
