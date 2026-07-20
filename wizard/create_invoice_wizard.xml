@@ -9,6 +9,8 @@
                         <group>
                             <field name="start_date" placehodle=""/>
                             <field name="end_date" placehodle=""/>
+                            <field name="transport_fee_until_date"
+                                   placeholder="Trống = không tính phí VC"/>
                         </group>
                     </group>
                     <footer>

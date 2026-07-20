@@ -64,7 +64,16 @@ class RentalTemplate(models.Model):
         help="Cùng công ty và loại mẫu: chỉ nên có một bản ghi được đánh dấu mặc định. "
              "Khi tải file, hệ thống ưu tiên bản mặc định.",
     )
+    data_start_row = fields.Integer(
+        string="Dòng bắt đầu dữ liệu",
+        default=13,
+        help="Chỉ dùng cho Bảng thanh toán tiền thuê (XLSX). "
+             "Dòng Excel đầu tiên ghi dòng tính tiền (cột B–I); header thường ở dòng liền trước. "
+             "Mẫu mặc định module: 13. Mẫu có dòng xác nhận + header riêng: thường 15.",
+    )
     active = fields.Boolean(default=True)
+
+    _DATA_START_ROW_DEFAULT = 13
 
     @api.depends("template_type")
     def _compute_template_usage(self):
@@ -85,6 +94,16 @@ class RentalTemplate(models.Model):
         for rec in self:
             if not rec.file_data:
                 raise ValidationError(_("Bạn phải tải lên file mẫu."))
+
+    @api.constrains("data_start_row", "template_type")
+    def _check_data_start_row(self):
+        for rec in self:
+            if rec.template_type != "rental_invoice_xlsx":
+                continue
+            if not rec.data_start_row or rec.data_start_row < 2:
+                raise ValidationError(
+                    _("Dòng bắt đầu dữ liệu phải là số nguyên ≥ 2 (thường 13 hoặc 15).")
+                )
 
     @api.constrains("is_default", "company_id", "template_type", "active")
     def _check_single_default_per_type(self):
@@ -174,6 +193,20 @@ class RentalTemplate(models.Model):
             )
         with open(template_path, "rb") as f:
             return f.read(), "static"
+
+    @api.model
+    def get_rental_invoice_xlsx(self, company):
+        """Bytes + data start row for HSTT / bảng thanh toán XLSX.
+
+        Returns (data, data_start_row). When no company upload exists, falls back to
+        the module static file and the historic default row 13.
+        """
+        template = self._resolve_active_template(company, "rental_invoice_xlsx")
+        data, _source = self.get_template_bytes(company, "rental_invoice_xlsx")
+        start_row = template.data_start_row if template else self._DATA_START_ROW_DEFAULT
+        if not start_row or start_row < 2:
+            start_row = self._DATA_START_ROW_DEFAULT
+        return data, start_row
 
     @api.model
     def get_template_stream(self, company, template_type):

@@ -1,3 +1,5 @@
+import inspect
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
@@ -7,6 +9,11 @@ class CreateInvoiceWizard(models.TransientModel):
 
     start_date = fields.Date(string='Start date')
     end_date = fields.Date(string='End date')
+    transport_fee_until_date = fields.Date(
+        string='Tính phí vận chuyển đến ngày',
+        help='Lấy phí VC chưa tính của phiếu có ngày bắt đầu tính tiền ≤ ngày này. '
+             'Trống = không tính phí vận chuyển kỳ này.',
+    )
 
     _ALLOWED_CALLBACKS = {
         'rental.contract': {
@@ -20,6 +27,11 @@ class CreateInvoiceWizard(models.TransientModel):
         # Add more models/methods that accept (start_date, end_date)
         # 'your.model': {'your_method'},
     }
+
+    @api.onchange('end_date')
+    def _onchange_end_date_transport_fee_until(self):
+        if self.end_date and not self.transport_fee_until_date:
+            self.transport_fee_until_date = self.end_date
 
     def _get_target_records_and_method(self):
         """Resolve records and the callback method from context safely."""
@@ -60,7 +72,15 @@ class CreateInvoiceWizard(models.TransientModel):
         # Call on each record (so per-record side effects/messages are handled)
 
         for rec in recs:
-            action = getattr(rec, method_name)(self.start_date, self.end_date)
+            method = getattr(rec, method_name)
+            kwargs = {}
+            try:
+                params = inspect.signature(method).parameters
+            except (TypeError, ValueError):
+                params = {}
+            if 'transport_fee_until_date' in params:
+                kwargs['transport_fee_until_date'] = self.transport_fee_until_date
+            action = method(self.start_date, self.end_date, **kwargs)
             if action.get("type") == "ir.actions.act_url":
                 action = {**action, "target": "new"}
                 url = action.get("url")

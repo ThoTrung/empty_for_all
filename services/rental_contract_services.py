@@ -198,6 +198,25 @@ def _minimum_rental_months(contract, product):
     return contract.minimum_rental_months or 0
 
 
+def _transport_lines_for_billing(env, contract, as_of_date, extra_domain=None):
+    """Return official transport lines used by billing and rented-quantity reports.
+
+    Only completed transports are operational facts. Draft or cancelled transports
+    must not change invoices, payment tables, or as-of rented quantities.
+    """
+    domain = [
+        ("transport_id", "in", contract.rr_transport_ids.ids),
+        ("transport_id.state", "=", "done"),
+        ("start_rental_or_return_date", "<=", as_of_date),
+    ]
+    if extra_domain:
+        domain.extend(extra_domain)
+    return env["rr.transport.line"].search(
+        domain,
+        order="start_rental_or_return_date ASC, id ASC",
+    )
+
+
 def _build_billing_events(env, contract, as_of_date):
     """Quy đổi các phiếu xuất/nhập thành các "sự kiện tính tiền" có dấu.
 
@@ -209,13 +228,7 @@ def _build_billing_events(env, contract, as_of_date):
 
     Trả về list dict: {product, product_id, date, qty(signed)}.
     """
-    transport_lines = env["rr.transport.line"].search(
-        [
-            ("transport_id", "in", contract.rr_transport_ids.ids),
-            ("start_rental_or_return_date", "<=", as_of_date),
-        ],
-        order="start_rental_or_return_date ASC, id ASC",
-    )
+    transport_lines = _transport_lines_for_billing(env, contract, as_of_date)
     open_lots = defaultdict(list)  # product_id -> list of [deliver_date, qty_remaining, min_end]
     events = []
     for line in transport_lines:
@@ -336,13 +349,7 @@ def _build_map_upfront(env, contract, start_date, end_date):
     - SL đã trả ở kỳ trước: đã được tính đủ ở tháng trả → bỏ qua.
     """
     map_product_id_2_ratio_price = contract_line_ratios_by_template(contract, end_date)
-    transport_lines = env["rr.transport.line"].search(
-        [
-            ("transport_id", "in", contract.rr_transport_ids.ids),
-            ("start_rental_or_return_date", "<=", end_date),
-        ],
-        order="start_rental_or_return_date ASC, id ASC",
-    )
+    transport_lines = _transport_lines_for_billing(env, contract, end_date)
     # Mô phỏng lô theo từng sản phẩm (khớp trả LIFO, lô mới nhất trước).
     lots_by_product = defaultdict(list)  # pid -> list lot dict {d, qty, returns:[(r, q)], open}
     open_stack = defaultdict(list)       # pid -> LIFO các lô còn mở
@@ -531,13 +538,11 @@ def _pooled_return_lines_for_template(env, contract, tmpl, start_date, end_date,
     (số cây = mét/hệ_số) với ngày giao = ngày của lô (có thể là lô của biến thể khác).
     """
     min_months = _minimum_rental_months(contract, tmpl.product_variant_ids[:1])
-    lines = env["rr.transport.line"].search(
-        [
-            ("transport_id", "in", contract.rr_transport_ids.ids),
-            ("product_tmpl_id", "=", tmpl.id),
-            ("start_rental_or_return_date", "<=", end_date),
-        ],
-        order="start_rental_or_return_date ASC, id ASC",
+    lines = _transport_lines_for_billing(
+        env,
+        contract,
+        end_date,
+        extra_domain=[("product_tmpl_id", "=", tmpl.id)],
     )
     EPS = 1e-9
     slots = []  # list of [deliver_date, meters_open, min_end_lastday]
@@ -818,13 +823,7 @@ def _excess_info_by_template(env, contract, start_date, end_date):
     from odoo.addons.rental.models.rental_transport_matrix import _linear_meter_factor_for_product
 
     Product = env["product.product"]
-    lines = env["rr.transport.line"].search(
-        [
-            ("transport_id", "in", contract.rr_transport_ids.ids),
-            ("start_rental_or_return_date", "<=", end_date),
-        ],
-        order="start_rental_or_return_date ASC, id ASC",
-    )
+    lines = _transport_lines_for_billing(env, contract, end_date)
     pool = defaultdict(float)
     excess_returns = []  # (date, pid, qty)
     for line in lines:
@@ -1051,6 +1050,59 @@ def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
             "excess_qty": exc["on_hand"],
         })
     return blocks
+
+
+def calc_rented_qty_as_of(
+    env,
+    as_of_date,
+    *,
+    contract_ids=None,
+    partner_company_ids=None,
+    tmpl_ids=None,
+    only_active_contracts=False,
+):
+    """Calculate official rented quantities at the end of ``as_of_date``.
+
+    The result stays contract-granular so users can reconcile each balance with
+    its transport history. UI totals provide the customer-wide roll-up.
+    """
+    if not as_of_date:
+        raise ValueError("as_of_date is required")
+
+    domain = [("company_id", "in", env.companies.ids)]
+    if contract_ids is not None:
+        domain.append(("id", "in", list(contract_ids)))
+    if partner_company_ids is not None:
+        domain.append(("a_company_party", "in", list(partner_company_ids)))
+    if only_active_contracts:
+        domain.append(("status", "=", "active"))
+
+    contracts = env["rental.contract"].search(domain, order="a_company_party, code, id")
+    wanted_tmpl_ids = set(tmpl_ids or [])
+    rows = []
+    for contract in contracts:
+        blocks = calc_rental_payment_blocks_by_template(
+            env, contract, as_of_date, as_of_date
+        )
+        for block in blocks:
+            tmpl_id = block["tmpl_id"]
+            if wanted_tmpl_ids and tmpl_id not in wanted_tmpl_ids:
+                continue
+            rented_qty = max(block["present_total_qty"] or 0.0, 0.0)
+            excess_qty = max(block["excess_qty"] or 0.0, 0.0)
+            if not rented_qty and not excess_qty:
+                continue
+            rows.append({
+                "contract_id": contract.id,
+                "partner_company_id": contract.a_company_party.id,
+                "tmpl_id": tmpl_id,
+                "product_name": block["product_name"],
+                "uom_name": block["uom_name"],
+                "rented_qty": rented_qty,
+                "excess_qty": excess_qty,
+                "physical_qty": rented_qty + excess_qty,
+            })
+    return rows
 
 
 def calc_rental_contract_invoice(env, contract, start_date, end_date):

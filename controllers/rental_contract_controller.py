@@ -24,17 +24,26 @@ import io
 
 
 class RentalContractController(http.Controller):
+    def _get_accessible_contract(self, contract_id):
+        """Browse contract via sudo, then enforce company membership (AGENTS.md)."""
+        contract = request.env['rental.contract'].sudo().browse(contract_id)
+        if not contract.exists():
+            return None
+        if contract.company_id not in request.env.companies:
+            return None
+        return contract
+
     @http.route('/rental/rental-contract/quotation/<int:contract_id>/download', type='http', auth='user')
     def download_quotation_xlsx(self, contract_id):
         """Generate Excel file based on template"""
-        contract = request.env['rental.contract'].sudo().browse(contract_id)
-        if not contract.exists():
-            return request.not_found()
-
         user = request.env.user
         is_internal = user.has_group('base.group_user')
         if not is_internal:
             return request.redirect('/my')
+
+        contract = self._get_accessible_contract(contract_id)
+        if not contract:
+            return request.not_found()
 
         data, _source = request.env["rental.template"].sudo().get_template_bytes(
             contract.company_id,
@@ -42,22 +51,7 @@ class RentalContractController(http.Controller):
         )
         wb = load_workbook(io.BytesIO(data))
         ws = wb.active
-        # --- Replace placeholders ---
-        replacements = {
-            '{{b_company}}': contract.b_party.parent_id.name or '',
-            '{{b_address}}': contract.b_address or '',
-            '{{b_representative}}': contract.b_name or '',
-            '{{b_phone}}': contract.b_phone or '',
-            '{{b_email}}': contract.b_party.email or '',
-            '{{today_is}}': date.today().strftime('ngày %d tháng %m năm %Y'),
-
-            '{{a_representative}}': contract.a_name or '',
-            '{{a_company}}': contract.a_party.parent_id.name or '',
-
-            '{{construction_work_project}}': contract.construction_work_project_id.name or '',
-            '{{construction_work_name}}': contract.construction_work_id.name or '',
-            '{{construction_work_address}}': contract.construction_work_address or '',
-        }
+        replacements = contract._quotation_xlsx_placeholder_replacements()
 
         for row in ws.iter_rows():
             for cell in row:
@@ -66,22 +60,21 @@ class RentalContractController(http.Controller):
                         if key in cell.value:
                             cell.value = cell.value.replace(key, val)
 
-        # --- Find item table and duplicate rows ---
+        # price_unit on contract line = monthly rate (DEC-11); day column = month / 30
         start_row = 12  # example: first line template
         max_row = 100
         n = len(contract.rental_contract_line_ids)
-        # for row_num in reversed(range(start_row + n, start_row + max_row)):
-        #     ws.delete_rows(row_num)
-        #     del ws.row_dimensions[row_num]
         for i, line in enumerate(contract.rental_contract_line_ids):
             r = start_row + i
+            monthly = line.price_unit or 0.0
+            compensation = line.compensation_price or line.product_tmpl_id.compensation_price or 0.0
             ws.cell(r, 1).value = i + 1
             ws.cell(r, 2).value = line.product_tmpl_id.display_name
             ws.cell(r, 3).value = line.uom_id.name
             ws.cell(r, 4).value = 1
-            ws.cell(r, 5).value = line.price_unit * 30
-            ws.cell(r, 6).value = line.price_unit * 1
-            ws.cell(r, 7).value = line.product_tmpl_id.compensation_price
+            ws.cell(r, 5).value = monthly
+            ws.cell(r, 6).value = monthly / 30.0
+            ws.cell(r, 7).value = compensation
 
         for r in range(start_row + n, start_row + max_row):
             ws.row_dimensions[r].hidden = True
@@ -101,14 +94,14 @@ class RentalContractController(http.Controller):
 
     @http.route('/rental/rental-contract/contract/<int:contract_id>/download', type='http', auth='user')
     def download_rental_contract_docx(self, contract_id):
-        contract = request.env['rental.contract'].sudo().browse(contract_id)
-        if not contract.exists():
-            return request.not_found()
-
         user = request.env.user
         is_internal = user.has_group('base.group_user')
         if not is_internal:
             return request.redirect('/my')
+
+        contract = self._get_accessible_contract(contract_id)
+        if not contract:
+            return request.not_found()
 
         doc = rcs.render_rental_contract_docx(contract)
 
@@ -130,14 +123,14 @@ class RentalContractController(http.Controller):
 
     @http.route('/rental/rental-contract/contract/<int:contract_id>/print', type='http', auth='user')
     def print_rental_contract_docx(self, contract_id):
-        contract = request.env['rental.contract'].sudo().browse(contract_id)
-        if not contract.exists():
-            return request.not_found()
-
         user = request.env.user
         is_internal = user.has_group('base.group_user')
         if not is_internal:
             return request.redirect('/my')
+
+        contract = self._get_accessible_contract(contract_id)
+        if not contract:
+            return request.not_found()
 
         doc = rcs.render_rental_contract_docx(contract)
 
@@ -186,14 +179,14 @@ class RentalContractController(http.Controller):
     def download_rental_contract_transport_matrix_xlsx(self, contract_id, **kw):
         start_date = fields.Date.from_string(kw.get('start_date'))
         end_date = fields.Date.from_string(kw.get('end_date'))
-        contract = request.env['rental.contract'].sudo().browse(contract_id)
-        if not contract.exists():
-            return request.not_found()
-
         user = request.env.user
         is_internal = user.has_group('base.group_user')
         if not is_internal:
             return request.redirect('/my')
+
+        contract = self._get_accessible_contract(contract_id)
+        if not contract:
+            return request.not_found()
 
         xlsx_bytes = build_transport_matrix_xlsx_bytes(
             request.env, contract, start_date, end_date,
@@ -215,6 +208,8 @@ class RentalContractController(http.Controller):
         matrix = request.env['rental.transport.matrix'].sudo().browse(matrix_id)
         if not matrix.exists():
             return request.not_found()
+        if matrix.rental_contract_id.company_id not in request.env.companies:
+            return request.not_found()
 
         user = request.env.user
         is_internal = user.has_group('base.group_user')
@@ -234,13 +229,13 @@ class RentalContractController(http.Controller):
         auth='user',
     )
     def download_transport_import_template_xlsx(self, contract_id, **kw):
-        contract = request.env['rental.contract'].browse(contract_id)
-        if not contract.exists():
-            return request.not_found()
-
         user = request.env.user
         if not user.has_group('rental.group_rental_staff'):
             return request.redirect('/my')
+
+        contract = self._get_accessible_contract(contract_id)
+        if not contract:
+            return request.not_found()
 
         buffer = io.BytesIO(build_import_template_bytes(contract, request.env))
         buffer.seek(0)

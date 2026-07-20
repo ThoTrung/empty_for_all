@@ -40,6 +40,7 @@
         <field name="rental_contract_id" options="{'no_create_edit': True}" readonly="1"/>
         <field name="rental_start_date" readonly="1"/>
         <field name="rental_end_date" readonly="1"/>
+        <field name="transport_fee_until_date" readonly="1" invisible="not rental_contract_id"/>
         <field name="rental_billing_mode" readonly="1" invisible="not rental_contract_id"/>
         <field name="rental_billing_explanation"
                readonly="1"

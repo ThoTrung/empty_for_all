@@ -26,9 +26,11 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
     Metadata keys used by the combined KLCT+HSTT export:
     - sheet_title
     - opening_row (or None)
+    - opening_qty_by_tmpl_id: opening quantity represented by each HSTT qty column
     - total_row
     - qty_col_by_tmpl_id: template → product col or Tổng MD col
     - data_rows_by_date: date → [row, ...] (multiple trips same day)
+    - data_rows_by_date_and_direction: date → direction → [row, ...]
     """
     rr_transport_ids = contract.rr_transport_ids.filtered_domain([
         ('start_rental_or_return_date', '>=', start_date),
@@ -45,7 +47,10 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
                 if not line.product_id:
                     continue
                 key = (line.product_tmpl_id.id, line.product_id.id)
-                cell_qty[key] = cell_qty.get(key, 0) + (line.qty or 0)
+                cell_qty[key] = (
+                    cell_qty.get(key, 0)
+                    + rtm._signed_transport_line_qty(line)
+                )
         return cell_qty
 
     opening_cells = _cells_from_transports(rr_transport_ids_before)
@@ -108,13 +113,7 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
             col_idx += 1
     last_product_col = col_idx - 1
 
-    total_cells = dict(opening_cells)
-    for transport in rr_transport_ids:
-        for line in transport.transport_line_ids:
-            if not line.product_id:
-                continue
-            key = (line.product_tmpl_id.id, line.product_id.id)
-            total_cells[key] = total_cells.get(key, 0) + (line.qty or 0)
+    total_cells = _cells_from_transports(rr_transport_ids_before | rr_transport_ids)
 
     if wb is None:
         data, _source = env["rental.template"].sudo().get_template_bytes(
@@ -237,6 +236,7 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
     row_idx = 0
     opening_row = None
     data_rows_by_date = defaultdict(list)
+    data_rows_by_date_and_direction = defaultdict(lambda: defaultdict(list))
 
     if has_opening:
         r = start_row + row_idx
@@ -265,7 +265,14 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
                 ws.cell(r, col).value = qty
         _write_md_cells(r, cell_row)
         if transport.start_rental_or_return_date:
-            data_rows_by_date[transport.start_rental_or_return_date].append(r)
+            transport_date = transport.start_rental_or_return_date
+            direction = (
+                "return"
+                if transport.type in ("return", "compensation")
+                else "delivery"
+            )
+            data_rows_by_date[transport_date].append(r)
+            data_rows_by_date_and_direction[transport_date][direction].append(r)
         row_idx += 1
 
     r_total = start_row + row_idx
@@ -322,12 +329,31 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
         total_row=r_total,
     )
 
+    opening_qty_by_tmpl_id = {}
+    for g in groups_meta:
+        tmpl_id = g["tmpl_id"]
+        if g["needs_md"]:
+            opening_qty_by_tmpl_id[tmpl_id] = _xlsx_md_sum(
+                opening_cells, tmpl_id, g["p_tmpl"]
+            )
+        else:
+            prod_id = g["prod_order"][0]
+            opening_qty_by_tmpl_id[tmpl_id] = opening_cells.get(
+                (tmpl_id, prod_id), 0
+            ) or 0
+
     meta = {
         "sheet_title": ws.title,
         "opening_row": opening_row,
+        "opening_qty_by_tmpl_id": opening_qty_by_tmpl_id,
         "total_row": r_total,
         "qty_col_by_tmpl_id": qty_col_by_tmpl_id,
         "data_rows_by_date": dict(data_rows_by_date),
+        "data_rows_by_date_and_direction": {
+            transport_date: dict(rows_by_direction)
+            for transport_date, rows_by_direction
+            in data_rows_by_date_and_direction.items()
+        },
     }
     return wb, meta
 

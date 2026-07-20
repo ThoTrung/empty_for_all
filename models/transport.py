@@ -108,6 +108,20 @@ class Transport(models.Model):
     vehicle_start_time = fields.Datetime(string="Vehicle start time", required=True, default=date.today(), tracking=10)
     vehicle_arrival_time = fields.Datetime(string="Vehicle arrival time", tracking=11)
     fee = fields.Float(string="Transport Fee", default=0, tracking=12)
+    fee_billed_date = fields.Date(
+        string="Ngày tính phí VC (HSTT)",
+        tracking=True,
+        help="Trống = chưa đưa phí vận chuyển vào bảng thanh toán. "
+             "Có giá trị = đã tính (tự gán khi xuất KLCT+HSTT, hoặc nhập tay cho dữ liệu cũ).",
+    )
+    fee_invoice_id = fields.Many2one(
+        "account.move",
+        string="Hóa đơn đã tính phí VC",
+        copy=False,
+        tracking=True,
+        ondelete="set null",
+        help="Hóa đơn đã gồm phí vận chuyển này. Xóa để cho phép tính lại kỳ sau.",
+    )
     external_invoice_code = fields.Char(
         string="Mã hóa đơn ngoài",
         tracking=12,

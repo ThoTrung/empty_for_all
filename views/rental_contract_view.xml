@@ -60,6 +60,16 @@
                 <form class="o_rental_contract_form">
                     <header>
                         <field name="status" widget="statusbar"/>
+                        <button name="%(action_rental_rented_qty_wizard)d"
+                                string="SL đang thuê tại ngày..."
+                                type="action"
+                                class="btn-secondary"
+                                groups="rental.group_rental_staff"
+                                context="{
+                                    'default_rental_contract_id': id,
+                                    'default_partner_company_id': a_company_party,
+                                    'default_only_active_contracts': False,
+                                }"/>
                         <button
                                 name="action_download_rental_contract"
                                 string="Download rental contract"
@@ -165,12 +175,14 @@
                                 <group>
                                     <field name="contract_date" placeholder="01/01/2025"/>
                                     <field name="contract_number" placeholder="125 /HĐKT/XDMT – TLP"/>
+                                    <field name="prices_include_tax"/>
                                 </group>
                                 <group>
                                     <field name="rental_billing_mode"/>
                                     <field name="monthly_day_basis" invisible="rental_billing_mode != 'month'"/>
                                     <field name="minimum_rental_billing_mode"/>
                                     <field name="minimum_rental_months"/>
+                                    <field name="transport_fee_share_min_months"/>
                                 </group>
                             </group>
                         </div>
@@ -228,17 +240,24 @@
                                     <field name="note" readonly="not can_edit"/>
                                 </group>
                             </page>
-                            <page string="Product lines">
+                            <page string="Bảng báo giá">
                                 <group>
                                     <field name="product_list_template_id"
                                            options="{'no_create_edit': True}"
                                            readonly="not can_edit"/>
                                 </group>
-                                <button name="action_export_quotation_excel"
-                                        type="object"
-                                        string="Xuất báo giá"
-                                        class="btn-success"
-                                />
+                                <div class="d-flex gap-2 mb-2">
+                                    <button name="action_apply_product_list_template"
+                                            type="object"
+                                            string="Nạp từ mẫu"
+                                            class="btn-secondary"
+                                            confirm="Nạp mẫu sẽ xóa toàn bộ dòng bảng báo giá và các điều chỉnh giá liên quan. Tiếp tục?"
+                                            invisible="not can_edit"/>
+                                    <button name="action_export_quotation_excel"
+                                            type="object"
+                                            string="Xuất báo giá"
+                                            class="btn-success"/>
+                                </div>
                                 <field name="rental_contract_line_ids"
                                        context="{'default_company_id': company_id}"
                                        readonly="not can_edit">
@@ -247,9 +266,10 @@
                                         <field name="product_tmpl_id" options="{'no_create': True, 'no_create_edit': True}"/>
                                         <field name="name" placeholder="Description" optional="hide"/>
                                         <field name="uom_id" optional="show"/>
-                                        <field name="product_uom_qty" optional="show"/>
+                                        <field name="product_uom_qty" column_invisible="1"/>
                                         <field name="company_id" optional="hide"/>
-                                        <field name="price_unit" widget="monetary" optional="show"/>
+                                        <field name="price_unit" string="Đơn giá thuê / tháng" widget="monetary" optional="show"/>
+                                        <field name="price_unit_day" string="Đơn giá thuê / ngày" widget="monetary" optional="show"/>
                                         <field name="compensation_price" widget="monetary" optional="show"/>
                                         <field name="minimum_rental_months" optional="show"/>
                                     </tree>
@@ -271,7 +291,7 @@
                                                domain="[('contract_id', '=', parent.id)]"/>
                                         <field name="product_tmpl_id" optional="show"/>
                                         <field name="date_from"/>
-                                        <field name="price_unit" widget="monetary"/>
+                                        <field name="price_unit" string="Đơn giá thuê / tháng" widget="monetary"/>
                                     </tree>
                                 </field>
                             </page>
@@ -299,7 +319,7 @@
                                     </tree>
                                 </field>
                             </page>
-                            <page string="Price list">
+                            <page string="Danh sách VT vận chuyển">
                                 <field name="rr_transport_line_ids" readonly="1">
                                     <tree editable="bottom">
                                         <field name="start_rental_or_return_date"/>

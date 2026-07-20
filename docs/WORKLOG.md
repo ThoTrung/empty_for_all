@@ -1,19 +1,19 @@
 # Worklog (giữ ~3 entry mới; cũ hơn xoá bớt)
 
-## 2026-07-11 — Import mẫu compact (Chủng loại row 3)
+## 2026-07-20 — HSTT data_start_row theo mẫu công ty
 
-files: `helper/import_transport_matrix.py` (`_sheet_has_ghi_chu_above`), `tests/test_transport_import.py`
-why: Xác nhận parse layout bỏ header/footer dài vẫn đúng (neo «Chủng loại»); Tải biểu mẫu không ghi Ghi chú vào dòng data khi mẫu đã có note phía trên.
-validation: `test_parse_compact_layout_chung_loai_row_3`, `test_build_import_template_keeps_compact_note_out_of_data`.
+files: `models/rental_template.py`, `views/rental_template_view.xml`, `models/rental_contract.py`, `tests/test_klct_hstt_combined_export.py`, `__manifest__.py` 17.0.1.0.48
+why: Mỗi công ty có layout bảng thanh toán khác (data từ dòng 13 hoặc 15). Hardcode gây MergedCell khi mẫu mới merge dòng xác nhận A13:I13. Thêm setting «Dòng bắt đầu dữ liệu» (default 13) trên `rental.template`.
+validation: test default row 13 + case `data_start_row=15` không ghi đè merge.
 
-## 2026-07-11 — Tree product.template: kéo thả theo `order`
+## 2026-07-17 — Giới hạn KH tra cứu theo công ty
 
-files: `views/product_template_view.xml` (handle + `default_order`), `models/product_template.py` (`_order`), `__manifest__.py` 17.0.1.0.35
-why: Cho phép kéo thả đổi thứ tự SP trên list; ghi vào field `order` (cùng field dùng khi xuất cột biểu mẫu import).
-validation: `-u rental`; mở Products tree, kéo handle — `order` cập nhật, list sort theo `order, id`.
+files: `wizard/rental_rented_qty_wizard.py`, `tests/test_rented_qty_as_of.py`, `__manifest__.py` 17.0.1.0.47
+why: Dropdown tra cứu SL đang thuê trước đây chỉ lọc `is_company`, nên hiện cả My Company, công ty thường và đối tác thuộc công ty Odoo khác. Nay chỉ nhận công ty có `customer_type = renter` và `company_id` đúng công ty hiện tại, kèm constraint server.
+validation: focused as-of/wizard tests và module upgrade pass.
 
-## 2026-07-11 — Mẫu riêng cho Tải biểu mẫu import XNK
+## 2026-07-17 — Tra cứu SL khách hàng đang thuê theo ngày
 
-files: `models/rental_template.py` (`transport_import_xlsx`), `static/file_template/transport_import_template.xlsx`, `helper/import_transport_matrix.py`, `__manifest__.py` 17.0.1.0.34
-why: Tách khung Excel «Tải biểu mẫu» khỏi «Bảng xác nhận khối lượng» để upload header/footer riêng; fallback module copy từ transport_matrix_template.
-validation: tạo `rental.template` loại Biểu mẫu import xuất nhập kho (XLSX), đánh dấu Mặc định; `-u rental`.
+files: `services/rental_contract_services.py`, `wizard/rental_rented_qty_wizard.py`, `wizard/rental_rented_qty_wizard.xml`, `tests/test_rented_qty_as_of.py`, security/views, `__manifest__.py` 17.0.1.0.46
+why: Nhân viên cần tra cứu số lượng tính tiền, chuyển thừa và tổng vật lý tại KH ở cuối một ngày; kết quả dùng đúng engine LIFO/HSTT và chỉ lấy phiếu vận chuyển đã hoàn tất.
+validation: 7 test as-of pass; regression billing và KLCT+HSTT pass; module upgrade và XML load thành công.

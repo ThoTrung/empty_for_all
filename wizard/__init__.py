@@ -5,3 +5,4 @@ from . import reject_confirm_wizard
 from . import link_child_contact_wizard
 from . import rental_transport_matrix_overlap_wizard
 from . import rental_transport_import_wizard
+from . import rental_rented_qty_wizard

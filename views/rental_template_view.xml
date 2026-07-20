@@ -27,6 +27,7 @@
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="template_type"/>
                 <field name="template_usage" optional="show"/>
+                <field name="data_start_row" optional="hide"/>
                 <field name="file_name" optional="hide"/>
                 <field name="is_default"/>
                 <field name="active"/>
@@ -59,6 +60,8 @@
                         <group>
                             <field name="file_data" widget="binary" filename="file_name"/>
                             <field name="file_name" invisible="1"/>
+                            <field name="data_start_row"
+                                     invisible="template_type != 'rental_invoice_xlsx'"/>
                             <field name="is_default"/>
                             <field name="active"/>
                         </group>

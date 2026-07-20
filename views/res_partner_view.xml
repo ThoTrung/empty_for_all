@@ -107,7 +107,7 @@
                     </div>
                     <group>
                         <group>
-                            <field name="company_id" placeholder="Company" groups="rental.group_rental_admin"/>
+                            <field name="company_id" placeholder="Company" invisible="1"/>
                             <field name="customer_type" invisible="1"/>
                             <field name="phone" placeholder="0987654321"/>
                             <field name="vat" placeholder="66778899"/>
@@ -136,7 +136,7 @@
                     </div>
                     <group>
                         <group>
-                            <field name="company_id" placeholder="Company" groups="rental.group_rental_admin"/>
+                            <field name="company_id" placeholder="Company" invisible="1"/>
                             <field name="customer_type" placeholder="Customer type" groups="rental.group_rental_admin"/>
                             <field name="vat" placeholder="66778899"/>
                             <field name="bank_account" placeholder="Stk 6677028 tại ngân hàng ABC"/>

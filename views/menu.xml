@@ -60,6 +60,18 @@
               sequence="0"
               groups="rental.group_rental_staff,rental.group_rental_transport_courier"/>
 
+    <menuitem id="menu_rental_reports"
+              name="Báo cáo / Tra cứu"
+              parent="menu_rental_root"
+              sequence="7"
+              groups="rental.group_rental_staff"/>
+    <menuitem id="menu_rental_rented_qty_as_of"
+              name="SL đang thuê theo ngày"
+              parent="menu_rental_reports"
+              action="action_rental_rented_qty_wizard"
+              sequence="1"
+              groups="rental.group_rental_staff"/>
+
     <menuitem id="menu_res_partner_renters_master"
               name="Renters"
               parent="menu_rental_root"

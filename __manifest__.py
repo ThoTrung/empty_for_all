@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Rental',
-    'version': '17.0.1.0.35',
+    'version': '17.0.1.0.48',
     'category': 'Rental',
     'summary': 'Rental service module.',
     'author': "Nguyễn Trung Thọ",
@@ -24,6 +24,7 @@
         'wizard/reject_confirm_wizard.xml',
         'wizard/link_child_contact_wizard.xml',
         'wizard/rental_transport_import_wizard.xml',
+        'wizard/rental_rented_qty_wizard.xml',
 
         'data/sequence.xml',
 

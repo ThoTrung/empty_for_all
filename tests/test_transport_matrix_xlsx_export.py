@@ -56,17 +56,19 @@ class TestTransportMatrixXlsxExport(TransactionCase):
             "price_unit": 100.0,
         })
 
-    def _create_transport(self, when, qty, plate="29H-90001"):
+    def _create_transport(
+        self, when, qty, plate="29H-90001", transport_type="delivery", product=None
+    ):
         return self.env["rr.transport"].create({
             "rental_contract_id": self._contract.id,
-            "type": "delivery",
+            "type": transport_type,
             "start_rental_or_return_date": when,
             "driver_id": self._driver.id,
             "transport_truck_id": self._truck.id,
             "vehicle_start_time": when,
             "plate": plate,
             "transport_line_ids": [(0, 0, {
-                "product_id": self._product.id,
+                "product_id": (product or self._product).id,
                 "qty": qty,
             })],
         })
@@ -151,3 +153,64 @@ class TestTransportMatrixXlsxExport(TransactionCase):
                     "Unexpected product-column merge %s on data row %s"
                     % (rng, rng.min_row)
                 )
+
+    def test_return_quantities_are_negative_in_rows_and_balances(self):
+        start_date = date(2026, 6, 1)
+        end_date = date(2026, 6, 30)
+        self._create_transport(date(2026, 5, 10), 100)
+        self._create_transport(
+            date(2026, 5, 20), 30, transport_type="return"
+        )
+        self._create_transport(date(2026, 6, 5), 20)
+        self._create_transport(
+            date(2026, 6, 10), 10, transport_type="return"
+        )
+
+        wb, _data = self._export_workbook(start_date, end_date)
+        ws = wb.active
+        _title, _h2, _h3, start_row = find_transport_matrix_layout(ws)
+        self.assertEqual(ws.cell(start_row, 4).value, 70)
+        self.assertEqual(ws.cell(start_row + 1, 4).value, 20)
+        self.assertEqual(ws.cell(start_row + 2, 4).value, -10)
+        self.assertEqual(ws.cell(start_row + 3, 4).value, 80)
+
+        matrix = self.env["rental.transport.matrix"].create({
+            "rental_contract_id": self._contract.id,
+            "start_date": start_date,
+            "end_date": end_date,
+        })
+        self.assertIn(">-10</td>", matrix.matrix_html)
+
+    def test_return_quantity_keeps_negative_sign_in_total_md(self):
+        md_category = self.env["uom.category"].create({
+            "name": "MD matrix return export",
+        })
+        md_uom = self.env["uom.uom"].create({
+            "name": "Mét dài matrix return export",
+            "category_id": md_category.id,
+            "uom_type": "reference",
+            "is_linear_meter_variant": True,
+        })
+        md_product = self.env["product.template"].create({
+            "name": "Hộp MD return export",
+            "type": "product",
+            "uom_id": md_uom.id,
+            "uom_po_id": md_uom.id,
+        }).product_variant_ids[0]
+        self._create_transport(
+            date(2026, 6, 10),
+            7,
+            transport_type="return",
+            product=md_product,
+        )
+
+        wb, _data = self._export_workbook(date(2026, 6, 1), date(2026, 6, 30))
+        ws = wb.active
+        _title, _h2, header_third_row, start_row = find_transport_matrix_layout(ws)
+        md_col = next(
+            col
+            for col in range(4, (ws.max_column or 4) + 1)
+            if ws.cell(header_third_row, col).value == "Tổng MD"
+        )
+        self.assertEqual(ws.cell(start_row, md_col).value, -7)
+        self.assertEqual(ws.cell(start_row + 1, md_col).value, -7)

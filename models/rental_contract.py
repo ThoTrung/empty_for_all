@@ -17,7 +17,7 @@ from ..services import rental_contract_services as rcs
 
 from urllib.parse import quote
 from openpyxl import load_workbook
-from datetime import date
+from datetime import date, timedelta
 import base64
 import io
 
@@ -39,6 +39,12 @@ class RentalContract(models.Model):
         string='Số hợp đồng',
         help='Số hợp đồng ghi trên văn bản (xuất khi Tải HĐ / In HĐ).',
         tracking=True,
+    )
+    prices_include_tax = fields.Boolean(
+        string='Đã bao gồm thuế',
+        default=False,
+        tracking=True,
+        help='Đơn giá trên bảng báo giá đã gồm thuế hay chưa.',
     )
     rental_billing_mode = fields.Selection(
         selection=[
@@ -99,6 +105,15 @@ class RentalContract(models.Model):
         tracking=True,
         help="Quy định thuê tối thiểu. Nếu trả sản phẩm trước khi đủ số tháng này (tính từ "
              "ngày giao của lô tương ứng) thì vẫn tính tiền đủ kỳ tối thiểu. Đặt 0 để tắt.",
+    )
+    transport_fee_share_min_months = fields.Integer(
+        string="Ngưỡng chia sẻ phí VC (tháng)",
+        default=0,
+        tracking=True,
+        help="Thuê luôn có 2 chiều vận chuyển (đi và về). Nếu thời gian thuê ≥ giá trị này "
+             "thì bên cho thuê và bên thuê cùng chịu phí vận chuyển; nếu ngắn hơn thì bên thuê "
+             "chịu hết. Đặt 0 = luôn bên thuê chịu hết (không đạt ngưỡng chia sẻ). "
+             "Field dùng cho điều khoản / xuất báo giá; chưa đổi logic chia phí trên hóa đơn.",
     )
     price_change_ids = fields.One2many(
         'rental.contract.line.price',
@@ -464,6 +479,9 @@ class RentalContract(models.Model):
                 "b_vat",
                 "construction_work_id",
                 "note",
+                "rental_contract_line_ids",
+                "price_change_ids",
+                "product_list_template_id",
                 # These are editable toggles; handled separately via context.
                 # "status",
                 # "edit_unlocked",
@@ -498,20 +516,29 @@ class RentalContract(models.Model):
 
     @api.onchange("product_list_template_id")
     def _onchange_product_list_template_id(self):
-        for rec in self:
-            if not rec.product_list_template_id:
-                continue
-            rec.rental_contract_line_ids = [(5, 0, 0)] + rec._prepare_contract_line_vals_from_template(
-                rec.product_list_template_id
-            )
+        # No wipe-on-change: use action_apply_product_list_template (confirm button).
+        return
+
+    def action_apply_product_list_template(self):
+        """Replace bảng báo giá lines from the selected product template set."""
+        self.ensure_one()
+        self._check_can_edit()
+        if not self.product_list_template_id:
+            raise UserError(_("Vui lòng chọn mẫu sản phẩm trước khi nạp."))
+        self.write({
+            "rental_contract_line_ids": (
+                [(5, 0, 0)]
+                + self._prepare_contract_line_vals_from_template(self.product_list_template_id)
+            ),
+        })
+        return True
 
     def _rental_invoice_xlsx_load_workbook(self):
         self.ensure_one()
-        data, _source = self.env["rental.template"].get_template_bytes(
+        data, start_row = self.env["rental.template"].get_rental_invoice_xlsx(
             self.company_id,
-            "rental_invoice_xlsx",
         )
-        return load_workbook(io.BytesIO(data))
+        return load_workbook(io.BytesIO(data)), start_row
 
     def _rental_invoice_xlsx_apply_placeholders(self, ws, start_date, end_date):
         replacements = {
@@ -537,24 +564,81 @@ class RentalContract(models.Model):
 
         replace_placeholders_in_sheet(ws, replacements)
 
-    def _rental_period_transport_fee_lines(self, start_date, end_date):
-        """Phí vận chuyển của các phiếu xuất/nhập kho phát sinh trong kỳ (ngày tính thuê trong khoảng)."""
-        self.ensure_one()
-        transports = self.rr_transport_ids.filtered(
-            lambda t: t.state != "cancel"
-            and t.fee
-            and t.start_rental_or_return_date
-            and start_date <= t.start_rental_or_return_date <= end_date
-        ).sorted("start_rental_or_return_date")
+    def _transport_fee_line_dicts(self, transports):
+        """Normalize rr.transport records into fee line dicts for HSTT / invoice."""
         return [
             {
                 "date": t.start_rental_or_return_date,
                 "code": t.code or "",
                 "type": t.type,
                 "amount": t.fee or 0.0,
+                "transport_id": t.id,
             }
             for t in transports
         ]
+
+    def _rental_unbilled_transport_fee_lines(self, transport_fee_until_date):
+        """Phí VC chưa tính: fee > 0, chưa đánh dấu, ngày tính ≤ cutoff.
+
+        Cutoff trống → không lấy phí nào (hoãn toàn bộ kỳ này).
+        Không lọc theo kỳ thuê start/end — để gom phí bị hoãn từ tháng trước.
+        """
+        self.ensure_one()
+        if not transport_fee_until_date:
+            return []
+        transports = self.rr_transport_ids.filtered(
+            lambda t: t.state != "cancel"
+            and t.fee
+            and t.start_rental_or_return_date
+            and not t.fee_billed_date
+            and not t.fee_invoice_id
+            and t.start_rental_or_return_date <= transport_fee_until_date
+        ).sorted("start_rental_or_return_date")
+        return self._transport_fee_line_dicts(transports)
+
+    def _rental_invoice_transport_fee_lines(self, move):
+        """Phí VC đã gắn vào hóa đơn (dùng khi regenerate KLCT+HSTT)."""
+        self.ensure_one()
+        if not move:
+            return []
+        transports = self.rr_transport_ids.filtered(
+            lambda t: t.state != "cancel"
+            and t.fee
+            and t.fee_invoice_id
+            and t.fee_invoice_id.id == move.id
+        ).sorted("start_rental_or_return_date")
+        return self._transport_fee_line_dicts(transports)
+
+    def _rental_period_transport_fee_lines(
+        self, start_date, end_date, transport_fee_until_date=None, fee_invoice=None
+    ):
+        """Resolve fee lines for export.
+
+        - fee_invoice: regenerate — phí đã gắn hóa đơn đó.
+        - otherwise: unbilled with cutoff (mặc định end_date nếu không truyền).
+        """
+        self.ensure_one()
+        if fee_invoice:
+            return self._rental_invoice_transport_fee_lines(fee_invoice)
+        cutoff = transport_fee_until_date
+        if cutoff is None:
+            # Backward-compat for callers that only pass period dates.
+            cutoff = end_date
+        return self._rental_unbilled_transport_fee_lines(cutoff)
+
+    def _mark_transport_fees_billed(self, fee_lines, move, billed_date):
+        """Auto-mark transports included in HSTT as billed on the given invoice."""
+        self.ensure_one()
+        if not fee_lines or not move or not billed_date:
+            return
+        transport_ids = [fl.get("transport_id") for fl in fee_lines if fl.get("transport_id")]
+        if not transport_ids:
+            return
+        transports = self.env["rr.transport"].browse(transport_ids).exists()
+        transports.write({
+            "fee_billed_date": billed_date,
+            "fee_invoice_id": move.id,
+        })
 
     def _rental_period_compensation_lines(self, start_date, end_date):
         """Các dòng đền bù (tiền phạt mất/hỏng) phát sinh trong kỳ.
@@ -656,6 +740,26 @@ class RentalContract(models.Model):
         cell.value = text
         cell.font = Font(bold=True)
 
+    def _holiday_days_for_billing_span(self, start_date, end_date, include_start_day):
+        """Holiday days on the same effective range as rental_days_between_with_holiday."""
+        self.ensure_one()
+        if include_start_day:
+            effective_start = start_date
+        else:
+            effective_start = start_date + timedelta(days=1)
+        if effective_start > end_date:
+            return 0
+        return rcs._holiday_days_between(self.env, self, effective_start, end_date)
+
+    @staticmethod
+    def _rental_days_excel_formula(row, include_start_day, holiday_days=0):
+        """Excel formula for rental days: (C-B[+1]) minus holidays, floored at 0."""
+        base = f"C{row}-B{row}+1" if include_start_day else f"C{row}-B{row}"
+        holiday_days = int(holiday_days or 0)
+        if holiday_days <= 0:
+            return f"={base}"
+        return f"=MAX(0,{base}-{holiday_days})"
+
     def _write_billing_line(
         self,
         ws,
@@ -688,9 +792,10 @@ class RentalContract(models.Model):
             include = line.get("include_start_day")
             if include is None:
                 include = bool(line.get("is_bob"))
-            ws.cell(r, 7).value = (
-                f"=C{r}-B{r}+1" if include else f"=C{r}-B{r}"
+            holiday_days = self._holiday_days_for_billing_span(
+                line["start_date"], line["end_date"], include
             )
+            ws.cell(r, 7).value = self._rental_days_excel_formula(r, include, holiday_days)
             ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
             if self.rental_billing_mode == "month" and month_day_dim:
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
@@ -727,9 +832,10 @@ class RentalContract(models.Model):
                     agg.get("deliver_date") and agg.get("start_date")
                     and agg["deliver_date"] <= agg["start_date"]
                 )
-            ws.cell(r, 7).value = (
-                f"=C{r}-B{r}+1" if include else f"=C{r}-B{r}"
+            holiday_days = self._holiday_days_for_billing_span(
+                agg["start_date"], agg["end_date"], include
             )
+            ws.cell(r, 7).value = self._rental_days_excel_formula(r, include, holiday_days)
             ws.cell(r, 8).value = agg.get("display_unit_price", agg["unit_price"])
             if self.rental_billing_mode == "month" and month_day_dim:
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
@@ -775,9 +881,29 @@ class RentalContract(models.Model):
             opening_row = klct_meta.get("opening_row")
             if not opening_row:
                 return None
+            opening_qty_by_tmpl = klct_meta.get("opening_qty_by_tmpl_id")
+            if opening_qty_by_tmpl is not None:
+                opening_qty = opening_qty_by_tmpl.get(tmpl_id, 0) or 0
+                # A return during the period splits the opening lot into:
+                # - quantity still rented through period end; and
+                # - quantity returned, charged only through its return date.
+                # KLCT opening contains both, so referencing it here would charge the
+                # returned part for the full period and then charge it again below.
+                if abs(float(opening_qty) - float(line.get("qty") or 0)) > 1e-6:
+                    return None
             return f"={sheet_ref}!{letter}{opening_row}"
         deliver_date = line.get("deliver_date")
-        rows = (klct_meta.get("data_rows_by_date") or {}).get(deliver_date) or []
+        rows_by_date_and_direction = klct_meta.get("data_rows_by_date_and_direction")
+        if rows_by_date_and_direction is not None and (line.get("qty") or 0) < 0:
+            rows = (
+                (rows_by_date_and_direction.get(deliver_date) or {}).get("return")
+                or []
+            )
+        else:
+            # Positive merged billing lines may net deliveries and orphan returns from
+            # the same day, so keep all movement rows. This is also the fallback for
+            # callers providing the old metadata shape.
+            rows = (klct_meta.get("data_rows_by_date") or {}).get(deliver_date) or []
         if not rows:
             return None
         if len(rows) == 1:
@@ -978,9 +1104,11 @@ class RentalContract(models.Model):
         use_excel_formulas=False,
         klct_meta=None,
         month_day_dim=0,
+        start_row=None,
     ):
         """Mỗi sản phẩm là một khối: đơn thuê bình thường + tính toán trả hàng tối thiểu."""
-        start_row = 13
+        if not start_row or start_row < 2:
+            start_row = self.env["rental.template"]._DATA_START_ROW_DEFAULT
         max_row = 200
         count = 0
         if self.rental_billing_mode == "month":
@@ -1003,19 +1131,45 @@ class RentalContract(models.Model):
             ws.cell(start_row + count, 4).value = "Phí vận chuyển"
             ws.cell(start_row + count, 4).font = Font(bold=True)
             count += 1
-            for fee_line in fee_lines:
-                r = start_row + count
-                ws.cell(r, 2).value = fee_line["date"].strftime("%d/%m/%Y")
-                type_label = _("Nhập") if fee_line.get("type") in ("return", "compensation") else _("Xuất")
-                ws.cell(r, 4).value = _("Phí vận chuyển %(code)s (%(type)s)") % {
-                    "code": fee_line.get("code") or "",
-                    "type": type_label,
-                }
-                ws.cell(r, 9).value = fee_line["amount"]
-                count += 1
+            r = start_row + count
+            total_fee = sum((fl.get("amount") or 0.0) for fl in fee_lines)
+            n_trips = len(fee_lines)
+            ws.cell(r, 4).value = _("Phí vận chuyển (%(n)s chuyến)") % {"n": n_trips}
+            ws.cell(r, 9).value = total_fee
+            count += 1
 
         for r in range(start_row + count, start_row + max_row):
             ws.row_dimensions[r].hidden = True
+
+    def _rental_invoice_xlsx_write_fee_detail_sheet(self, wb, fee_lines):
+        """Sheet 'Chi tiết phí VC' — ngày / mã phiếu / loại / số tiền (không phá layout HSTT)."""
+        if not fee_lines:
+            return None
+        title = "Chi tiết phí VC"
+        # Drop existing sheet with same title if regenerating into a copied workbook.
+        existing = self._rental_invoice_get_sheet(wb, title)
+        if existing is not None:
+            wb.remove(existing)
+        ws = wb.create_sheet(title)
+        headers = [_("Ngày"), _("Mã phiếu"), _("Loại"), _("Số tiền")]
+        for col, header in enumerate(headers, start=1):
+            cell = ws.cell(1, col)
+            cell.value = header
+            cell.font = Font(bold=True)
+        row = 2
+        for fee_line in fee_lines:
+            type_label = _("Nhập") if fee_line.get("type") in ("return", "compensation") else _("Xuất")
+            fee_date = fee_line.get("date")
+            ws.cell(row, 1).value = fee_date.strftime("%d/%m/%Y") if fee_date else ""
+            ws.cell(row, 2).value = fee_line.get("code") or ""
+            ws.cell(row, 3).value = type_label
+            ws.cell(row, 4).value = fee_line.get("amount") or 0.0
+            row += 1
+        ws.cell(row, 3).value = _("Tổng")
+        ws.cell(row, 3).font = Font(bold=True)
+        ws.cell(row, 4).value = sum((fl.get("amount") or 0.0) for fl in fee_lines)
+        ws.cell(row, 4).font = Font(bold=True)
+        return ws
 
     @staticmethod
     def _rental_invoice_get_sheet(wb, name):
@@ -1072,7 +1226,9 @@ class RentalContract(models.Model):
                 if "Bằng chữ" in val or "bằng chữ" in val:
                     cell.value = f"(Bằng chữ: {amount_words}/.)"
 
-    def _build_rental_payment_xlsx_buffer(self, start_date, end_date):
+    def _build_rental_payment_xlsx_buffer(
+        self, start_date, end_date, transport_fee_until_date=None, fee_invoice=None
+    ):
         """Bảng thanh toán gộp theo mẫu SP (cùng file gắn Business XLSX trên hóa đơn)."""
         self.ensure_one()
         bob_map, map_map = rcs.calc_rental_payment_table_grouped_by_template(
@@ -1081,9 +1237,14 @@ class RentalContract(models.Model):
         blocks = rcs.calc_rental_payment_blocks_by_template(
             self.env, self, start_date, end_date
         )
-        fee_lines = self._rental_period_transport_fee_lines(start_date, end_date)
+        fee_lines = self._rental_period_transport_fee_lines(
+            start_date,
+            end_date,
+            transport_fee_until_date=transport_fee_until_date,
+            fee_invoice=fee_invoice,
+        )
         compensation_lines = self._rental_period_compensation_lines(start_date, end_date)
-        wb = self._rental_invoice_xlsx_load_workbook()
+        wb, data_start_row = self._rental_invoice_xlsx_load_workbook()
         # Thay placeholder chung (công ty, đại diện, ngày, chức vụ người xác nhận...) cho
         # mọi sheet, gồm 'GT thuê' và 'GT đền bù'.
         for sheet in wb.worksheets:
@@ -1091,7 +1252,9 @@ class RentalContract(models.Model):
 
         # Sheet 'GT thuê' (active): tiền thuê + phí vận chuyển (không gồm đền bù).
         ws = wb.active
-        self._rental_invoice_xlsx_write_table(ws, blocks, fee_lines)
+        self._rental_invoice_xlsx_write_table(
+            ws, blocks, fee_lines, start_row=data_start_row
+        )
         self._rental_invoice_xlsx_apply_payment_totals(ws, bob_map, map_map, fee_lines)
 
         # Sheet 'GT đền bù': chỉ ghi khi có đền bù, ngược lại bỏ sheet cho gọn.
@@ -1102,18 +1265,26 @@ class RentalContract(models.Model):
             elif len(wb.worksheets) > 1:
                 wb.remove(comp_ws)
 
+        self._rental_invoice_xlsx_write_fee_detail_sheet(wb, fee_lines)
+
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
         return buffer
 
-    def action_export_invoice_excel(self, start_date, end_date):
+    def action_export_invoice_excel(self, start_date, end_date, transport_fee_until_date=None):
         self.ensure_one()
-        buffer = self._build_rental_payment_xlsx_buffer(start_date, end_date)
+        buffer = self._build_rental_payment_xlsx_buffer(
+            start_date, end_date, transport_fee_until_date=transport_fee_until_date
+        )
         filename = f"HSTT {end_date.strftime('%m-%Y')} - {self.code}"
         filename_ascii = quote(filename)
         att_id = self.action_create_rental_invoice(
-            start_date, end_date, excel_buffer=buffer, file_name=filename_ascii
+            start_date,
+            end_date,
+            excel_buffer=buffer,
+            file_name=filename_ascii,
+            transport_fee_until_date=transport_fee_until_date,
         )
         return {
             "type": "ir.actions.act_url",
@@ -1121,7 +1292,9 @@ class RentalContract(models.Model):
             "target": "self",
         }
 
-    def _build_klct_hstt_xlsx_buffer(self, start_date, end_date):
+    def _build_klct_hstt_xlsx_buffer(
+        self, start_date, end_date, transport_fee_until_date=None, fee_invoice=None
+    ):
         """One workbook: sheet KLCT {mm-YYYY} + sheet HSTT {mm-YYYY} with Excel formulas.
 
         Returns (buffer, hstt_subtotal) where hstt_subtotal matches the HSTT sheet
@@ -1150,12 +1323,17 @@ class RentalContract(models.Model):
         blocks = rcs.calc_rental_payment_blocks_by_template(
             self.env, self, start_date, end_date
         )
-        fee_lines = self._rental_period_transport_fee_lines(start_date, end_date)
+        fee_lines = self._rental_period_transport_fee_lines(
+            start_date,
+            end_date,
+            transport_fee_until_date=transport_fee_until_date,
+            fee_invoice=fee_invoice,
+        )
         compensation_lines = self._rental_period_compensation_lines(start_date, end_date)
         month_day_dim = rcs.month_day_basis(self, end_date) if self.rental_billing_mode == "month" else 0
         hstt_subtotal = self._payment_table_subtotal(bob_map, map_map, fee_lines)
 
-        inv_wb = self._rental_invoice_xlsx_load_workbook()
+        inv_wb, data_start_row = self._rental_invoice_xlsx_load_workbook()
         for sheet in inv_wb.worksheets:
             self._rental_invoice_xlsx_apply_placeholders(sheet, start_date, end_date)
 
@@ -1167,6 +1345,7 @@ class RentalContract(models.Model):
             use_excel_formulas=True,
             klct_meta=klct_meta,
             month_day_dim=month_day_dim,
+            start_row=data_start_row,
         )
         self._rental_invoice_xlsx_apply_payment_totals(hstt_src, bob_map, map_map, fee_lines)
         self._copy_xlsx_sheet(hstt_src, wb, hstt_title)
@@ -1177,24 +1356,16 @@ class RentalContract(models.Model):
             self._rental_invoice_xlsx_write_compensation_sheet(comp_ws, compensation_lines)
             self._copy_xlsx_sheet(comp_ws, wb, "GT đền bù")
 
+        self._rental_invoice_xlsx_write_fee_detail_sheet(wb, fee_lines)
+
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
         return buffer, hstt_subtotal
 
-    def _get_or_create_hstt_total_product(self, end_date):
-        """Service product 'Tổng thanh toán: mm-YYYY' with default 8% sale tax."""
+    def _get_or_create_hstt_sale_tax(self):
+        """Return the company's 8% sale tax used by HSTT total invoices."""
         self.ensure_one()
-        period = end_date.strftime("%m-%Y")
-        name = _("Tổng thanh toán: %s") % period
-        Product = self.env["product.product"]
-        product = Product.search([
-            ("name", "=", name),
-            ("company_id", "in", [False, self.company_id.id]),
-        ], limit=1)
-        if product:
-            return product
-
         tax = self.env["account.tax"].search([
             ("company_id", "=", self.company_id.id),
             ("type_tax_use", "=", "sale"),
@@ -1210,6 +1381,23 @@ class RentalContract(models.Model):
                 "type_tax_use": "sale",
                 "company_id": self.company_id.id,
             })
+        return tax
+
+    def _get_or_create_hstt_total_product(self, end_date):
+        """Service product 'Tổng thanh toán: mm-YYYY' with fixed 8% sale tax."""
+        self.ensure_one()
+        period = end_date.strftime("%m-%Y")
+        name = _("Tổng thanh toán: %s") % period
+        tax = self._get_or_create_hstt_sale_tax()
+        Product = self.env["product.product"]
+        product = Product.search([
+            ("name", "=", name),
+            ("company_id", "in", [False, self.company_id.id]),
+        ], limit=1)
+        if product:
+            if product.taxes_id != tax:
+                product.taxes_id = [(6, 0, tax.ids)]
+            return product
 
         # Prefer income account from a contract line product; else journal default.
         income_account = False
@@ -1241,7 +1429,14 @@ class RentalContract(models.Model):
         return Product.create(vals)
 
     def _create_rental_invoice_from_hstt_total(
-        self, start_date, end_date, excel_buffer, file_name, subtotal
+        self,
+        start_date,
+        end_date,
+        excel_buffer,
+        file_name,
+        subtotal,
+        transport_fee_until_date=None,
+        fee_lines=None,
     ):
         """Create out_invoice with a single line matching the HSTT Excel subtotal."""
         self.ensure_one()
@@ -1262,21 +1457,19 @@ class RentalContract(models.Model):
             raise UserError(_("No income account set for %s") % product.display_name)
         if fpos:
             income_account = fpos.map_account(income_account)
-        taxes = product.taxes_id.filtered(lambda t: t.company_id == self.company_id)
-        if not taxes:
-            taxes = self.env["account.tax"].search([
-                ("company_id", "=", self.company_id.id),
-                ("type_tax_use", "=", "sale"),
-                ("amount", "=", 8.0),
-                ("amount_type", "=", "percent"),
-                ("active", "=", True),
-            ], limit=1)
-        if fpos:
-            taxes = fpos.map_tax(taxes)
+        # HSTT total invoices are explicitly configured at 8%; do not let a stale
+        # product tax or partner fiscal-position mapping replace it with 10%.
+        taxes = self._get_or_create_hstt_sale_tax()
+
+        # Cutoff trống trên wizard = không tính phí; lưu False. None từ caller cũ → end_date.
+        fee_until = transport_fee_until_date
+        if fee_until is None and fee_lines:
+            fee_until = end_date
 
         move = self.env["account.move"].create({
             "rental_start_date": start_date,
             "rental_end_date": end_date,
+            "transport_fee_until_date": fee_until or False,
             "move_type": "out_invoice",
             "partner_id": partner.id,
             "rental_contract_id": self.id,
@@ -1292,6 +1485,9 @@ class RentalContract(models.Model):
             })],
         })
 
+        if fee_lines and fee_until:
+            self._mark_transport_fees_billed(fee_lines, move, fee_until)
+
         attachment = self.env["ir.attachment"].create({
             "name": f"{file_name}.xlsx" if not str(file_name).endswith(".xlsx") else file_name,
             "res_model": "account.move",
@@ -1303,7 +1499,7 @@ class RentalContract(models.Model):
         move.business_xlsx_attachment_id = attachment.id
         return attachment.id
 
-    def action_export_klct_hstt_excel(self, start_date, end_date):
+    def action_export_klct_hstt_excel(self, start_date, end_date, transport_fee_until_date=None):
         """Create volume matrix + invoice (1 line = HSTT total) + download combined XLSX."""
         self.ensure_one()
         Matrix = self.env["rental.transport.matrix"]
@@ -1332,7 +1528,14 @@ class RentalContract(models.Model):
             "name": f"Confirmation table {self.code}: {start_date.strftime('%d/%m/%Y')} → {end_date.strftime('%d/%m/%Y')}",
         })
 
-        buffer, hstt_subtotal = self._build_klct_hstt_xlsx_buffer(start_date, end_date)
+        fee_lines = self._rental_period_transport_fee_lines(
+            start_date, end_date, transport_fee_until_date=transport_fee_until_date
+        )
+        buffer, hstt_subtotal = self._build_klct_hstt_xlsx_buffer(
+            start_date,
+            end_date,
+            transport_fee_until_date=transport_fee_until_date,
+        )
         filename = f"KLCT-HSTT {end_date.strftime('%m-%Y')} - {self.code}"
         # Match Excel HSTT footer {{subtotal_before_tax}} = int(round(subtotal)).
         att_id = self._create_rental_invoice_from_hstt_total(
@@ -1341,6 +1544,8 @@ class RentalContract(models.Model):
             excel_buffer=buffer,
             file_name=filename,
             subtotal=float(int(round(hstt_subtotal))),
+            transport_fee_until_date=transport_fee_until_date,
+            fee_lines=fee_lines,
         )
         return {
             "type": "ir.actions.act_url",
@@ -1364,7 +1569,9 @@ class RentalContract(models.Model):
         }
         return action
 
-    def action_create_rental_invoice(self, start_date, end_date, excel_buffer=False, file_name=''):
+    def action_create_rental_invoice(
+        self, start_date, end_date, excel_buffer=False, file_name='', transport_fee_until_date=None
+    ):
         self.ensure_one()
         partner = self.a_party
         bob_map_product_id_2_line, map_product_id_2_line = rcs.calc_rental_contract_invoice(self.env, self,
@@ -1453,7 +1660,9 @@ class RentalContract(models.Model):
 
         # Phí vận chuyển — đưa vào hóa đơn để khớp với bảng thanh toán xuất ra (Excel cộng
         # phí vận chuyển vào tổng tiền). Trước đây hóa đơn thiếu phần này nên bị lệch.
-        fee_lines = self._rental_period_transport_fee_lines(start_date, end_date)
+        fee_lines = self._rental_period_transport_fee_lines(
+            start_date, end_date, transport_fee_until_date=transport_fee_until_date
+        )
         if fee_lines:
             # Dùng chung tài khoản/thuế với dòng sản phẩm (thường VAT 8%) để tổng khớp Excel.
             fee_account = False
@@ -1466,22 +1675,23 @@ class RentalContract(models.Model):
                     fee_taxes = self.env['account.tax'].browse(fee_tax_ids[0][2])
             if not fee_account:
                 fee_account = journal.default_account_id
-            for fee_line in fee_lines:
-                type_label = _("Nhập") if fee_line.get("type") in ("return", "compensation") else _("Xuất")
-                invoice_lines.append((0, 0, {
-                    'name': _("Phí vận chuyển %(code)s (%(type)s)") % {
-                        "code": fee_line.get("code") or "",
-                        "type": type_label,
-                    },
-                    'quantity': 1,
-                    'price_unit': fee_line.get("amount") or 0.0,
-                    'account_id': fee_account.id,
-                    'tax_ids': [(6, 0, fee_taxes.ids)],
-                }))
+            total_fee = sum((fl.get("amount") or 0.0) for fl in fee_lines)
+            invoice_lines.append((0, 0, {
+                'name': _("Phí vận chuyển (%(n)s chuyến)") % {"n": len(fee_lines)},
+                'quantity': 1,
+                'price_unit': total_fee,
+                'account_id': fee_account.id,
+                'tax_ids': [(6, 0, fee_taxes.ids)],
+            }))
+
+        fee_until = transport_fee_until_date
+        if fee_until is None and fee_lines:
+            fee_until = end_date
 
         move = self.env['account.move'].create({
             'rental_start_date': start_date,
             'rental_end_date': end_date,
+            'transport_fee_until_date': fee_until or False,
             'move_type': 'out_invoice',
             'partner_id': partner.id,
             'rental_contract_id': self.id,
@@ -1489,6 +1699,9 @@ class RentalContract(models.Model):
             'journal_id': journal.id,
             'invoice_line_ids': invoice_lines,
         })
+
+        if fee_lines and fee_until:
+            self._mark_transport_fees_billed(fee_lines, move, fee_until)
 
         attachment = self.env["ir.attachment"].create({
             "name": f"{file_name}.xlsx",
@@ -1729,6 +1942,52 @@ class RentalContract(models.Model):
             'type': 'ir.actions.act_url',
             'url': url,
             'target': 'self',  # or 'new' to open in new tab
+        }
+
+    @staticmethod
+    def _format_months_padded(months):
+        """Zero-pad month count for Excel (2 -> '02', 11 -> '11')."""
+        return f"{int(months or 0):02d}"
+
+    @staticmethod
+    def _months_to_days(months):
+        return int(months or 0) * 30
+
+    def _quotation_contract_date_display(self):
+        """Vietnamese date: ngày DD tháng MM năm YYYY (zero-pad day/month)."""
+        self.ensure_one()
+        d = self.contract_date
+        if not d:
+            return ''
+        return f"ngày {d.day:02d} tháng {d.month:02d} năm {d.year}"
+
+    def _quotation_xlsx_placeholder_replacements(self):
+        """Placeholders for contract_quotation_xlsx template."""
+        self.ensure_one()
+        min_months = self.minimum_rental_months or 0
+        share_months = self.transport_fee_share_min_months or 0
+        return {
+            '{{b_company}}': self.b_party.parent_id.name or '',
+            '{{b_address}}': self.b_address or '',
+            '{{b_representative}}': self.b_name or '',
+            '{{b_phone}}': self.b_phone or '',
+            '{{b_email}}': self.b_party.email or '',
+            '{{today_is}}': date.today().strftime('ngày %d tháng %m năm %Y'),
+
+            '{{a_representative}}': self.a_name or '',
+            '{{a_company}}': self.a_party.parent_id.name or '',
+
+            '{{contract_date}}': self._quotation_contract_date_display(),
+            '{{construction_work}}': self.construction_work_id.name or '',
+            '{{construction_work_project}}': self.construction_work_project_id.name or '',
+            '{{construction_work_name}}': self.construction_work_id.name or '',
+            '{{construction_work_address}}': self.construction_work_address or '',
+
+            '{{minimum_rental_months}}': self._format_months_padded(min_months),
+            '{{minimum_rental_months_to_day}}': str(self._months_to_days(min_months)),
+            '{{transport_fee_share_min_months}}': self._format_months_padded(share_months),
+            '{{transport_fee_share_min_months_to_day}}': str(self._months_to_days(share_months)),
+            '{{prices_include_tax}}': _('đã') if self.prices_include_tax else _('chưa'),
         }
 
     def action_export_transport_matrix_excel(self, start_date, end_date):
@@ -2042,7 +2301,18 @@ class RentalContractLine(models.Model):
     )
     name = fields.Text(string="Description")
     product_uom_qty = fields.Integer(string="Quantity", default=1, readonly=True)
-    price_unit = fields.Float(string="Sales Price", required=True, default=0)
+    price_unit = fields.Float(
+        string="Đơn giá thuê / tháng",
+        required=True,
+        default=0,
+        help="Đơn giá thuê theo tháng trên bảng báo giá (cùng đơn vị với list_price / giá tháng catalog).",
+    )
+    price_unit_day = fields.Float(
+        string="Đơn giá thuê / ngày",
+        compute="_compute_price_unit_day",
+        readonly=True,
+        help="Quy đổi từ đơn giá tháng ÷ 30 (cùng quy ước xuất báo giá).",
+    )
     standard_price = fields.Float(string="Standard Price")
     compensation_price = fields.Float(string="Compensation Price")
     uom_id = fields.Many2one('uom.uom', 'Unit of Measure')
@@ -2057,6 +2327,51 @@ class RentalContractLine(models.Model):
         string="Lịch sử điều chỉnh giá",
     )
 
+    @api.depends('price_unit')
+    def _compute_price_unit_day(self):
+        for line in self:
+            line.price_unit_day = (line.price_unit or 0.0) / 30.0
+
+    @api.constrains('contract_id', 'product_tmpl_id')
+    def _check_unique_product_tmpl_per_contract(self):
+        for line in self:
+            if not line.contract_id or not line.product_tmpl_id:
+                continue
+            duplicates = self.search_count([
+                ('contract_id', '=', line.contract_id.id),
+                ('product_tmpl_id', '=', line.product_tmpl_id.id),
+                ('id', '!=', line.id),
+            ])
+            if duplicates:
+                raise ValidationError(_(
+                    "Sản phẩm «%s» đã có trên bảng báo giá của hợp đồng này."
+                ) % (line.product_tmpl_id.display_name,))
+
+    def _check_contract_can_edit_lines(self):
+        if self.env.context.get("rental_contract_allow_locked_write"):
+            return
+        for line in self:
+            contract = line.contract_id
+            if contract and not contract.can_edit:
+                raise UserError(_(
+                    "Hợp đồng hiện đang bị khóa, không cho phép sửa bảng báo giá. "
+                    "Vui lòng yêu cầu Leader mở khóa."
+                ))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        lines._check_contract_can_edit_lines()
+        return lines
+
+    def write(self, vals):
+        self._check_contract_can_edit_lines()
+        return super().write(vals)
+
+    def unlink(self):
+        self._check_contract_can_edit_lines()
+        return super().unlink()
+
     @api.onchange('product_tmpl_id')
     def _onchange_product_tmpl_id(self):
         for line in self:
@@ -2070,7 +2385,7 @@ class RentalContractLine(models.Model):
             line.uom_id = pt.uom_id or 0
 
     def _effective_price_unit(self, as_of_date=None):
-        """Đơn giá thuê hiệu lực tại as_of_date (mốc gần nhất có date_from <= as_of_date).
+        """Đơn giá thuê / tháng hiệu lực tại as_of_date (mốc gần nhất có date_from <= as_of_date).
 
         Nếu chưa có mốc nào áp dụng (hoặc không truyền ngày) thì dùng price_unit gốc
         (giá ban đầu của hợp đồng).
@@ -2083,9 +2398,6 @@ class RentalContractLine(models.Model):
             if applicable:
                 return applicable[-1].price_unit
         return self.price_unit
-
-    # Intentionally no contract lock enforcement here.
-    # Requirement: only lock selected tabs (handled at UI level + rental.contract.write lock).
 
 
 class RentalContractLinePrice(models.Model):
@@ -2118,7 +2430,36 @@ class RentalContractLinePrice(models.Model):
         readonly=True,
     )
     date_from = fields.Date(string="Hiệu lực từ ngày", required=True)
-    price_unit = fields.Float(string="Đơn giá thuê mới", required=True)
+    price_unit = fields.Float(
+        string="Đơn giá thuê / tháng mới",
+        required=True,
+        help="Đơn giá thuê theo tháng sau mốc điều chỉnh (cùng đơn vị bảng báo giá).",
+    )
+
+    def _check_contract_can_edit_price_changes(self):
+        if self.env.context.get("rental_contract_allow_locked_write"):
+            return
+        for rec in self:
+            contract = rec.contract_id or rec.contract_line_id.contract_id
+            if contract and not contract.can_edit:
+                raise UserError(_(
+                    "Hợp đồng hiện đang bị khóa, không cho phép sửa điều chỉnh giá. "
+                    "Vui lòng yêu cầu Leader mở khóa."
+                ))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._check_contract_can_edit_price_changes()
+        return records
+
+    def write(self, vals):
+        self._check_contract_can_edit_price_changes()
+        return super().write(vals)
+
+    def unlink(self):
+        self._check_contract_can_edit_price_changes()
+        return super().unlink()
 
     @api.constrains('price_unit')
     def _check_price_unit(self):

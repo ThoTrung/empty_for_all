@@ -53,6 +53,7 @@ class TestRentalBillingScenarios(TransactionCase):
         return self.env["rr.transport"].create({
             "rental_contract_id": self._contract.id,
             "type": ttype,
+            "state": "done",
             "start_rental_or_return_date": when,
             "driver_id": self._driver.id,
             "transport_truck_id": self._truck.id,
@@ -482,6 +483,7 @@ class TestRentalBillingScenarios(TransactionCase):
         return self.env["rr.transport"].create({
             "rental_contract_id": contract.id,
             "type": ttype,
+            "state": "done",
             "start_rental_or_return_date": when,
             "driver_id": self._driver.id,
             "transport_truck_id": self._truck.id,

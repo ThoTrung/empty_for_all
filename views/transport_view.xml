@@ -37,6 +37,7 @@
                 <field name="driver_name" optional="show"/>
                 <field name="driver_phone" optional="show"/>
                 <field name="fee" optional="show"/>
+                <field name="fee_billed_date" optional="hide"/>
                 <field name="state"
                        widget="badge"
                        decoration-success="state=='done'"
@@ -163,6 +164,8 @@
                             <field name="transport_truck_id" readonly="state in ['done', 'cancel']" placeholder="30M-09090"/>
                             <field name="equipment_load" readonly="state in ['done', 'cancel']"/>
                             <field name="fee" readonly="state == 'cancel'"/>
+                            <field name="fee_billed_date" readonly="state == 'cancel'"/>
+                            <field name="fee_invoice_id" readonly="state == 'cancel'" options="{'no_create': True}"/>
                             <field name="external_invoice_code" readonly="state == 'cancel'" placeholder="Mã hóa đơn ngoài"/>
                         </group>
                     </group>

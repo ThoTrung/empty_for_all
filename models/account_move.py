@@ -18,6 +18,11 @@ class AccountMove(models.Model):
     )
     rental_start_date = fields.Date(string="Invoice start date")
     rental_end_date = fields.Date(string="Invoice end date")
+    transport_fee_until_date = fields.Date(
+        string="Tính phí vận chuyển đến ngày",
+        help="Cutoff phí VC đã dùng khi tạo hóa đơn này (audit).",
+        copy=False,
+    )
     rental_billing_mode = fields.Selection(
         related="rental_contract_id.rental_billing_mode",
         string="Cách tính tiền thuê (HĐ)",
@@ -56,6 +61,7 @@ class AccountMove(models.Model):
         buffer, _subtotal = self.rental_contract_id._build_klct_hstt_xlsx_buffer(
             self.rental_start_date,
             self.rental_end_date,
+            fee_invoice=self,
         )
         contract = self.rental_contract_id
         filename = (
@@ -98,6 +104,7 @@ class AccountMove(models.Model):
         buffer = self.rental_contract_id._build_rental_payment_xlsx_buffer(
             self.rental_start_date,
             self.rental_end_date,
+            fee_invoice=self,
         )
         contract = self.rental_contract_id
         filename = f"HSTT {self.rental_end_date.strftime('%m-%Y')} - {contract.code}"

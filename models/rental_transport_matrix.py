@@ -24,6 +24,14 @@ def _linear_meter_factor_for_product(product):
     return mult if mult > 0 else None
 
 
+def _signed_transport_line_qty(line):
+    """Quantity direction for stock-balance matrices; stored line quantities stay positive."""
+    qty = line.qty or 0
+    if line.transport_id.type in ("return", "compensation"):
+        return -qty
+    return qty
+
+
 def _variant_sort_key_from_info(info):
     """Sort key: Price Multiplier ascending, then label."""
     if not isinstance(info, dict):
@@ -233,7 +241,10 @@ class RentalTransportMatrix(models.Model):
                     for line in transport.transport_line_ids:
                         if not line.product_id:
                             continue
-                        cell_qty[line.product_id.id] = cell_qty.get(line.product_id.id, 0) + (line.qty or 0)
+                        cell_qty[line.product_id.id] = (
+                            cell_qty.get(line.product_id.id, 0)
+                            + _signed_transport_line_qty(line)
+                        )
                 return cell_qty
 
             # Dòng đầu kỳ: tổng hợp transport < start_date

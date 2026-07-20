@@ -16,7 +16,7 @@
                   <th style="width:64%;">Tên hàng, chủng loại</th>
                   <th style="width:10%; text-align:center;">ĐVT</th>
                   <th style="width:8%; text-align:center;">Số lượng</th>
-                  <th style="width:12%; text-align:center;">Đơn giá thuê<br/>(VND)/ 1 Ngày</th>
+                  <th style="width:12%; text-align:center;">Đơn giá thuê<br/>(VND)/ tháng</th>
                 </tr>
               </thead>
               <tbody>
