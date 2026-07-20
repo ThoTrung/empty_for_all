@@ -71,6 +71,10 @@ class TestKlctHsttCombinedExport(TransactionCase):
             "product_tmpl_id": cls._product.product_tmpl_id.id,
             "price_unit": 100.0,
         })
+        # Avoid DB-uploaded HSTT layouts (may merge row 13); use module static + start_row 13.
+        cls.env["rental.template"].with_context(active_test=False).search([
+            ("template_type", "=", "rental_invoice_xlsx"),
+        ]).write({"active": False, "is_default": False})
 
     def _create_transport(self, when, qty, transport_type="delivery"):
         return self.env["rr.transport"].create({
@@ -491,9 +495,12 @@ class TestKlctHsttCombinedExport(TransactionCase):
         end_date = date(2026, 4, 30)
         self._create_transport(date(2026, 4, 10), 50)
 
+        self.env["rental.template"].with_context(active_test=False).search([
+            ("template_type", "=", "rental_invoice_xlsx"),
+        ]).write({"active": False, "is_default": False})
         self.env["rental.template"].create({
             "name": "HSTT start row 15",
-            "company_id": self.env.company.id,
+            "company_id": self._contract.company_id.id,
             "template_type": "rental_invoice_xlsx",
             "data_start_row": 15,
             "is_default": True,
@@ -505,14 +512,32 @@ class TestKlctHsttCombinedExport(TransactionCase):
         wb = load_workbook(BytesIO(buffer.getvalue()))
         hstt = wb["HSTT 04-2026"]
 
-        # Confirmation row kept (placeholders replaced); not overwritten by billing dates.
+        # Confirmation row kept (placeholders = period dates); not overwritten by billing.
         conf = hstt.cell(13, 1).value or ""
-        self.assertIn("10/04/2026", conf)
+        self.assertIn("01/04/2026", conf)
         self.assertIn("30/04/2026", conf)
-        self.assertIsNone(hstt.cell(13, 2).value)
+        # Non-anchor merged cells stay empty (read-only MergedCell).
+        from openpyxl.cell.cell import MergedCell
+        self.assertTrue(isinstance(hstt.cell(13, 2), MergedCell) or hstt.cell(13, 2).value in (None, ""))
 
-        # First billing line starts at configured row 15.
+        # First billing line starts at configured row 15 (delivery 10/04).
         self.assertEqual(hstt.cell(15, 2).value.date(), date(2026, 4, 10))
         self.assertEqual(hstt.cell(15, 3).value.date(), date(2026, 4, 30))
         self.assertEqual(hstt.cell(15, 7).value, "=C15-B15")
         self.assertEqual(hstt.cell(15, 9).value, "=F15*G15*H15")
+
+    def test_hstt_placeholders_include_contract_number_and_date(self):
+        """HSTT XLSX replaces {{contract_number}} / {{contract_date}} from contract."""
+        self._contract.write({
+            "contract_number": "125 /HĐKT/XDMT – TLP",
+            "contract_date": "2026-07-05",
+        })
+        wb = Workbook()
+        ws = wb.active
+        ws["A1"] = "Số HĐ: {{contract_number}}"
+        ws["A2"] = "Ngày HĐ: {{contract_date}}"
+        self._contract._rental_invoice_xlsx_apply_placeholders(
+            ws, date(2026, 4, 1), date(2026, 4, 30)
+        )
+        self.assertEqual(ws["A1"].value, "Số HĐ: 125 /HĐKT/XDMT – TLP")
+        self.assertEqual(ws["A2"].value, "Ngày HĐ: ngày 05 tháng 07 năm 2026")

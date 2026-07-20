@@ -544,6 +544,8 @@ class RentalContract(models.Model):
         replacements = {
             "{{today_is}}": date.today().strftime("ngày %d tháng %m năm %Y"),
             "{{invoice_number}}": "",
+            "{{contract_number}}": self.contract_number or "",
+            "{{contract_date}}": self._quotation_contract_date_display(),
             "{{construction_work_project}}": self.construction_work_project_id.name or "",
             "{{construction_work_name}}": self.construction_work_id.name or "",
             "{{construction_work_address}}": self.construction_work_address or "",
