@@ -1,0 +1,28 @@
+.o_rental_analytics_dashboard_body {
+    min-height: 100%;
+}
+
+.o_rental_analytics_card {
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.o_rental_analytics_card:hover {
+    box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+.o_rental_analytics_chart {
+    position: relative;
+    height: 260px;
+    width: 100%;
+}
+
+.o_rental_analytics_uom_totals {
+    max-height: 140px;
+    overflow-y: auto;
+}
+
+.o_rental_analytics_dashboard_body .form-select {
+    min-width: 180px;
+}

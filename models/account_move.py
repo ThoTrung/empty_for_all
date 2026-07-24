@@ -16,6 +16,18 @@ class AccountMove(models.Model):
         tracking=True,
         help="Contract this invoice belongs to.",
     )
+    rental_partner_company_id = fields.Many2one(
+        related="rental_contract_id.a_company_party",
+        string="Khách hàng thuê",
+        store=True,
+        index=True,
+    )
+    rental_construction_work_id = fields.Many2one(
+        related="rental_contract_id.construction_work_id",
+        string="Gói thầu / Công trình",
+        store=True,
+        index=True,
+    )
     rental_start_date = fields.Date(string="Invoice start date")
     rental_end_date = fields.Date(string="Invoice end date")
     transport_fee_until_date = fields.Date(

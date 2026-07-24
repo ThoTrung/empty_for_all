@@ -19,3 +19,5 @@ from . import rental_product_template_set
 from . import construction_extra
 from . import res_users
 from . import rental_holiday
+from . import rental_analytics_on_hire
+from . import rental_analytics_dashboard

@@ -176,13 +176,18 @@
                                     <field name="contract_date" placeholder="01/01/2025"/>
                                     <field name="contract_number" placeholder="125 /HĐKT/XDMT – TLP"/>
                                     <field name="prices_include_tax"/>
+                                    <field name="minimum_rental_months" string="Kỳ thuê tối thiểu"/>
+                                    <field name="transport_fee_share_min_months"
+                                              string="Ngưỡng chia sẻ phí VC"/>
                                 </group>
                                 <group>
                                     <field name="rental_billing_mode"/>
-                                    <field name="monthly_day_basis" invisible="rental_billing_mode != 'month'"/>
+                                    <field name="monthly_day_basis"
+                                              string="Cơ sở quy đổi giá ngày"
+                                              invisible="rental_billing_mode != 'month'"/>
                                     <field name="minimum_rental_billing_mode"/>
-                                    <field name="minimum_rental_months"/>
-                                    <field name="transport_fee_share_min_months"/>
+                                    <field name="minimum_penalty_current_period_only"
+                                              string="Chỉ phạt SP từ tháng này"/>
                                 </group>
                             </group>
                         </div>

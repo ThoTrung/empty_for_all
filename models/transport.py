@@ -441,6 +441,27 @@ class Transport(models.Model):
 
     def action_create_pickings(self):
         self.ensure_one()
+        # Tạm thời: mỗi rr.transport chỉ 1 phiếu kho (không tính phiếu đã hủy).
+        existing = self.picking_ids.filtered(lambda p: p.state != "cancel")
+        if existing:
+            open_picks = existing.filtered(lambda p: p.state != "done")
+            if open_picks:
+                names = ", ".join(open_picks.mapped("name"))
+                raise UserError(
+                    _(
+                        "Đã có phiếu kho chưa xác nhận: %(names)s. "
+                        "Vui lòng xác nhận hoặc hủy phiếu đó trước khi tạo mới."
+                    )
+                    % {"names": names}
+                )
+            names = ", ".join(existing.mapped("name"))
+            raise UserError(
+                _(
+                    "Phiếu vận chuyển này đã có phiếu kho (%(names)s). "
+                    "Hiện mỗi phiếu vận chuyển chỉ được gắn một phiếu kho."
+                )
+                % {"names": names}
+            )
         # Đền bù: dòng hỏng 100% (mất/hỏng hoàn toàn) không quay về kho. Nếu toàn bộ
         # dòng đều 100% thì không tạo phiếu nhập kho nào, chỉ đóng phiếu đền bù.
         if self.type == 'compensation' and not self._compensation_lines_to_stock():

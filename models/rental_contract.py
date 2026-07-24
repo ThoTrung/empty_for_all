@@ -106,6 +106,14 @@ class RentalContract(models.Model):
         help="Quy định thuê tối thiểu. Nếu trả sản phẩm trước khi đủ số tháng này (tính từ "
              "ngày giao của lô tương ứng) thì vẫn tính tiền đủ kỳ tối thiểu. Đặt 0 để tắt.",
     )
+    minimum_penalty_current_period_only = fields.Boolean(
+        string="Chỉ phạt sản phẩm thuê từ tháng này",
+        default=False,
+        tracking=True,
+        help="Khi bật: chỉ áp dụng phạt kỳ tối thiểu cho số lượng giao trong kỳ thanh toán "
+             "đang lập. Phần trả vượt quá SL thuê trong kỳ (khớp vào dư đầu kỳ / lô trước kỳ) "
+             "tính và hiển thị như không phạt. Khi tắt: giữ hành vi cũ (phạt theo từng lô).",
+    )
     transport_fee_share_min_months = fields.Integer(
         string="Ngưỡng chia sẻ phí VC (tháng)",
         default=0,
@@ -589,7 +597,7 @@ class RentalContract(models.Model):
         if not transport_fee_until_date:
             return []
         transports = self.rr_transport_ids.filtered(
-            lambda t: t.state != "cancel"
+            lambda t: t.state == "done"
             and t.fee
             and t.start_rental_or_return_date
             and not t.fee_billed_date
@@ -604,7 +612,7 @@ class RentalContract(models.Model):
         if not move:
             return []
         transports = self.rr_transport_ids.filtered(
-            lambda t: t.state != "cancel"
+            lambda t: t.state == "done"
             and t.fee
             and t.fee_invoice_id
             and t.fee_invoice_id.id == move.id
@@ -645,7 +653,7 @@ class RentalContract(models.Model):
     def _rental_period_compensation_lines(self, start_date, end_date):
         """Các dòng đền bù (tiền phạt mất/hỏng) phát sinh trong kỳ.
 
-        Lấy theo phiếu Đền bù (rr.transport.type == 'compensation', không bị hủy) có
+        Lấy theo phiếu Đền bù (rr.transport.type == 'compensation', state=done) có
         ngày tính nằm trong [start_date, end_date] và có tiền phạt > 0.
         """
         self.ensure_one()
@@ -653,7 +661,7 @@ class RentalContract(models.Model):
             [
                 ("transport_id", "in", self.rr_transport_ids.ids),
                 ("transport_id.type", "=", "compensation"),
-                ("transport_id.state", "!=", "cancel"),
+                ("transport_id.state", "=", "done"),
                 ("start_rental_or_return_date", ">=", start_date),
                 ("start_rental_or_return_date", "<=", end_date),
             ],
@@ -790,6 +798,8 @@ class RentalContract(models.Model):
             ws.cell(r, 6).value = qty_formula
         else:
             ws.cell(r, 6).value = line["qty"]
+        # Month mode + Excel formulas: H must be day_price × period dim so I=F*G*H/dim
+        # matches Python (penalty lines may have end_date in another month → wrong display).
         if use_excel_formulas:
             include = line.get("include_start_day")
             if include is None:
@@ -798,10 +808,11 @@ class RentalContract(models.Model):
                 line["start_date"], line["end_date"], include
             )
             ws.cell(r, 7).value = self._rental_days_excel_formula(r, include, holiday_days)
-            ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
             if self.rental_billing_mode == "month" and month_day_dim:
+                ws.cell(r, 8).value = float(line.get("unit_price") or 0) * int(month_day_dim)
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
             else:
+                ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}"
         else:
             ws.cell(r, 7).value = line["rental_days"]
@@ -838,10 +849,11 @@ class RentalContract(models.Model):
                 agg["start_date"], agg["end_date"], include
             )
             ws.cell(r, 7).value = self._rental_days_excel_formula(r, include, holiday_days)
-            ws.cell(r, 8).value = agg.get("display_unit_price", agg["unit_price"])
             if self.rental_billing_mode == "month" and month_day_dim:
+                ws.cell(r, 8).value = float(agg.get("unit_price") or 0) * int(month_day_dim)
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
             else:
+                ws.cell(r, 8).value = agg.get("display_unit_price", agg["unit_price"])
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}"
         else:
             ws.cell(r, 7).value = agg["rental_days"]
@@ -866,7 +878,12 @@ class RentalContract(models.Model):
 
     @classmethod
     def _klct_qty_formula_for_line(cls, klct_meta, line):
-        """Build F-column formula pointing at KLCT qty (or Tổng MD) for this billing line."""
+        """Build F-column formula pointing at KLCT qty (or Tổng MD) for this billing line.
+
+        Only link when the KLCT cell(s) match billing ``line["qty"]``. Otherwise return
+        None so the writer stores a literal (avoids double-counting split returns /
+        penalties — DEC-16, extended to in-period rows).
+        """
         if not klct_meta:
             return None
         tmpl_id = line.get("tmpl_id")
@@ -879,6 +896,12 @@ class RentalContract(models.Model):
 
         letter = get_column_letter(col)
         sheet_ref = cls._excel_sheet_ref(klct_meta.get("sheet_title") or "")
+        line_qty = float(line.get("qty") or 0)
+        qty_by_row = klct_meta.get("qty_by_row_and_tmpl_id") or {}
+
+        def _rows_qty(rows):
+            return sum(float(qty_by_row.get((r, tmpl_id), 0) or 0) for r in rows)
+
         if line.get("is_bob"):
             opening_row = klct_meta.get("opening_row")
             if not opening_row:
@@ -886,17 +909,16 @@ class RentalContract(models.Model):
             opening_qty_by_tmpl = klct_meta.get("opening_qty_by_tmpl_id")
             if opening_qty_by_tmpl is not None:
                 opening_qty = opening_qty_by_tmpl.get(tmpl_id, 0) or 0
-                # A return during the period splits the opening lot into:
-                # - quantity still rented through period end; and
-                # - quantity returned, charged only through its return date.
-                # KLCT opening contains both, so referencing it here would charge the
-                # returned part for the full period and then charge it again below.
-                if abs(float(opening_qty) - float(line.get("qty") or 0)) > 1e-6:
+                if abs(float(opening_qty) - line_qty) > 1e-6:
+                    return None
+            elif qty_by_row:
+                if abs(_rows_qty([opening_row]) - line_qty) > 1e-6:
                     return None
             return f"={sheet_ref}!{letter}{opening_row}"
+
         deliver_date = line.get("deliver_date")
         rows_by_date_and_direction = klct_meta.get("data_rows_by_date_and_direction")
-        if rows_by_date_and_direction is not None and (line.get("qty") or 0) < 0:
+        if rows_by_date_and_direction is not None and line_qty < 0:
             rows = (
                 (rows_by_date_and_direction.get(deliver_date) or {}).get("return")
                 or []
@@ -907,6 +929,8 @@ class RentalContract(models.Model):
             # callers providing the old metadata shape.
             rows = (klct_meta.get("data_rows_by_date") or {}).get(deliver_date) or []
         if not rows:
+            return None
+        if qty_by_row and abs(_rows_qty(rows) - line_qty) > 1e-6:
             return None
         if len(rows) == 1:
             return f"={sheet_ref}!{letter}{rows[0]}"
@@ -967,10 +991,10 @@ class RentalContract(models.Model):
         klct_meta=None,
         month_day_dim=0,
     ):
-        """Một sản phẩm = một khối: (1) đơn thuê bình thường; (2) tính toán trả hàng
-        tối thiểu (đối ứng giao/trả + phần trả bị phạt); (3) chuyển thừa (không tính
-        tiền); (4) dòng Cộng SL đang thuê."""
-        # Phần 1: đơn thuê bình thường (dư đầu kỳ gộp 1 dòng + lô thuê kỳ này không bị trả).
+        """Một sản phẩm = một khối: (1) đơn thuê bình thường; (2) trả không phạt
+        (credit âm từ ngày trả → cuối kỳ); (3) đối ứng + phạt kỳ tối thiểu; (4) chuyển
+        thừa; (5) dòng Cộng SL đang thuê."""
+        # Phần 1: đơn thuê bình thường (kể cả SL đã gộp từ trả không phạt).
         for line in block["normal_lines"]:
             content = line["product_name"]
             if line.get("is_bob"):
@@ -988,26 +1012,23 @@ class RentalContract(models.Model):
 
         rc = block["return_calc"]
         if rc:
-            # Sub-block A: SL đã thuê để đối ứng (giao + trả) — KHÔNG số ngày, KHÔNG tiền.
-            self._write_subheader(
-                ws,
-                start_row + count,
-                _("Số lượng SP đã thuê để đối ứng với phần trả hàng"),
-            )
-            count += 1
-            for od in rc["offset_deliveries"]:
-                r = start_row + count
-                if od.get("is_bob"):
-                    ws.cell(r, 2).value = _("Dư đầu kỳ")
-                else:
-                    ws.cell(r, 2).value = od["date"].strftime("%d/%m/%Y")
-                ws.cell(r, 4).value = block["product_name"]
-                ws.cell(r, 5).value = block["uom_name"]
-                ws.cell(r, 6).value = od["qty"]
-                ws.cell(r, 8).value = block["display_unit_price"]
-                count += 1
-            # Phần chuyển thừa được trả lại (không tính tiền) — nguồn đối ứng, màu nhạt.
-            if rc.get("excess_return_qty"):
+            mode = rc.get("display_mode") or "legacy"
+
+            # Trả không phạt: dòng đỏ có tiền âm (ảnh 2) — không cần sub-header đối ứng.
+            for cred in rc.get("credit_returns") or []:
+                count = self._write_credit_return_row(
+                    ws,
+                    start_row,
+                    count,
+                    cred,
+                    block,
+                    use_excel_formulas=use_excel_formulas,
+                    klct_meta=klct_meta,
+                    month_day_dim=month_day_dim,
+                )
+
+            # Chuyển thừa trả lại khi credit-only (không vào khối đối ứng phạt).
+            if mode == "credit" and rc.get("excess_return_qty"):
                 r = start_row + count
                 c2 = ws.cell(r, 2)
                 c2.value = _("Dư đầu kỳ")
@@ -1022,62 +1043,103 @@ class RentalContract(models.Model):
                 for c in (c2, c4, c5, c6, c8):
                     c.font = self._blue_font_like(c)
                 count += 1
-            for ret in rc["returns"]:
-                r = start_row + count
-                c_date = ws.cell(r, 2)
-                c_date.value = ret["date"].strftime("%d/%m/%Y")
-                c_name = ws.cell(r, 4)
-                c_name.value = _("%s (trả hàng)") % block["product_name"]
-                c_uom = ws.cell(r, 5)
-                c_uom.value = block["uom_name"]
-                c_qty = ws.cell(r, 6)
-                c_qty.value = -ret["qty"]
-                c_price = ws.cell(r, 8)
-                c_price.value = block["display_unit_price"]
-                for c in (c_date, c_name, c_uom, c_qty, c_price):
-                    c.font = self._red_font_like(c)
-                count += 1
 
-            # Sub-block B: đối ứng sản phẩm trả — phần dư còn thuê + phần trả bị phạt/đã trả.
-            self._write_subheader(ws, start_row + count, _("Đối ứng sản phẩm trả"))
-            count += 1
-            for line in rc["leftover_present"]:
-                content = _("%(name)s (dư từ lô %(d)s)") % {
-                    "name": line["product_name"],
-                    "d": line["deliver_date"].strftime("%d/%m/%Y"),
-                }
-                count = self._write_billing_line(
+            # Phần phạt / legacy đối ứng.
+            if mode in ("legacy", "mixed") and (
+                rc.get("offset_deliveries")
+                or rc.get("returns")
+                or rc.get("penalty_rows")
+                or rc.get("leftover_present")
+                or (mode == "legacy" and rc.get("excess_return_qty"))
+            ):
+                self._write_subheader(
                     ws,
-                    start_row,
-                    count,
-                    line,
-                    content,
-                    use_excel_formulas=use_excel_formulas,
-                    klct_meta=None,
-                    month_day_dim=month_day_dim,
+                    start_row + count,
+                    _("Số lượng SP đã thuê để đối ứng với phần trả hàng"),
                 )
-            for agg in rc["returned_rows"]:
-                count = self._write_aggregated_return_row(
-                    ws,
-                    start_row,
-                    count,
-                    agg,
-                    block,
-                    self._return_row_content(block, agg),
-                    use_excel_formulas=use_excel_formulas,
-                    month_day_dim=month_day_dim,
-                )
-            for agg in rc["penalty_rows"]:
-                count = self._write_aggregated_return_row(
-                    ws,
-                    start_row,
-                    count,
-                    agg,
-                    block,
-                    self._return_row_content(block, agg, penalty=True),
-                    use_excel_formulas=use_excel_formulas,
-                    month_day_dim=month_day_dim,
-                )
+                count += 1
+                for od in rc["offset_deliveries"]:
+                    r = start_row + count
+                    if od.get("is_bob"):
+                        ws.cell(r, 2).value = _("Dư đầu kỳ")
+                    else:
+                        ws.cell(r, 2).value = od["date"].strftime("%d/%m/%Y")
+                    ws.cell(r, 4).value = block["product_name"]
+                    ws.cell(r, 5).value = block["uom_name"]
+                    ws.cell(r, 6).value = od["qty"]
+                    ws.cell(r, 8).value = block["display_unit_price"]
+                    count += 1
+                if rc.get("excess_return_qty") and mode != "credit":
+                    r = start_row + count
+                    c2 = ws.cell(r, 2)
+                    c2.value = _("Dư đầu kỳ")
+                    c4 = ws.cell(r, 4)
+                    c4.value = _("%s (Chuyển thừa, trả lại)") % block["product_name"]
+                    c5 = ws.cell(r, 5)
+                    c5.value = block["uom_name"]
+                    c6 = ws.cell(r, 6)
+                    c6.value = rc["excess_return_qty"]
+                    c8 = ws.cell(r, 8)
+                    c8.value = block["display_unit_price"]
+                    for c in (c2, c4, c5, c6, c8):
+                        c.font = self._blue_font_like(c)
+                    count += 1
+                for ret in rc["returns"]:
+                    r = start_row + count
+                    c_date = ws.cell(r, 2)
+                    c_date.value = ret["date"].strftime("%d/%m/%Y")
+                    c_name = ws.cell(r, 4)
+                    c_name.value = _("%s (trả hàng)") % block["product_name"]
+                    c_uom = ws.cell(r, 5)
+                    c_uom.value = block["uom_name"]
+                    c_qty = ws.cell(r, 6)
+                    c_qty.value = -ret["qty"]
+                    c_price = ws.cell(r, 8)
+                    c_price.value = block["display_unit_price"]
+                    for c in (c_date, c_name, c_uom, c_qty, c_price):
+                        c.font = self._red_font_like(c)
+                    count += 1
+
+                if rc.get("leftover_present") or rc.get("penalty_rows") or rc.get("returned_rows"):
+                    self._write_subheader(ws, start_row + count, _("Đối ứng sản phẩm trả"))
+                    count += 1
+                    for line in rc.get("leftover_present") or []:
+                        content = _("%(name)s (dư từ lô %(d)s)") % {
+                            "name": line["product_name"],
+                            "d": line["deliver_date"].strftime("%d/%m/%Y"),
+                        }
+                        count = self._write_billing_line(
+                            ws,
+                            start_row,
+                            count,
+                            line,
+                            content,
+                            use_excel_formulas=use_excel_formulas,
+                            klct_meta=None,
+                            month_day_dim=month_day_dim,
+                        )
+                    for agg in rc.get("returned_rows") or []:
+                        count = self._write_aggregated_return_row(
+                            ws,
+                            start_row,
+                            count,
+                            agg,
+                            block,
+                            self._return_row_content(block, agg),
+                            use_excel_formulas=use_excel_formulas,
+                            month_day_dim=month_day_dim,
+                        )
+                    for agg in rc.get("penalty_rows") or []:
+                        count = self._write_aggregated_return_row(
+                            ws,
+                            start_row,
+                            count,
+                            agg,
+                            block,
+                            self._return_row_content(block, agg, penalty=True),
+                            use_excel_formulas=use_excel_formulas,
+                            month_day_dim=month_day_dim,
+                        )
 
         # Chuyển thừa (chuyển dư) — KHÔNG tính tiền, chỉ hiển thị để dễ quản lý.
         if block.get("excess_qty"):
@@ -1098,6 +1160,64 @@ class RentalContract(models.Model):
         count += 1
         return count
 
+    def _write_credit_return_row(
+        self,
+        ws,
+        start_row,
+        count,
+        cred,
+        block,
+        use_excel_formulas=False,
+        klct_meta=None,
+        month_day_dim=0,
+    ):
+        """Dòng trả không phạt: trừ tiền từ ngày trả → cuối kỳ (qty & thành tiền âm)."""
+        r = start_row + count
+        content = _("%s (trả hàng)") % block["product_name"]
+        if use_excel_formulas and cred.get("start_date") and cred.get("end_date"):
+            self._write_excel_date(ws.cell(r, 2), cred["start_date"])
+            self._write_excel_date(ws.cell(r, 3), cred["end_date"])
+        else:
+            if cred.get("start_date"):
+                ws.cell(r, 2).value = cred["start_date"].strftime("%d/%m/%Y")
+            if cred.get("end_date"):
+                ws.cell(r, 3).value = cred["end_date"].strftime("%d/%m/%Y")
+        c_name = ws.cell(r, 4)
+        c_name.value = content
+        c_uom = ws.cell(r, 5)
+        c_uom.value = block["uom_name"]
+        c_qty = ws.cell(r, 6)
+        qty_formula = None
+        signed_qty = -float(cred.get("qty") or 0)
+        if use_excel_formulas and klct_meta:
+            qty_formula = self._klct_qty_formula_for_line(klct_meta, {
+                "tmpl_id": block.get("tmpl_id"),
+                "qty": signed_qty,
+                "deliver_date": cred.get("return_date") or cred.get("date"),
+            })
+        c_qty.value = qty_formula if qty_formula else signed_qty
+        c_days = ws.cell(r, 7)
+        c_price = ws.cell(r, 8)
+        c_amt = ws.cell(r, 9)
+        if use_excel_formulas and cred.get("start_date") and cred.get("end_date"):
+            include = bool(cred.get("include_start_day"))
+            holiday_days = self._holiday_days_for_billing_span(
+                cred["start_date"], cred["end_date"], include
+            )
+            c_days.value = self._rental_days_excel_formula(r, include, holiday_days)
+            if self.rental_billing_mode == "month" and month_day_dim:
+                c_price.value = float(cred.get("unit_price") or 0) * int(month_day_dim)
+                c_amt.value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
+            else:
+                c_price.value = cred.get("display_unit_price", cred.get("unit_price"))
+                c_amt.value = f"=F{r}*G{r}*H{r}"
+        else:
+            c_days.value = cred["rental_days"]
+            c_price.value = cred.get("display_unit_price", cred.get("unit_price"))
+            c_amt.value = cred["total_amount"]
+        for c in (ws.cell(r, 2), ws.cell(r, 3), c_name, c_uom, c_qty, c_days, c_price, c_amt):
+            c.font = self._red_font_like(c)
+        return count + 1
     def _rental_invoice_xlsx_write_table(
         self,
         ws,
@@ -1731,6 +1851,8 @@ class RentalContract(models.Model):
             # The key will be product_id and the start_date.
             # If more lines have the same product_id and start_date ==> sum them
             for line in rec.rr_transport_line_ids:
+                if line.transport_id.state != "done":
+                    continue
                 if not line.billable_qty:
                     continue
                 invoice_date = line.start_rental_or_return_date

@@ -8,8 +8,15 @@ function downloadAndCloseModal(env, action){
      */
     const url = action.params && action.params.url;
     if (url) {
-        // Open in a new tab so we can still run the close action here
-        window.open(url, "_blank");
+        // Same-document <a download> avoids popup blockers that kill
+        // window.open() after the wizard Confirm RPC returns.
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "");
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
     }
     // Close the current wizard dialog
     env.services.action.doAction({ type: "ir.actions.act_window_close" });

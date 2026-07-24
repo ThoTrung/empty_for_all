@@ -144,7 +144,9 @@ class TestKlctHsttCombinedExport(TransactionCase):
         )
 
     def test_opening_qty_with_period_return_is_not_double_counted(self):
+        """DEC-19 credit layout: full BOB present + credit return with F/G/I formulas."""
         self._contract.rental_billing_mode = "month"
+        self._contract.minimum_rental_months = 0
         start_date = date(2026, 4, 1)
         end_date = date(2026, 4, 30)
         self._create_transport(date(2026, 3, 10), 100)
@@ -161,11 +163,65 @@ class TestKlctHsttCombinedExport(TransactionCase):
         self.assertEqual(klct.cell(start_row + 2, 4).value, 70)
 
         hstt = wb["HSTT 04-2026"]
-        # The opening KLCT cell is 100, but only 70 remains rented through month end.
-        # The returned 30 is charged separately through its return date.
-        self.assertEqual(hstt.cell(13, 6).value, 70)
-        self.assertEqual(hstt.cell(18, 6).value, 30)
-        self.assertEqual(hstt.cell(18, 9).value, "=F18*G18*H18/30")
+        # Credit layout: BOB billed as full opening (100), then credit row for return.
+        self.assertEqual(
+            hstt.cell(13, 6).value,
+            f"='KLCT 04-2026'!D{start_row}",
+        )
+        self.assertAlmostEqual(hstt.cell(13, 8).value, 100.0, places=6)
+        self.assertEqual(hstt.cell(13, 9).value, "=F13*G13*H13/30")
+
+        credit_row = None
+        for row in range(13, 40):
+            content = hstt.cell(row, 4).value or ""
+            if "trả hàng" in str(content):
+                credit_row = row
+                break
+        self.assertIsNotNone(credit_row, "expected credit return row on HSTT")
+        self.assertEqual(
+            hstt.cell(credit_row, 6).value,
+            f"='KLCT 04-2026'!D{start_row + 1}",
+        )
+        self.assertEqual(hstt.cell(credit_row, 7).value, f"=C{credit_row}-B{credit_row}")
+        self.assertAlmostEqual(hstt.cell(credit_row, 8).value, 100.0, places=6)
+        self.assertEqual(
+            hstt.cell(credit_row, 9).value,
+            f"=F{credit_row}*G{credit_row}*H{credit_row}/30",
+        )
+
+    def test_draft_transport_excluded_from_klct_opening_and_hstt_bob(self):
+        """DEC-17: draft before period must not enter KLCT opening / HSTT BOB."""
+        self._contract.rental_billing_mode = "month"
+        start_date = date(2026, 5, 1)
+        end_date = date(2026, 5, 31)
+        self._create_transport(date(2026, 4, 10), 232)  # done (helper default)
+        draft = self.env["rr.transport"].create({
+            "rental_contract_id": self._contract.id,
+            "type": "delivery",
+            "state": "draft",
+            "start_rental_or_return_date": date(2026, 4, 15),
+            "driver_id": self._driver.id,
+            "transport_truck_id": self._truck.id,
+            "vehicle_start_time": date(2026, 4, 15),
+            "plate": "29H-91001",
+            "transport_line_ids": [(0, 0, {
+                "product_id": self._product.id,
+                "qty": 1000,
+            })],
+        })
+        self.assertEqual(draft.state, "draft")
+
+        buffer, _subtotal = self._contract._build_klct_hstt_xlsx_buffer(
+            start_date, end_date
+        )
+        wb = load_workbook(BytesIO(buffer.getvalue()))
+        klct = wb["KLCT 05-2026"]
+        _title, _h2, _h3, start_row = find_transport_matrix_layout(klct)
+        self.assertEqual(klct.cell(start_row, 2).value, "Tồn đầu kỳ")
+        self.assertEqual(klct.cell(start_row, 4).value, 232)
+
+        hstt = wb["HSTT 05-2026"]
+        self.assertEqual(hstt.cell(13, 6).value, f"='KLCT 05-2026'!D{start_row}")
 
     def test_same_day_delivery_and_return_use_direction_specific_rows(self):
         start_date = date(2026, 4, 1)

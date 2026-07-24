@@ -171,10 +171,11 @@ class RentalTransportMatrix(models.Model):
             if not rec.rental_contract_id or not rec.start_date or not rec.end_date:
                 continue
 
-            # Transports trong kỳ [start_date, end_date]
+            # Transports trong kỳ [start_date, end_date] — chỉ phiếu done (DEC-17).
             transports_in_range = Transport.search(
                 [
                     ("rental_contract_id", "=", rec.rental_contract_id.id),
+                    ("state", "=", "done"),
                     ("start_rental_or_return_date", ">=", rec.start_date),
                     ("start_rental_or_return_date", "<=", rec.end_date),
                 ],
@@ -184,6 +185,7 @@ class RentalTransportMatrix(models.Model):
             transports_before = Transport.search(
                 [
                     ("rental_contract_id", "=", rec.rental_contract_id.id),
+                    ("state", "=", "done"),
                     ("start_rental_or_return_date", "<", rec.start_date),
                 ],
             )

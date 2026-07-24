@@ -32,11 +32,14 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
     - data_rows_by_date: date → [row, ...] (multiple trips same day)
     - data_rows_by_date_and_direction: date → direction → [row, ...]
     """
+    # DEC-17: official volume confirmation uses completed transports only (same as billing).
     rr_transport_ids = contract.rr_transport_ids.filtered_domain([
+        ('state', '=', 'done'),
         ('start_rental_or_return_date', '>=', start_date),
         ('start_rental_or_return_date', '<=', end_date),
     ])
     rr_transport_ids_before = contract.rr_transport_ids.filtered_domain([
+        ('state', '=', 'done'),
         ('start_rental_or_return_date', '<', start_date),
     ])
 
@@ -237,6 +240,23 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
     opening_row = None
     data_rows_by_date = defaultdict(list)
     data_rows_by_date_and_direction = defaultdict(lambda: defaultdict(list))
+    # (excel_row, tmpl_id) → qty shown in HSTT-linked column (piece or Tổng MD)
+    qty_by_row_and_tmpl_id = {}
+
+    def _tmpl_display_qty(tmpl_id, cell_qty_map):
+        g = next((x for x in groups_meta if x["tmpl_id"] == tmpl_id), None)
+        if not g:
+            return 0.0
+        if g["needs_md"]:
+            return _xlsx_md_sum(cell_qty_map, tmpl_id, g["p_tmpl"]) or 0.0
+        prod_id = g["prod_order"][0]
+        return cell_qty_map.get((tmpl_id, prod_id), 0) or 0.0
+
+    def _record_row_tmpl_qtys(excel_row, cell_qty_map):
+        for tmpl_id in qty_col_by_tmpl_id:
+            qty_by_row_and_tmpl_id[(excel_row, tmpl_id)] = _tmpl_display_qty(
+                tmpl_id, cell_qty_map
+            )
 
     if has_opening:
         r = start_row + row_idx
@@ -251,6 +271,7 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
             if col:
                 ws.cell(r, col).value = qty
         _write_md_cells(r, opening_cells)
+        _record_row_tmpl_qtys(r, opening_cells)
         row_idx += 1
 
     for transport in rr_transport_ids:
@@ -264,6 +285,7 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
             if col:
                 ws.cell(r, col).value = qty
         _write_md_cells(r, cell_row)
+        _record_row_tmpl_qtys(r, cell_row)
         if transport.start_rental_or_return_date:
             transport_date = transport.start_rental_or_return_date
             direction = (
@@ -346,6 +368,7 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
         "sheet_title": ws.title,
         "opening_row": opening_row,
         "opening_qty_by_tmpl_id": opening_qty_by_tmpl_id,
+        "qty_by_row_and_tmpl_id": qty_by_row_and_tmpl_id,
         "total_row": r_total,
         "qty_col_by_tmpl_id": qty_col_by_tmpl_id,
         "data_rows_by_date": dict(data_rows_by_date),

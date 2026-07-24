@@ -251,7 +251,17 @@ def _build_billing_events(env, contract, as_of_date):
         while remaining > 0 and open_lots[pid]:
             lot = open_lots[pid][-1]
             take = min(remaining, lot[1])
-            eff_return = max(line_date, lot[2])
+            # Option «chỉ phạt thuê tháng này»: không đẩy ngày trả tới min_end
+            # cho lô giao khác tháng với lần trả (phần dư đầu kỳ / trước tháng trả).
+            deliver_date = lot[0]
+            if (
+                contract.minimum_penalty_current_period_only
+                and (deliver_date.year, deliver_date.month)
+                != (line_date.year, line_date.month)
+            ):
+                eff_return = line_date
+            else:
+                eff_return = max(line_date, lot[2])
             events.append({"product": product, "product_id": pid, "date": eff_return, "qty": -take})
             lot[1] -= take
             remaining -= take
@@ -456,9 +466,14 @@ def _build_map_upfront(env, contract, start_date, end_date):
             )
             # SL trả trong kỳ: nếu trả sớm (chưa đủ kỳ tối thiểu) → tính dồn tới hết kỳ
             # tối thiểu và gắn nhãn "minimum"; nếu trả đúng/sau kỳ → nhãn "returned".
+            # Option «chỉ phạt thuê tháng này»: lô giao trước kỳ không bao giờ bị minimum.
+            penalty_ok = (
+                not contract.minimum_penalty_current_period_only
+                or d >= start_date
+            )
             for (r, q) in returned_in:
-                bill_end = max(r, min_end)
-                is_early = bool(min_months) and min_end > r
+                is_early = bool(min_months) and min_end > r and penalty_ok
+                bill_end = max(r, min_end) if is_early else r
                 _add_line(
                     product,
                     line_start,
@@ -556,11 +571,16 @@ def _pooled_return_lines_for_template(env, contract, tmpl, start_date, end_date,
             if start_date <= r <= end_date and factor:
                 d = slot[0]
                 min_end = slot[2]
-                is_early = bool(min_months) and min_end > r
+                penalty_ok = (
+                    not contract.minimum_penalty_current_period_only
+                    or d >= start_date
+                )
+                is_early = bool(min_months) and min_end > r and penalty_ok
+                bill_end = max(r, min_end) if is_early else r
                 out.append(
                     _build_billing_line_dict(
                         env, contract, ratios, product,
-                        max(d, start_date), max(r, min_end), take / factor, d,
+                        max(d, start_date), bill_end, take / factor, d,
                         start_date, end_date,
                         kind="minimum" if is_early else "returned",
                         return_date=r, min_months=min_months,
@@ -889,17 +909,16 @@ def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
     """Khối thanh toán theo TỪNG product.template (layout: 1 sản phẩm = 1 khối).
 
     Mỗi khối:
-    - normal_lines: dòng thuê bình thường — dư đầu kỳ GỘP 1 dòng (kể cả lô bị trả, chỉ
-      phần còn thuê) + lô thuê kỳ này KHÔNG bị trả.
-    - return_calc (chỉ khi có trả trong kỳ):
-        + offset_deliveries: SL đã thuê để đối ứng — lô thuê kỳ này bị trả (đủ lô) và
-          phần "Dư đầu kỳ" CHỈ lấy đúng số lượng cần đối ứng (không số ngày).
-        + returns: các lần trả trong kỳ (gộp theo ngày trả) — hiển thị âm/đỏ.
-        + leftover_present: phần dư còn thuê của lô THUÊ KỲ NÀY bị trả → tính bình thường.
-        + penalty_rows: phần trả bị phạt, gộp theo số ngày tính (phạt đủ kỳ tối thiểu).
-        + returned_rows: phần trả không phạt (lô đã quá kỳ tối thiểu), gộp theo (số ngày, ngày trả).
-    - present_total_qty: tổng SL đang thuê cuối kỳ (dòng "Cộng").
-    - display_unit_price: đơn giá đại diện để hiển thị ở phần đối ứng.
+    - normal_lines: thuê bình thường. Với phần trả *không phạt*, SL trả được gộp vào
+      dòng present (tính đủ tới cuối kỳ) — layout trừ tiền (ảnh 2).
+    - return_calc (khi có trả / chuyển thừa trong kỳ):
+        + display_mode: "credit" | "legacy" | "mixed"
+        + credit_returns: dòng trừ tiền từ ngày trả → cuối kỳ (qty dương trong dict,
+          writer ghi âm); chỉ phần kind=returned.
+        + offset_deliveries / returns / leftover_present / penalty_rows: layout đối ứng
+          cũ cho phần kind=minimum (và excess-only).
+        + returned_rows: luôn [] (giữ key tương thích test cũ).
+    - present_total_qty: SL đang thuê cuối kỳ (dòng "Cộng").
     """
     map_product_and_date_to_line = _build_map_product_and_date_to_line(env, contract, start_date, end_date)
     buckets = defaultdict(list)
@@ -921,7 +940,6 @@ def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
         mline = _merge_variant_lines_to_template_row(env, contract, tmpl, blines)
         lines_by_tmpl[mline["tmpl_id"]].append(mline)
 
-    # Chuyển thừa (không tính tiền) — hiển thị cả khi mẫu KHÔNG có dòng tính tiền nào.
     excess_info = _excess_info_by_template(env, contract, start_date, end_date)
 
     blocks = []
@@ -935,41 +953,36 @@ def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
         display_price = next(
             (l.get("display_unit_price", l["unit_price"]) for l in mlines), 0.0
         )
-        # Lô (theo ngày giao) bị "động" = có phần trả trong kỳ.
-        touched_dates = {l["deliver_date"] for l in mlines if l["kind"] in ("minimum", "returned")}
-        # SL đã giao của các lô THUÊ KỲ NÀY bị trả (= dư còn thuê + phần trả) → đối ứng đủ lô.
-        this_month_lot_qty = defaultdict(float)
+        # Chỉ lô bị phạt mới tách leftover / đối ứng kiểu cũ.
+        penalty_touched = {l["deliver_date"] for l in mlines if l["kind"] == "minimum"}
+        this_month_penalty_lot_qty = defaultdict(float)
         for l in mlines:
-            if not l["is_bob"]:
-                this_month_lot_qty[l["deliver_date"]] += l["qty"]
+            if not l["is_bob"] and l["deliver_date"] in penalty_touched:
+                this_month_penalty_lot_qty[l["deliver_date"]] += l["qty"]
 
-        # Phần "thuê bình thường":
-        # - Dư đầu kỳ (is_bob present): luôn gộp về 1 dòng, kể cả lô bị trả → chỉ tách
-        #   ĐÚNG số lượng cần đối ứng (phần trả) ra khối tính toán, phần còn lại ở đây.
-        # - Thuê kỳ này, lô KHÔNG bị trả: giữ nguyên.
         normal_present = []
-        leftover_present = []   # dư còn thuê của lô THUÊ KỲ NÀY bị trả (vd 126)
-        returns_by_date = defaultdict(float)
-        penalty_by_lot = {}     # gộp phần phạt theo từng lô (deliver_date)
-        returned_by_lot = {}    # gộp phần trả thường theo (lô, ngày trả)
-        bob_offset_qty = 0.0
+        leftover_present = []
+        penalty_returns_by_date = defaultdict(float)
+        penalty_by_lot = {}
+        bob_penalty_offset = 0.0
+        credit_by_date = {}
+
         for l in mlines:
             kind = l["kind"]
             if kind == "present":
                 if not l["qty"]:
                     continue
-                if l["is_bob"] or l["deliver_date"] not in touched_dates:
+                if l["is_bob"] or l["deliver_date"] not in penalty_touched:
                     normal_present.append(l)
                 else:
                     leftover_present.append(l)
                 continue
-            # minimum / returned (phần trả)
-            if l.get("return_date"):
-                returns_by_date[l["return_date"]] += l["qty"]
-            if l["is_bob"]:
-                bob_offset_qty += l["qty"]
+
             if kind == "minimum":
-                # Mỗi lô (ngày giao) một dòng phạt — text ghi rõ "thuê từ {ngày giao}".
+                if l.get("return_date"):
+                    penalty_returns_by_date[l["return_date"]] += l["qty"]
+                if l["is_bob"]:
+                    bob_penalty_offset += l["qty"]
                 agg = penalty_by_lot.setdefault(l["deliver_date"], {
                     "qty": 0.0,
                     "total_amount": 0.0,
@@ -984,61 +997,115 @@ def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
                     "include_start_day": l.get("include_start_day", False),
                     "is_bob": l.get("is_bob", False),
                 })
-            else:
-                rkey = (l["deliver_date"], l.get("return_date"))
-                agg = returned_by_lot.setdefault(rkey, {
-                    "qty": 0.0,
-                    "total_amount": 0.0,
-                    "rental_days": l["rental_days"],
-                    "deliver_date": l["deliver_date"],
-                    "start_date": l["start_date"],
-                    "end_date": l["end_date"],
-                    "return_date": l.get("return_date"),
-                    "min_months": l.get("min_months", 0),
-                    "unit_price": l["unit_price"],
-                    "display_unit_price": l.get("display_unit_price", l["unit_price"]),
-                    "include_start_day": l.get("include_start_day", False),
-                    "is_bob": l.get("is_bob", False),
-                })
-            agg["qty"] += l["qty"]
-            agg["total_amount"] += l["total_amount"]
+                agg["qty"] += l["qty"]
+                agg["total_amount"] += l["total_amount"]
+                continue
 
-        # Gộp các dòng thuê bình thường giống nhau (cùng kỳ/đơn giá) → 1 dòng (dư đầu kỳ).
+            # kind == returned → gộp vào present đủ kỳ + credit âm (ảnh 2)
+            if not l["qty"] or not l.get("return_date"):
+                continue
+            include = l.get("include_start_day", False)
+            full_days = rental_days_between_with_holiday(
+                env, contract, l["start_date"], end_date, include_start_day=include,
+            )
+            unit = l["unit_price"]
+            full_amount = full_days * l["qty"] * unit
+            absorbed = dict(l)
+            absorbed.update({
+                "end_date": end_date,
+                "rental_days": full_days,
+                "total_amount": full_amount,
+                "kind": "present",
+                "return_date": None,
+            })
+            normal_present.append(absorbed)
+
+            rd = l["return_date"]
+            credit_days = max(full_days - l["rental_days"], 0)
+            credit_amount = l["total_amount"] - full_amount  # <= 0
+            agg = credit_by_date.setdefault(rd, {
+                "date": rd,
+                "qty": 0.0,
+                "total_amount": 0.0,
+                "rental_days": credit_days,
+                "start_date": rd,
+                "end_date": end_date,
+                "return_date": rd,
+                "unit_price": unit,
+                "display_unit_price": l.get("display_unit_price", unit),
+                # C-B (không +1) ≈ số ngày sau ngày trả khi không có holiday lệch.
+                "include_start_day": False,
+                "is_bob": l.get("is_bob", False),
+                "deliver_date": l.get("deliver_date"),
+            })
+            agg["qty"] += l["qty"]
+            agg["total_amount"] += credit_amount
+            # Nếu nhiều lô cùng ngày trả khác credit_days, lấy max span hiển thị;
+            # thành tiền vẫn là tổng credit (khớp engine).
+            if credit_days > agg["rental_days"]:
+                agg["rental_days"] = credit_days
+
         normal_lines = _merge_display_lines(normal_present)
         normal_lines.sort(key=lambda l: (0 if l.get("is_bob") else 1, l["start_date"]))
         leftover_present.sort(key=lambda l: (l["deliver_date"], l["start_date"]))
         present_total = sum(l["qty"] for l in normal_lines) + sum(l["qty"] for l in leftover_present)
+        # present_total ở trên gồm cả SL đã «gộp trả không phạt» — cần trừ lại phần credit.
+        present_total -= sum(c["qty"] for c in credit_by_date.values())
 
         exc = excess_info.get(tmpl_id, {"on_hand": 0.0, "returns_by_date": {}})
         excess_returns_by_date = exc["returns_by_date"]
         excess_return_total = sum(excess_returns_by_date.values())
 
+        has_penalty = bool(penalty_by_lot)
+        has_credit = bool(credit_by_date)
         return_calc = None
-        if touched_dates or excess_return_total:
+        if has_penalty or has_credit or excess_return_total:
+            if has_credit and not has_penalty:
+                display_mode = "credit"
+            elif has_penalty and not has_credit:
+                display_mode = "legacy"
+            elif has_penalty and has_credit:
+                display_mode = "mixed"
+            else:
+                display_mode = "legacy"
+
             offset_deliveries = []
-            for d in sorted(td for td in touched_dates if td >= start_date):
-                offset_deliveries.append({"date": d, "qty": this_month_lot_qty[d], "is_bob": False})
-            if bob_offset_qty:
-                # Chỉ lấy đúng số lượng cần đối ứng từ dư đầu kỳ.
-                offset_deliveries.append({"date": None, "qty": bob_offset_qty, "is_bob": True})
-            # Phần trả ĐỎ hiển thị ĐỦ số vật lý = phần tính tiền + phần chuyển thừa trả lại.
-            phys_dates = set(returns_by_date) | set(excess_returns_by_date)
+            if has_penalty:
+                for d in sorted(td for td in penalty_touched if td >= start_date):
+                    offset_deliveries.append({
+                        "date": d, "qty": this_month_penalty_lot_qty[d], "is_bob": False,
+                    })
+                if bob_penalty_offset:
+                    offset_deliveries.append({
+                        "date": None, "qty": bob_penalty_offset, "is_bob": True,
+                    })
+
+            # Đỏ đối ứng (không tiền): chỉ phần phạt + chuyển thừa (legacy/mixed).
+            phys_dates = set(penalty_returns_by_date) | set(excess_returns_by_date)
             physical_returns = [
-                {"date": d, "qty": returns_by_date.get(d, 0.0) + excess_returns_by_date.get(d, 0.0)}
+                {
+                    "date": d,
+                    "qty": (
+                        penalty_returns_by_date.get(d, 0.0)
+                        + excess_returns_by_date.get(d, 0.0)
+                    ),
+                }
                 for d in sorted(phys_dates)
+                if (penalty_returns_by_date.get(d, 0.0) + excess_returns_by_date.get(d, 0.0))
             ]
+
             return_calc = {
+                "display_mode": display_mode,
                 "offset_deliveries": offset_deliveries,
                 "excess_return_qty": excess_return_total,
                 "returns": physical_returns,
-                "leftover_present": leftover_present,
+                "leftover_present": leftover_present if has_penalty else [],
                 "penalty_rows": [penalty_by_lot[k] for k in sorted(penalty_by_lot)],
-                "returned_rows": [
-                    returned_by_lot[k]
-                    for k in sorted(returned_by_lot, key=lambda x: (x[0], x[1] or start_date))
+                "returned_rows": [],
+                "credit_returns": [
+                    credit_by_date[d] for d in sorted(credit_by_date)
                 ],
             }
-
         blocks.append({
             "tmpl_id": tmpl_id,
             "product_name": tmpl.display_name,
@@ -1058,6 +1125,7 @@ def calc_rented_qty_as_of(
     *,
     contract_ids=None,
     partner_company_ids=None,
+    construction_work_ids=None,
     tmpl_ids=None,
     only_active_contracts=False,
 ):
@@ -1074,6 +1142,8 @@ def calc_rented_qty_as_of(
         domain.append(("id", "in", list(contract_ids)))
     if partner_company_ids is not None:
         domain.append(("a_company_party", "in", list(partner_company_ids)))
+    if construction_work_ids is not None:
+        domain.append(("construction_work_id", "in", list(construction_work_ids)))
     if only_active_contracts:
         domain.append(("status", "=", "active"))
 
@@ -1095,6 +1165,10 @@ def calc_rented_qty_as_of(
             rows.append({
                 "contract_id": contract.id,
                 "partner_company_id": contract.a_company_party.id,
+                "construction_work_id": contract.construction_work_id.id or False,
+                "construction_project_id": (
+                    contract.construction_work_project_id.id or False
+                ),
                 "tmpl_id": tmpl_id,
                 "product_name": block["product_name"],
                 "uom_name": block["uom_name"],

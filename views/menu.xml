@@ -5,6 +5,13 @@
               web_icon="rental, static/description/icon.png"
               sequence="0"/>
 
+    <menuitem id="menu_rental_analytics_dashboard"
+              name="Dashboard"
+              parent="menu_rental_root"
+              action="action_rental_analytics_dashboard"
+              sequence="0"
+              groups="rental.group_rental_staff"/>
+
     <menuitem name="Contract"
               id="menu_contract_master"
               parent="menu_rental_root"
@@ -59,18 +66,6 @@
               action="action_rental_product_variants"
               sequence="0"
               groups="rental.group_rental_staff,rental.group_rental_transport_courier"/>
-
-    <menuitem id="menu_rental_reports"
-              name="Báo cáo / Tra cứu"
-              parent="menu_rental_root"
-              sequence="7"
-              groups="rental.group_rental_staff"/>
-    <menuitem id="menu_rental_rented_qty_as_of"
-              name="SL đang thuê theo ngày"
-              parent="menu_rental_reports"
-              action="action_rental_rented_qty_wizard"
-              sequence="1"
-              groups="rental.group_rental_staff"/>
 
     <menuitem id="menu_res_partner_renters_master"
               name="Renters"

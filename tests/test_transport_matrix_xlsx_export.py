@@ -57,11 +57,13 @@ class TestTransportMatrixXlsxExport(TransactionCase):
         })
 
     def _create_transport(
-        self, when, qty, plate="29H-90001", transport_type="delivery", product=None
+        self, when, qty, plate="29H-90001", transport_type="delivery", product=None,
+        state="done",
     ):
         return self.env["rr.transport"].create({
             "rental_contract_id": self._contract.id,
             "type": transport_type,
+            "state": state,
             "start_rental_or_return_date": when,
             "driver_id": self._driver.id,
             "transport_truck_id": self._truck.id,
@@ -214,3 +216,27 @@ class TestTransportMatrixXlsxExport(TransactionCase):
         )
         self.assertEqual(ws.cell(start_row, md_col).value, -7)
         self.assertEqual(ws.cell(start_row + 1, md_col).value, -7)
+
+    def test_draft_transport_before_period_excluded_from_opening(self):
+        """DEC-17: draft (and non-done) trips must not inflate KLCT opening."""
+        self._create_transport(date(2026, 5, 20), 40, state="draft")
+        self._create_transport(date(2026, 5, 25), 10, state="done")
+        self._create_transport(date(2026, 6, 5), 5, state="done")
+
+        wb, _data = self._export_workbook(date(2026, 6, 1), date(2026, 6, 30))
+        ws = wb.active
+        _title, _h2, _header_third_row, start_row = find_transport_matrix_layout(ws)
+        # Opening = done-only before period (10), not draft 40.
+        self.assertEqual(ws.cell(start_row, 2).value, "Tồn đầu kỳ")
+        self.assertEqual(ws.cell(start_row, 4).value, 10)
+        # In-period done delivery only.
+        self.assertEqual(ws.cell(start_row + 1, 4).value, 5)
+
+        matrix = self.env["rental.transport.matrix"].create({
+            "rental_contract_id": self._contract.id,
+            "start_date": date(2026, 6, 1),
+            "end_date": date(2026, 6, 30),
+        })
+        self.assertIn(">10</td>", matrix.matrix_html)
+        self.assertNotIn(">40</td>", matrix.matrix_html)
+        self.assertNotIn(">50</td>", matrix.matrix_html)

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_rental_analytics_on_hire_tree" model="ir.ui.view">
+            <field name="name">rental.analytics.on.hire.line.tree</field>
+            <field name="model">rental.analytics.on.hire.line</field>
+            <field name="arch" type="xml">
+                <tree create="false" delete="false" edit="false"
+                      default_order="partner_company_id, construction_work_id, product_tmpl_id">
+                    <field name="as_of_date"/>
+                    <field name="computed_at" optional="hide"/>
+                    <field name="partner_company_id"/>
+                    <field name="construction_work_id"/>
+                    <field name="construction_project_id" optional="hide"/>
+                    <field name="rental_contract_id"/>
+                    <field name="product_tmpl_id"/>
+                    <field name="uom_id"/>
+                    <field name="uom_name" column_invisible="1"/>
+                    <field name="rented_qty" sum="Tổng đang thuê"/>
+                    <field name="excess_qty" sum="Tổng chuyển thừa"/>
+                    <field name="physical_qty" sum="Tổng vật lý"/>
+                    <field name="company_id" column_invisible="1"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_rental_analytics_on_hire_graph" model="ir.ui.view">
+            <field name="name">rental.analytics.on.hire.line.graph</field>
+            <field name="model">rental.analytics.on.hire.line</field>
+            <field name="arch" type="xml">
+                <graph string="SL đang thuê" type="bar" sample="1">
+                    <field name="uom_id" type="row"/>
+                    <field name="product_tmpl_id" type="row"/>
+                    <field name="physical_qty" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="view_rental_analytics_on_hire_pivot" model="ir.ui.view">
+            <field name="name">rental.analytics.on.hire.line.pivot</field>
+            <field name="model">rental.analytics.on.hire.line</field>
+            <field name="arch" type="xml">
+                <pivot string="SL đang thuê" sample="1">
+                    <field name="partner_company_id" type="row"/>
+                    <field name="construction_work_id" type="row"/>
+                    <field name="uom_id" type="col"/>
+                    <field name="product_tmpl_id" type="col"/>
+                    <field name="physical_qty" type="measure"/>
+                    <field name="rented_qty" type="measure"/>
+                    <field name="excess_qty" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="view_rental_analytics_on_hire_search" model="ir.ui.view">
+            <field name="name">rental.analytics.on.hire.line.search</field>
+            <field name="model">rental.analytics.on.hire.line</field>
+            <field name="arch" type="xml">
+                <search string="SL đang thuê">
+                    <field name="partner_company_id"/>
+                    <field name="construction_work_id"/>
+                    <field name="construction_project_id"/>
+                    <field name="rental_contract_id"/>
+                    <field name="product_tmpl_id"/>
+                    <field name="uom_id"/>
+                    <field name="as_of_date"/>
+                    <filter name="group_partner" string="Khách hàng"
+                            context="{'group_by': 'partner_company_id'}"/>
+                    <filter name="group_work" string="Công trình"
+                            context="{'group_by': 'construction_work_id'}"/>
+                    <filter name="group_uom" string="ĐVT"
+                            context="{'group_by': 'uom_id'}"/>
+                    <filter name="group_product" string="Sản phẩm"
+                            context="{'group_by': 'product_tmpl_id'}"/>
+                    <filter name="group_contract" string="Hợp đồng"
+                            context="{'group_by': 'rental_contract_id'}"/>
+                    <filter name="group_as_of" string="Ngày as-of"
+                            context="{'group_by': 'as_of_date'}"/>
+                    <searchpanel>
+                        <field name="partner_company_id" enable_counters="1"/>
+                        <field name="construction_work_id" enable_counters="1"/>
+                        <field name="uom_id" enable_counters="1"/>
+                    </searchpanel>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_rental_analytics_on_hire_server" model="ir.actions.server">
+            <field name="name">SL đang thuê (chi tiết)</field>
+            <field name="model_id" ref="model_rental_analytics_on_hire_line"/>
+            <field name="state">code</field>
+            <field name="code">
+action = env['rental.analytics.on.hire.line'].action_open_on_hire_detail()
+            </field>
+        </record>
+
+        <record id="action_rental_analytics_dashboard" model="ir.actions.client">
+            <field name="name">Dashboard</field>
+            <field name="tag">rental_analytics_dashboard</field>
+            <field name="target">current</field>
+        </record>
+
+        <!-- Receivable drill-down -->
+        <record id="view_rental_analytics_receivable_graph" model="ir.ui.view">
+            <field name="name">account.move.rental.receivable.graph</field>
+            <field name="model">account.move</field>
+            <field name="arch" type="xml">
+                <graph string="Công nợ thuê" type="bar" sample="1">
+                    <field name="rental_partner_company_id" type="row"/>
+                    <field name="amount_residual" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="view_rental_analytics_receivable_pivot" model="ir.ui.view">
+            <field name="name">account.move.rental.receivable.pivot</field>
+            <field name="model">account.move</field>
+            <field name="arch" type="xml">
+                <pivot string="Công nợ thuê" sample="1">
+                    <field name="rental_partner_company_id" type="row"/>
+                    <field name="rental_construction_work_id" type="row"/>
+                    <field name="rental_contract_id" type="row"/>
+                    <field name="amount_residual" type="measure"/>
+                    <field name="amount_total" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="view_rental_analytics_receivable_search" model="ir.ui.view">
+            <field name="name">account.move.rental.receivable.search</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_account_move_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//search" position="inside">
+                    <field name="rental_partner_company_id"/>
+                    <field name="rental_construction_work_id"/>
+                    <filter name="group_rental_partner"
+                            string="Khách hàng thuê"
+                            context="{'group_by': 'rental_partner_company_id'}"/>
+                    <filter name="group_rental_work"
+                            string="Công trình"
+                            context="{'group_by': 'rental_construction_work_id'}"/>
+                    <filter name="rental_open_residual"
+                            string="Còn nợ thuê"
+                            domain="[('rental_contract_id', '!=', False), ('amount_residual', '!=', 0), ('state', '=', 'posted'), ('move_type', 'in', ('out_invoice', 'out_refund'))]"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

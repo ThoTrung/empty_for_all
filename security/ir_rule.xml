@@ -57,6 +57,17 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
+        <record id="rental_analytics_on_hire_line_company_rule" model="ir.rule">
+            <field name="name">Analytics on-hire line: multi-company</field>
+            <field name="model_id" ref="model_rental_analytics_on_hire_line"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('rental.group_rental_staff'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
         <record id="rental_construction_work_company_rule" model="ir.rule">
             <field name="name">Rental Construction Work: multi-company</field>
             <field name="model_id" ref="model_construction_work"/>

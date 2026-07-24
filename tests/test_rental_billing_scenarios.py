@@ -334,7 +334,7 @@ class TestRentalBillingScenarios(TransactionCase):
         self.assertEqual(bob_off[0]["qty"], 600)
         self.assertEqual(sum(r["qty"] for r in rc["returns"]), 600)
         self.assertEqual(
-            sum(a["qty"] for a in rc["penalty_rows"]) + sum(a["qty"] for a in rc["returned_rows"]),
+            sum(a["qty"] for a in rc["penalty_rows"]) + sum(a["qty"] for a in rc.get("credit_returns") or []),
             600,
         )
         self.assertEqual(block["present_total_qty"], 1400)
@@ -513,7 +513,7 @@ class TestRentalBillingScenarios(TransactionCase):
         rc = block["return_calc"]
         self.assertIsNotNone(rc)
         penalty = sum(a["qty"] for a in rc["penalty_rows"])
-        returned = sum(a["qty"] for a in rc["returned_rows"])
+        returned = sum(a["qty"] for a in rc.get("credit_returns") or [])
         # Gộp mét dài: toàn bộ 200 mét trả dồn về lô 10/07 -> phạt hết, không có phần trả thường.
         self.assertEqual(penalty, 200)
         self.assertEqual(returned, 0)
@@ -533,10 +533,73 @@ class TestRentalBillingScenarios(TransactionCase):
         block = next(b for b in blocks if b["tmpl_id"] == tmpl.id)
         rc = block["return_calc"]
         penalty = sum(a["qty"] for a in rc["penalty_rows"])
-        returned = sum(a["qty"] for a in rc["returned_rows"])
-        # 60 mét (lô 10/07) bị phạt + 140 mét (lô 01/04, quá kỳ) trả thường.
+        returned = sum(a["qty"] for a in rc.get("credit_returns") or [])
+        # 60 mét (lô 10/07) bị phạt + 140 mét (lô 01/04, quá kỳ) trả thường (credit).
         self.assertEqual(penalty, 60)
         self.assertEqual(returned, 140)
+        self.assertEqual(rc.get("display_mode"), "mixed")
+
+    def test_credit_display_for_return_after_minimum(self):
+        # Trả sau kỳ tối thiểu → layout trừ tiền: dư đầu kỳ FULL + credit âm.
+        self._make_transport("delivery", date(2026, 6, 1), [(self._product, 100, 0)])
+        self._make_transport("return", date(2026, 9, 5), [(self._product, 30, 0)])
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 9, 1), date(2026, 9, 30)
+        )
+        block = blocks[0]
+        rc = block["return_calc"]
+        self.assertEqual(rc.get("display_mode"), "credit")
+        self.assertEqual(sum(l["qty"] for l in block["normal_lines"]), 100)
+        self.assertEqual(sum(c["qty"] for c in rc["credit_returns"]), 30)
+        self.assertTrue(all(c["total_amount"] < 0 for c in rc["credit_returns"]))
+        self.assertEqual(block["present_total_qty"], 70)
+        # Tổng tiền HSTT = tổng map billing.
+        billing = list(
+            rcs._build_map_product_and_date_to_line(
+                self.env, self._contract, date(2026, 9, 1), date(2026, 9, 30)
+            ).values()
+        )
+        map_total = sum(l["total_amount"] for l in billing)
+        display_total = (
+            sum(l["total_amount"] for l in block["normal_lines"])
+            + sum(c["total_amount"] for c in rc["credit_returns"])
+        )
+        self.assertAlmostEqual(display_total, map_total, places=4)
+
+    def test_penalty_current_period_only_skips_bob_early_return(self):
+        # Option bật: BOB trả sớm → không phạt; lô thuê trong kỳ trả sớm → vẫn phạt.
+        self._contract.minimum_penalty_current_period_only = True
+        self._make_transport("delivery", date(2026, 3, 15), [(self._product, 1000, 0)])
+        self._make_transport("delivery", date(2026, 4, 5), [(self._product, 200, 0)])
+        self._make_transport("return", date(2026, 4, 20), [(self._product, 500, 0)])
+        apr = list(
+            rcs._build_map_product_and_date_to_line(
+                self.env, self._contract, date(2026, 4, 1), date(2026, 4, 30)
+            ).values()
+        )
+        # LIFO: 200 từ lô 05/04 (phạt) + 300 từ BOB (không phạt vì option).
+        self.assertEqual(sum(l["qty"] for l in apr if l["kind"] == "minimum"), 200)
+        self.assertEqual(sum(l["qty"] for l in apr if l["kind"] == "returned"), 300)
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, self._contract, date(2026, 4, 1), date(2026, 4, 30)
+        )
+        rc = blocks[0]["return_calc"]
+        self.assertEqual(rc.get("display_mode"), "mixed")
+        self.assertEqual(sum(a["qty"] for a in rc["penalty_rows"]), 200)
+        self.assertEqual(sum(c["qty"] for c in rc["credit_returns"]), 300)
+
+    def test_penalty_current_period_only_off_still_penalizes_bob(self):
+        # Option tắt (mặc định): BOB trả sớm vẫn phạt như cũ.
+        self.assertFalse(self._contract.minimum_penalty_current_period_only)
+        self._make_transport("delivery", date(2026, 3, 15), [(self._product, 500, 0)])
+        self._make_transport("return", date(2026, 4, 20), [(self._product, 200, 0)])
+        apr = list(
+            rcs._build_map_product_and_date_to_line(
+                self.env, self._contract, date(2026, 4, 1), date(2026, 4, 30)
+            ).values()
+        )
+        self.assertEqual(sum(l["qty"] for l in apr if l["kind"] == "minimum"), 200)
+        self.assertFalse([l for l in apr if l["kind"] == "returned"])
 
     def test_spread_mode_still_distributes_over_months(self):
         self._contract.minimum_rental_billing_mode = "spread"

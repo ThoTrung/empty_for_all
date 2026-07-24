@@ -197,8 +197,15 @@
                             </field>
                         </page>
                         <page string="Phiếu kho" groups="rental.group_rental_staff,rental.group_rental_transport_courier">
-                            <field name="picking_ids" nolabel="1" readonly="1">
-                                <tree create="0" delete="0" edit="0" open_form_view="1">
+                            <!-- Không readonly field: mở form từ x2many readonly sẽ khóa luôn cột Số lượng. -->
+                            <field name="picking_ids" nolabel="1">
+                                <tree create="0" delete="0" edit="0" open_form_view="0">
+                                    <button name="action_open_form_page"
+                                            type="object"
+                                            string="Mở"
+                                            class="btn-link"
+                                            icon="fa-external-link"
+                                            title="Mở phiếu kho (trang đầy đủ)"/>
                                     <field name="name"/>
                                     <field name="picking_type_id" optional="show"/>
                                     <field name="state" widget="badge"

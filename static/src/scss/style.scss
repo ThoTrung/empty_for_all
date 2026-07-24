@@ -49,6 +49,23 @@
         background-color: #714b67 !important;
         border-radius: 6px 6px 0 0;
     }
+
+    // Header (oe_title): label 1 dòng, nới nhẹ cột label trong 3 cột.
+    .oe_title {
+        .o_wrap_label,
+        .o_td_label,
+        .o_form_label {
+            white-space: nowrap;
+        }
+
+        .o_inner_group {
+            .o_wrap_label,
+            .o_td_label {
+                width: 45%;
+                max-width: 45%;
+            }
+        }
+    }
 }
 .o_sale_order {
     .oe_subtotal_footer {

@@ -1,19 +1,19 @@
 # Worklog (giữ ~3 entry mới; cũ hơn xoá bớt)
 
-## 2026-07-20 — HSTT placeholders contract_number / contract_date
+## 2026-07-24 — UX Dashboard-first: bỏ menu Báo cáo
 
-files: `models/rental_contract.py`, `tests/test_klct_hstt_combined_export.py`
-why: Mẫu bảng thanh toán cần in số HĐ và ngày HĐ. Thêm `{{contract_number}}` và `{{contract_date}}` (format giống báo giá) vào `_rental_invoice_xlsx_apply_placeholders`.
-validation: unit test replace placeholder trên sheet HSTT.
+files: `views/menu.xml`, `static/src/analytics_dashboard/*`, `__manifest__.py` 17.0.1.0.58
+why: Chỉ đi Dashboard → click chi tiết; wizard «Tra cứu theo ngày» thành nút phụ trên Dashboard.
+validation: `-u rental`; navbar không còn Báo cáo / Tra cứu.
 
-## 2026-07-20 — HSTT data_start_row theo mẫu công ty
+## 2026-07-24 — Dashboard menu đầu + Home Action staff
 
-files: `models/rental_template.py`, `views/rental_template_view.xml`, `models/rental_contract.py`, `tests/test_klct_hstt_combined_export.py`, `__manifest__.py` 17.0.1.0.48
-why: Mỗi công ty có layout bảng thanh toán khác (data từ dòng 13 hoặc 15). Hardcode gây MergedCell khi mẫu mới merge dòng xác nhận A13:I13. Thêm setting «Dòng bắt đầu dữ liệu» (default 13) trên `rental.template`.
-validation: test default row 13 + case `data_start_row=15` không ghi đè merge.
+files: `views/menu.xml`, `models/res_users.py`, `migrations/17.0.1.0.57/post-migrate.py`, `__manifest__.py` 17.0.1.0.57
+why: Dashboard đứng đầu app Rental; staff đăng nhập mở thẳng client action Dashboard (`action_id`).
+validation: `-u rental`; login staff → Dashboard.
 
-## 2026-07-17 — Giới hạn KH tra cứu theo công ty
+## 2026-07-24 — Analytics Hub harden (ĐVT, TTL, công nợ)
 
-files: `wizard/rental_rented_qty_wizard.py`, `tests/test_rented_qty_as_of.py`, `__manifest__.py` 17.0.1.0.47
-why: Dropdown tra cứu SL đang thuê trước đây chỉ lọc `is_company`, nên hiện cả My Company, công ty thường và đối tác thuộc công ty Odoo khác. Nay chỉ nhận công ty có `customer_type = renter` và `company_id` đúng công ty hiện tại, kèm constraint server.
-validation: focused as-of/wizard tests và module upgrade pass.
+files: `models/rental_analytics_*.py`, OWL filters, cron, migration 55, tests, `__manifest__.py` 17.0.1.0.55
+why: P0 cộng lẫn ĐVT + refresh TTL; filter KH-công trình; widget công nợ.
+validation: `TestAnalyticsOnHire`.
