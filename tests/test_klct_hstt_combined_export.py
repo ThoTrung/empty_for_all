@@ -101,6 +101,7 @@ class TestKlctHsttCombinedExport(TransactionCase):
         wb = load_workbook(BytesIO(buffer.getvalue()))
         self.assertEqual(wb.sheetnames[0], "KLCT 04-2026")
         self.assertEqual(wb.sheetnames[1], "HSTT 04-2026")
+        self.assertIn("ĐCCN 04-2026", wb.sheetnames)
 
         hstt = wb["HSTT 04-2026"]
         # Data starts at row 13; first billing line should use Excel formulas.
@@ -345,6 +346,7 @@ class TestKlctHsttCombinedExport(TransactionCase):
             ("rental_contract_id", "=", self._contract.id),
         ])
         self.assertEqual(len(moves), 1)
+        self.assertEqual(moves.state, "posted")
         lines = moves.invoice_line_ids
         self.assertEqual(len(lines), 1)
         self.assertEqual(lines.product_id.name, "Tổng thanh toán: 04-2026")
@@ -354,6 +356,15 @@ class TestKlctHsttCombinedExport(TransactionCase):
         self.assertAlmostEqual(moves.amount_untaxed, expected, places=2)
         self.assertTrue(lines.tax_ids)
         self.assertAlmostEqual(lines.tax_ids[0].amount, 8.0, places=1)
+
+        # Combined attachment includes ĐCCN with this period as phát sinh.
+        att = moves.business_xlsx_attachment_id
+        self.assertTrue(att)
+        wb = load_workbook(BytesIO(base64.b64decode(att.datas)))
+        self.assertIn("ĐCCN 04-2026", wb.sheetnames)
+        dccn = wb["ĐCCN 04-2026"]
+        self.assertAlmostEqual(float(dccn.cell(17, 8).value or 0), moves.amount_total, places=2)
+        self.assertAlmostEqual(float(dccn.cell(16, 8).value or 0), 0.0, places=2)
 
     def test_hstt_total_product_replaces_stale_tax_with_eight_percent(self):
         tax_10 = self.env["account.tax"].search([
@@ -597,3 +608,104 @@ class TestKlctHsttCombinedExport(TransactionCase):
         )
         self.assertEqual(ws["A1"].value, "Số HĐ: 125 /HĐKT/XDMT – TLP")
         self.assertEqual(ws["A2"].value, "Ngày HĐ: ngày 05 tháng 07 năm 2026")
+
+    def test_export_rejects_second_posted_invoice_same_period(self):
+        start_date = date(2026, 4, 1)
+        end_date = date(2026, 4, 30)
+        self._create_transport(date(2026, 4, 10), 10)
+        self._contract.action_export_klct_hstt_excel(start_date, end_date)
+        # Clear matrix so second call hits invoice-period guard (not matrix overlap wizard).
+        self.env["rental.transport.matrix"].search([
+            ("rental_contract_id", "=", self._contract.id),
+        ]).unlink()
+        with self.assertRaises(Exception) as ctx:
+            self._contract.action_export_klct_hstt_excel(start_date, end_date)
+        self.assertIn("đã đăng sổ", str(ctx.exception))
+
+    def test_unlink_rental_invoice_blocked_until_cancelled(self):
+        start_date = date(2026, 5, 1)
+        end_date = date(2026, 5, 31)
+        self._create_transport(date(2026, 5, 5), 10)
+        self._contract.action_export_klct_hstt_excel(start_date, end_date)
+        move = self.env["account.move"].search([
+            ("rental_contract_id", "=", self._contract.id),
+        ], limit=1)
+        with self.assertRaises(Exception) as ctx:
+            move.unlink()
+        self.assertIn("Không được xóa", str(ctx.exception))
+
+        move.button_cancel()
+        move.unlink()
+        self.assertFalse(move.exists())
+
+    def test_cancel_releases_transport_fees_for_reexport(self):
+        start_date = date(2026, 6, 1)
+        end_date = date(2026, 6, 30)
+        t1 = self._create_transport_with_fee(date(2026, 6, 2), 10, 500_000)
+        self._contract.action_export_klct_hstt_excel(
+            start_date, end_date, transport_fee_until_date=end_date
+        )
+        move = t1.fee_invoice_id
+        self.assertTrue(move)
+        self.assertEqual(t1.fee_billed_date, end_date)
+
+        move.button_cancel()
+        self.assertFalse(t1.fee_billed_date)
+        self.assertFalse(t1.fee_invoice_id)
+        self.assertEqual(move.state, "cancel")
+
+        self.env["rental.transport.matrix"].search([
+            ("rental_contract_id", "=", self._contract.id),
+        ]).unlink()
+
+        self._contract.action_export_klct_hstt_excel(
+            start_date, end_date, transport_fee_until_date=end_date
+        )
+        self.assertEqual(t1.fee_billed_date, end_date)
+        self.assertTrue(t1.fee_invoice_id)
+        self.assertEqual(t1.fee_invoice_id.state, "posted")
+
+    def test_debt_confirmation_summary_buckets(self):
+        """ĐCCN collect: beginning residual + in-period totals."""
+        start_date = date(2026, 4, 1)
+        end_date = date(2026, 4, 30)
+        self._create_transport(date(2026, 3, 10), 10)
+        self._contract.action_export_klct_hstt_excel(
+            date(2026, 3, 1), date(2026, 3, 31)
+        )
+        prior = self.env["account.move"].search([
+            ("rental_contract_id", "=", self._contract.id),
+            ("rental_end_date", "=", date(2026, 3, 31)),
+        ], limit=1)
+        self.assertEqual(prior.state, "posted")
+
+        self._create_transport(date(2026, 4, 10), 5)
+        self.env["rental.transport.matrix"].search([
+            ("rental_contract_id", "=", self._contract.id),
+        ]).unlink()
+        self._contract.action_export_klct_hstt_excel(start_date, end_date)
+        current = self.env["account.move"].search([
+            ("rental_contract_id", "=", self._contract.id),
+            ("rental_end_date", "=", end_date),
+        ], limit=1)
+
+        data = self._contract._collect_debt_confirmation_data(start_date, end_date)
+        self.assertAlmostEqual(data["beginning_debit"], prior.amount_residual, places=2)
+        self.assertAlmostEqual(data["total_amount_in_period"], current.amount_total, places=2)
+        self.assertAlmostEqual(
+            data["total_remain"],
+            prior.amount_residual + current.amount_residual,
+            places=2,
+        )
+
+        buffer, _ = self._contract._build_klct_hstt_xlsx_buffer(
+            start_date, end_date, fee_invoice=current
+        )
+        wb = load_workbook(BytesIO(buffer.getvalue()))
+        dccn = wb["ĐCCN 04-2026"]
+        self.assertAlmostEqual(
+            float(dccn.cell(16, 8).value or 0), prior.amount_residual, places=2
+        )
+        self.assertAlmostEqual(
+            float(dccn.cell(17, 8).value or 0), current.amount_total, places=2
+        )

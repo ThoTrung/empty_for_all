@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Rental',
-    'version': '17.0.1.0.58',
+    'version': '17.0.1.0.67',
     'category': 'Rental',
     'summary': 'Rental service module.',
     'author': "Nguyễn Trung Thọ",
@@ -13,6 +13,7 @@
         'stock',
         'sale',
         'sale_management',
+        'partner_autocomplete',
     ],
     'sequence': -100,
     'data': [
@@ -69,6 +70,7 @@
             'rental/static/src/scss/rental_modal.scss',
             'rental/static/src/js/big_modal_dialog.js',
             'rental/static/src/js/download_and_close.js',
+            'rental/static/src/js/domain_selector_field_domain.js',
             'rental/static/src/analytics_dashboard/analytics_dashboard.js',
             'rental/static/src/analytics_dashboard/analytics_dashboard.xml',
             'rental/static/src/analytics_dashboard/analytics_dashboard.scss',

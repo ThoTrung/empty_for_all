@@ -36,7 +36,7 @@ class Transport(models.Model):
     driver_id = fields.Many2one(
         'res.partner',
         string="Driver",
-        domain="[('customer_type', '=', 'driver')]",
+        domain="[('customer_type', '=', 'driver'), ('is_company', '=', False), ('company_id', 'in', allowed_company_ids)]",
         required=True,
         tracking=4,
     )
@@ -52,6 +52,7 @@ class Transport(models.Model):
         'res.partner',
         string='Người giao',
         help='Người thực hiện giao hàng (mặc định theo đại diện hợp đồng bên giao).',
+        domain="['|', ('id', '=', delivering_party), ('parent_id', '=?', delivering_party_parent_id)]",
         required=True,
         tracking=True,
     )
@@ -82,6 +83,7 @@ class Transport(models.Model):
         'res.partner',
         string='Người nhận',
         help='Người thực hiện nhận hàng (mặc định theo đại diện hợp đồng bên nhận).',
+        domain="['|', ('id', '=', receiving_party), ('parent_id', '=?', receiving_party_parent_id)]",
         required=True,
         tracking=True,
     )
@@ -107,7 +109,7 @@ class Transport(models.Model):
     plate = fields.Char(string="Plate", compute='_compute_plate', store=True)
     vehicle_start_time = fields.Datetime(string="Vehicle start time", required=True, default=date.today(), tracking=10)
     vehicle_arrival_time = fields.Datetime(string="Vehicle arrival time", tracking=11)
-    fee = fields.Float(string="Transport Fee", default=0, tracking=12)
+    fee = fields.Float(string="Giá vận chuyển", default=0, tracking=12)
     fee_billed_date = fields.Date(
         string="Ngày tính phí VC (HSTT)",
         tracking=True,
@@ -346,6 +348,53 @@ class Transport(models.Model):
             'url': url,
             'target': 'self',  # or 'new' to open in new tab
         }
+
+    def export_data(self, fields_to_export):
+        """Append a total row for Giá vận chuyển when exporting list → Excel.
+
+        Fee cells use an Excel ``=SUM(...)`` formula so the total stays live
+        when the user edits data rows in the downloaded workbook.
+        """
+        result = super().export_data(fields_to_export)
+        datas = result.get("datas") or []
+        if not datas:
+            return result
+        fee_indexes = [
+            idx for idx, name in enumerate(fields_to_export) if name == "fee"
+        ]
+        if not fee_indexes:
+            return result
+
+        n = len(datas)
+        total_row = [""] * len(fields_to_export)
+        label_idx = next(
+            (
+                idx for idx, name in enumerate(fields_to_export)
+                if name in ("code", "name", "display_name")
+            ),
+            0,
+        )
+        total_row[label_idx] = _("Tổng giá vận chuyển")
+        # Header = Excel row 1; data rows = 2 .. n+1; total = n+2.
+        for fee_idx in fee_indexes:
+            col = self._excel_col_letter(fee_idx)
+            total_row[fee_idx] = "=SUM(%s2:%s%d)" % (col, col, n + 1)
+        datas.append(total_row)
+        result["datas"] = datas
+        return result
+
+    @staticmethod
+    def _excel_col_letter(index):
+        """0-based column index → Excel column letters (A, B, …, AA, …)."""
+        letters = []
+        n = index
+        while True:
+            n, rem = divmod(n, 26)
+            letters.append(chr(ord("A") + rem))
+            if n == 0:
+                break
+            n -= 1
+        return "".join(reversed(letters))
 
     def action_view_pickings(self):
         self.ensure_one()

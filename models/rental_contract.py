@@ -172,7 +172,7 @@ class RentalContract(models.Model):
     a_company_party = fields.Many2one(
         'res.partner',
         string='A company',
-        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]",
+        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]",
         required=True,
         tracking=True,
     )
@@ -1417,7 +1417,7 @@ class RentalContract(models.Model):
     def _build_klct_hstt_xlsx_buffer(
         self, start_date, end_date, transport_fee_until_date=None, fee_invoice=None
     ):
-        """One workbook: sheet KLCT {mm-YYYY} + sheet HSTT {mm-YYYY} with Excel formulas.
+        """One workbook: KLCT + HSTT (+ optional sheets) + ĐCCN with Excel formulas.
 
         Returns (buffer, hstt_subtotal) where hstt_subtotal matches the HSTT sheet
         footer (rent + transport fees, before VAT; excludes compensation sheet).
@@ -1479,6 +1479,11 @@ class RentalContract(models.Model):
             self._copy_xlsx_sheet(comp_ws, wb, "GT đền bù")
 
         self._rental_invoice_xlsx_write_fee_detail_sheet(wb, fee_lines)
+
+        dccn_title = f"ĐCCN {period_label}"
+        self._build_debt_confirmation_into_workbook(
+            wb, start_date, end_date, sheet_title=dccn_title
+        )
 
         buffer = io.BytesIO()
         wb.save(buffer)
@@ -1550,17 +1555,54 @@ class RentalContract(models.Model):
             vals["property_account_income_id"] = income_account.id
         return Product.create(vals)
 
+    def _rental_posted_invoice_same_period(self, start_date, end_date):
+        """Return posted rental invoices for this contract covering the same period."""
+        self.ensure_one()
+        return self.env["account.move"].search([
+            ("rental_contract_id", "=", self.id),
+            ("state", "=", "posted"),
+            ("move_type", "in", ("out_invoice", "out_refund")),
+            ("rental_start_date", "=", start_date),
+            ("rental_end_date", "=", end_date),
+        ])
+
+    def _attach_business_xlsx_to_move(self, move, excel_buffer, file_name):
+        """Create/replace business XLSX attachment on a rental invoice."""
+        self.ensure_one()
+        name = f"{file_name}.xlsx" if not str(file_name).endswith(".xlsx") else file_name
+        datas = base64.b64encode(excel_buffer.getvalue())
+        mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        if move.business_xlsx_attachment_id:
+            move.business_xlsx_attachment_id.write({
+                "name": name,
+                "datas": datas,
+                "mimetype": mimetype,
+            })
+            return move.business_xlsx_attachment_id.id
+        attachment = self.env["ir.attachment"].create({
+            "name": name,
+            "res_model": "account.move",
+            "res_id": move.id,
+            "type": "binary",
+            "datas": datas,
+            "mimetype": mimetype,
+        })
+        move.business_xlsx_attachment_id = attachment.id
+        return attachment.id
+
     def _create_rental_invoice_from_hstt_total(
         self,
         start_date,
         end_date,
-        excel_buffer,
-        file_name,
         subtotal,
         transport_fee_until_date=None,
         fee_lines=None,
+        post=True,
     ):
-        """Create out_invoice with a single line matching the HSTT Excel subtotal."""
+        """Create out_invoice with a single line matching the HSTT Excel subtotal.
+
+        When ``post`` is True (default), posts immediately so AR / ĐCCN see the period.
+        """
         self.ensure_one()
         partner = self.a_party
         product = self._get_or_create_hstt_total_product(end_date)
@@ -1610,19 +1652,12 @@ class RentalContract(models.Model):
         if fee_lines and fee_until:
             self._mark_transport_fees_billed(fee_lines, move, fee_until)
 
-        attachment = self.env["ir.attachment"].create({
-            "name": f"{file_name}.xlsx" if not str(file_name).endswith(".xlsx") else file_name,
-            "res_model": "account.move",
-            "res_id": move.id,
-            "type": "binary",
-            "datas": base64.b64encode(excel_buffer.getvalue()),
-            "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        })
-        move.business_xlsx_attachment_id = attachment.id
-        return attachment.id
+        if post:
+            move.action_post()
+        return move
 
     def action_export_klct_hstt_excel(self, start_date, end_date, transport_fee_until_date=None):
-        """Create volume matrix + invoice (1 line = HSTT total) + download combined XLSX."""
+        """Create volume matrix + posted invoice (1 line = HSTT total) + download combined XLSX."""
         self.ensure_one()
         Matrix = self.env["rental.transport.matrix"]
         overlap_domain = [
@@ -1643,6 +1678,20 @@ class RentalContract(models.Model):
                 "res_id": wiz.id,
             }
 
+        existing = self._rental_posted_invoice_same_period(start_date, end_date)
+        if existing:
+            raise UserError(
+                _(
+                    "Đã có hóa đơn đã đăng sổ cho kỳ %(start)s → %(end)s "
+                    "(%(moves)s). Hãy hủy hóa đơn cũ rồi xuất lại."
+                )
+                % {
+                    "start": start_date.strftime("%d/%m/%Y"),
+                    "end": end_date.strftime("%d/%m/%Y"),
+                    "moves": ", ".join(existing.mapped("name")),
+                }
+            )
+
         Matrix.create({
             "rental_contract_id": self.id,
             "start_date": start_date,
@@ -1653,22 +1702,28 @@ class RentalContract(models.Model):
         fee_lines = self._rental_period_transport_fee_lines(
             start_date, end_date, transport_fee_until_date=transport_fee_until_date
         )
-        buffer, hstt_subtotal = self._build_klct_hstt_xlsx_buffer(
-            start_date,
-            end_date,
-            transport_fee_until_date=transport_fee_until_date,
+        bob_map, map_map = rcs.calc_rental_payment_table_grouped_by_template(
+            self.env, self, start_date, end_date
         )
-        filename = f"KLCT-HSTT {end_date.strftime('%m-%Y')} - {self.code}"
+        hstt_subtotal = self._payment_table_subtotal(bob_map, map_map, fee_lines)
         # Match Excel HSTT footer {{subtotal_before_tax}} = int(round(subtotal)).
-        att_id = self._create_rental_invoice_from_hstt_total(
+        move = self._create_rental_invoice_from_hstt_total(
             start_date,
             end_date,
-            excel_buffer=buffer,
-            file_name=filename,
             subtotal=float(int(round(hstt_subtotal))),
             transport_fee_until_date=transport_fee_until_date,
             fee_lines=fee_lines,
+            post=True,
         )
+        # Build after post so ĐCCN sheet includes this period's residual.
+        buffer, _subtotal = self._build_klct_hstt_xlsx_buffer(
+            start_date,
+            end_date,
+            transport_fee_until_date=transport_fee_until_date,
+            fee_invoice=move,
+        )
+        filename = f"KLCT-HSTT {end_date.strftime('%m-%Y')} - {self.code}"
+        att_id = self._attach_business_xlsx_to_move(move, buffer, filename)
         return {
             "type": "ir.actions.act_url",
             "url": f"/web/content/{att_id}?download=1",
@@ -1890,82 +1945,84 @@ class RentalContract(models.Model):
                         'unit_price': line['unit_price'],
                     })
 
-    def export_debt_confirmation_comparison_table(self, start_date, end_date):
-        beginning_debit = 0
-        total_amount_in_period = 0
-        total_paid_in_period = 0
-        total_remain = 0
+    def _collect_debt_confirmation_data(self, start_date, end_date):
+        """Aggregate posted rental invoices into beginning / in-period debt buckets.
 
-        beginning_invoices = {}
-        in_period_invoices = {}
-        # Only calculate debt confirmation for one customer.
+        Payment-in-period uses amount_total - amount_residual (lifetime paid snapshot
+        on invoices in the period), not payment journal dates.
+        """
+        beginning_debit = 0.0
+        total_amount_in_period = 0.0
+        total_paid_in_period = 0.0
+        total_remain = 0.0
+        beginning_moves = self.env["account.move"]
+        in_period_moves = self.env["account.move"]
         customer_id = False
+
         for rec in self:
             if not customer_id:
                 customer_id = rec.a_party.id
             elif customer_id != rec.a_party.id:
-                raise UserError(_('Only allow calculate debt for one customer each time'))
-            in_period_invoices[rec.id] = {
-                'rental_contract_code': rec.code,
-                'amount_in_period': 0,
-                'paid_in_period': 0,
-                'remain_in_period': 0,
-                'invoices': {}
-            }
-            beginning_invoices[rec.id] = {
-                'rental_contract_code': rec.code,
-                'amount_in_period': 0,
-                'paid_in_period': 0,
-                'remain_in_period': 0,
-                'invoices': {}
-            }
+                raise UserError(_("Only allow calculate debt for one customer each time"))
             for inv in rec.account_move_ids:
-                if inv.state in ['draft', 'cancel'] or not inv.rental_end_date:
-                    # Ignore invoice in these state
+                if inv.state in ("draft", "cancel") or not inv.rental_end_date:
+                    continue
+                if inv.move_type not in ("out_invoice", "out_refund"):
                     continue
                 if inv.rental_end_date < start_date:
-                    # The beginning debit.
-                    if inv.amount_residual > 0:  # This invoice is not full paid
-                        beginning_invoices[rec.id]['invoices'][inv.id] = inv
+                    if inv.amount_residual > 0:
+                        beginning_moves |= inv
                         beginning_debit += inv.amount_residual
                         total_remain += inv.amount_residual
                 elif inv.rental_end_date <= end_date:
-                    # The in period debit
-                    in_period_invoices[rec.id]['invoices'][inv.id] = inv
-                    in_period_invoices[rec.id]['amount_in_period'] += inv.amount_total
-                    in_period_invoices[rec.id]['paid_in_period'] += (inv.amount_total - inv.amount_residual)
-                    in_period_invoices[rec.id]['remain_in_period'] += inv.amount_residual
-
+                    in_period_moves |= inv
                     total_amount_in_period += inv.amount_total
-                    total_paid_in_period += (inv.amount_total - inv.amount_residual)
+                    total_paid_in_period += inv.amount_total - inv.amount_residual
                     total_remain += inv.amount_residual
 
-        data, _source = self.env["rental.template"].get_template_bytes(
-            self.company_id,
-            "debt_confirmation_xlsx",
-        )
-        wb = load_workbook(io.BytesIO(data))
-        ws = wb.active
+        return {
+            "customer_id": customer_id,
+            "beginning_debit": beginning_debit,
+            "total_amount_in_period": total_amount_in_period,
+            "total_paid_in_period": total_paid_in_period,
+            "total_remain": total_remain,
+            "beginning_moves": beginning_moves.sorted(
+                key=lambda m: (m.rental_end_date or m.invoice_date or date.min, m.id)
+            ),
+            "in_period_moves": in_period_moves.sorted(
+                key=lambda m: (m.rental_end_date or m.invoice_date or date.min, m.id)
+            ),
+        }
 
+    def _debt_confirmation_amount_to_text(self, amount):
+        try:
+            AmountVi = self.env["amount_to_text.vi"]
+        except KeyError:
+            return ""
+        if hasattr(AmountVi, "vn_amount_to_text"):
+            return AmountVi.vn_amount_to_text(amount)
+        return ""
+
+    def _write_debt_confirmation_sheet(self, ws, start_date, end_date, data):
+        """Fill ĐCCN template: header placeholders + summary totals + invoice list."""
+        self.ensure_one()
+        total_remain = data["total_remain"]
         replacements = {
-            '{{a_company}}': self.a_party.parent_id.name or '',
-            '{{a_address}}': self.a_address or '',
-            '{{a_representative}}': self.a_name or '',
-            '{{a_function}}': self.a_function or '',
-
-            '{{b_company}}': self.b_party.parent_id.name or '',
-            '{{b_address}}': self.b_address or '',
-            '{{b_representative}}': self.b_name or '',
-            '{{b_function}}': self.b_function or '',
-
-            '{{construction_work_project}}': self.construction_work_project_id.name or '',
-            '{{construction_work_name}}': self.construction_work_id.name or '',
-            '{{construction_work_address}}': self.construction_work_address or '',
-
-            '{{start_date}}': start_date.strftime('%d/%m/%Y'),
-            '{{end_date}}': end_date.strftime('%d/%m/%Y'),
-            '{{total_remain}}': f"{total_remain}",
-            '{{total_remain_string}}': self.env['amount_to_text.vi'].vn_amount_to_text(total_remain),
+            "{{a_company}}": self.a_party.parent_id.name or "",
+            "{{a_address}}": self.a_address or "",
+            "{{a_representative}}": self.a_name or "",
+            "{{a_function}}": self.a_function or "",
+            "{{b_company}}": self.b_party.parent_id.name or "",
+            "{{b_address}}": self.b_address or "",
+            "{{b_representative}}": self.b_name or "",
+            "{{b_function}}": self.b_function or "",
+            "{{construction_work_project}}": self.construction_work_project_id.name or "",
+            "{{construction_work_name}}": self.construction_work_id.name or "",
+            "{{construction_work_address}}": self.construction_work_address or "",
+            "{{start_date}}": start_date.strftime("%d/%m/%Y"),
+            "{{end_date}}": end_date.strftime("%d/%m/%Y"),
+            "{{total_remain}}": f"{total_remain:,.0f}" if total_remain else "0",
+            "{{total_remain_string}}": self._debt_confirmation_amount_to_text(total_remain),
         }
         for row in ws.iter_rows():
             for cell in row:
@@ -1974,71 +2031,89 @@ class RentalContract(models.Model):
                         if key in cell.value:
                             cell.value = cell.value.replace(key, val)
 
-        start_row = 16  # example: first line template
-        max_row = 100
-        count = 3  # Dynamic calculate number row.
-        # if beginning_invoices:
-        #     ws.cell(start_row + count, 4).value = 'Nợ đầu kỳ'
-        #     ws.cell(start_row + count, 4).font = Font(bold=True)
-        #     count += 1
-        #     for product_id in bob_map_product_id_2_line:
-        #         product = bob_map_product_id_2_line[product_id]
-        #         for line in product['lines']:
-        #             r = start_row + count
-        #             ws.cell(r, 2).value = line['start_date'].strftime('%d/%m/%Y')
-        #             ws.cell(r, 3).value = line['end_date'].strftime('%d/%m/%Y')
-        #             ws.cell(r, 4).value = line['product_name']
-        #             ws.cell(r, 5).value = line['uom_name']
-        #             ws.cell(r, 6).value = line['qty']
-        #             ws.cell(r, 7).value = line['rental_days']
-        #             ws.cell(r, 8).value = line['unit_price']
-        #             ws.cell(r, 9).value = line['total_amount']
-        #             count += 1
-        #         r = start_row + count
-        #         ws.cell(r, 6).value = product['total_qty']
-        #         ws.cell(r, 6).font = Font(bold=True)
-        #         count += 1
-        # if map_product_id_2_line:
-        #     ws.cell(start_row + count, 4).value = 'Thuê kỳ này'
-        #     ws.cell(start_row + count, 4).font = Font(bold=True)
-        #     count += 1
-        #     for product_id in map_product_id_2_line:
-        #         product = map_product_id_2_line[product_id]
-        #         for line in product['lines']:
-        #             r = start_row + count
-        #             ws.cell(r, 2).value = line['start_date'].strftime('%d/%m/%Y')
-        #             ws.cell(r, 3).value = line['end_date'].strftime('%d/%m/%Y')
-        #             ws.cell(r, 4).value = line['product_name']
-        #             ws.cell(r, 5).value = line['uom_name']
-        #             ws.cell(r, 6).value = line['qty']
-        #             ws.cell(r, 7).value = line['rental_days']
-        #             ws.cell(r, 8).value = line['unit_price']
-        #             ws.cell(r, 9).value = line['total_amount']
-        #             count += 1
-        #         r = start_row + count
-        #         ws.cell(r, 6).value = product['total_qty']
-        #         ws.cell(r, 6).font = Font(bold=True)
-        #         count += 1
+        # Summary totals on template section rows.
+        ws.cell(16, 8).value = data["beginning_debit"]
+        ws.cell(17, 8).value = data["total_amount_in_period"]
+        ws.cell(17, 6).value = None  # clear stale template SUM cache
+        ws.cell(115, 8).value = data["total_paid_in_period"]
 
-        for r in range(start_row + count, start_row + max_row):
+        detail_start = 19  # under "Tiền thuê hàng tháng" (row 18)
+        payment_row = 115
+        max_detail = payment_row - 1
+        row = detail_start
+
+        def _write_inv_row(r, inv, label, amount):
+            inv_date = inv.invoice_date or inv.rental_end_date
+            ws.cell(r, 2).value = inv.name or ""
+            ws.cell(r, 3).value = inv_date.strftime("%d/%m/%Y") if inv_date else ""
+            period = ""
+            if inv.rental_start_date and inv.rental_end_date:
+                period = (
+                    f"{inv.rental_start_date.strftime('%d/%m/%Y')}"
+                    f" → {inv.rental_end_date.strftime('%d/%m/%Y')}"
+                )
+            ws.cell(r, 4).value = f"{label} {period}".strip()
+            ws.cell(r, 8).value = amount
+
+        for inv in data["beginning_moves"]:
+            if row >= max_detail:
+                break
+            _write_inv_row(row, inv, _("Nợ đầu kỳ"), inv.amount_residual)
+            row += 1
+        for inv in data["in_period_moves"]:
+            if row >= max_detail:
+                break
+            _write_inv_row(row, inv, _("Phát sinh"), inv.amount_total)
+            row += 1
+
+        # Hide unused detail rows between last written line and payment section.
+        for r in range(row, payment_row):
             ws.row_dimensions[r].hidden = True
-        # --- Save to memory ---
+
+    def _load_debt_confirmation_workbook(self):
+        """Load company ĐCCN template into a workbook (active sheet filled later)."""
+        company = self.company_id if len(self) == 1 else self[:1].company_id
+        data, _source = self.env["rental.template"].get_template_bytes(
+            company,
+            "debt_confirmation_xlsx",
+        )
+        return load_workbook(io.BytesIO(data))
+
+    def _build_debt_confirmation_into_workbook(
+        self, dest_wb, start_date, end_date, sheet_title=None
+    ):
+        """Fill ĐCCN template and copy as a sheet into ``dest_wb``."""
+        self.ensure_one()
+        data = self._collect_debt_confirmation_data(start_date, end_date)
+        src_wb = self._load_debt_confirmation_workbook()
+        ws = src_wb.active
+        self._write_debt_confirmation_sheet(ws, start_date, end_date, data)
+        title = sheet_title or f"ĐCCN {end_date.strftime('%m-%Y')}"
+        return self._copy_xlsx_sheet(ws, dest_wb, title)
+
+    def export_debt_confirmation_comparison_table(self, start_date, end_date):
+        """Standalone ĐCCN XLSX download (same builder as combined KLCT+HSTT sheet)."""
+        data = self._collect_debt_confirmation_data(start_date, end_date)
+        if not data["customer_id"]:
+            raise UserError(_("No customer on selected contracts."))
+        contract = self[:1]
+        src_wb = contract._load_debt_confirmation_workbook()
+        ws = src_wb.active
+        contract._write_debt_confirmation_sheet(ws, start_date, end_date, data)
+
         buffer = io.BytesIO()
-        wb.save(buffer)
+        src_wb.save(buffer)
         buffer.seek(0)
 
-        # Prepare response
-        filename = f"ĐCCN {end_date.strftime('%m-%Y')} - {self.code}"
-        filename_ascii = quote(filename)  # URL-encode UTF-8 string
+        filename = f"ĐCCN {end_date.strftime('%m-%Y')} - {contract.code}"
         attachment = self.env["ir.attachment"].create({
             "name": f"{filename}.xlsx",
             "res_model": "res.partner",
-            "res_id": customer_id,
+            "res_id": data["customer_id"],
             "type": "binary",
             "datas": base64.b64encode(buffer.getvalue()),
             "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         })
-
         return {
             "type": "ir.actions.act_url",
             "url": f"/web/content/{attachment.id}?download=1",

@@ -53,6 +53,20 @@ class ResPartner(models.Model):
         else:
             super()._compute_display_name()
 
+    @api.model
+    def _get_view(self, view_id=None, view_type='form', **options):
+        """Drop IAP partner_autocomplete widget; keep plain text/char inputs."""
+        arch, view = super()._get_view(view_id, view_type, **options)
+        if view_type == 'form':
+            for node in arch.xpath("//field[@name='name']|//field[@name='vat']"):
+                if node.attrib.get('widget') != 'field_partner_autocomplete':
+                    continue
+                if node.get('name') == 'name':
+                    node.attrib['widget'] = 'text'
+                else:
+                    node.attrib.pop('widget', None)
+        return arch, view
+
     def action_open_link_representative_wizard(self):
         self.ensure_one()
         if not self.is_company:
@@ -70,12 +84,23 @@ class ResPartner(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Only enforce company_id when our context asks for it."""
-        customer_type = self.env.context.get('default_customer_type')
-        if customer_type:
-            """ If exist customer_type - that mean this is create by Customer in module, not Admin in setting page"""
-            for vals in vals_list:
-                vals['company_id'] = self.env.company.id
+        """Always stamp company_id so commercial partners are not shared globally.
+
+        Skip when creating the partner for a new ``res.company`` (warehouse setup
+        requires company_id False/unset until the company row exists).
+        """
+        if self.env.context.get('skip_company_id_stamp'):
+            return super().create(vals_list)
+        for vals in vals_list:
+            if vals.get('company_id'):
+                continue
+            parent_id = vals.get('parent_id')
+            if parent_id:
+                parent = self.browse(parent_id)
+                if parent.company_id:
+                    vals['company_id'] = parent.company_id.id
+                    continue
+            vals['company_id'] = self.env.company.id
         return super().create(vals_list)
 
     # def action_open_my_company_profile(self):

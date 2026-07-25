@@ -5,6 +5,7 @@ import { useService } from "@web/core/utils/hooks";
 import { Layout } from "@web/search/layout";
 import { loadBundle } from "@web/core/assets";
 import { getColor } from "@web/core/colors/colors";
+import { MultiRecordSelector } from "@web/core/record_selectors/multi_record_selector";
 import { Component, onWillStart, onWillUnmount, useEffect, useRef, useState } from "@odoo/owl";
 
 export class RentalAnalyticsBarChart extends Component {
@@ -98,14 +99,13 @@ export class RentalAnalyticsDashboard extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
+        this.companyService = useService("company");
         this.state = useState({
             loading: true,
             asOfDate: "",
             asOfDateDisplay: "",
-            partnerCompanyId: "",
-            constructionWorkId: "",
-            partners: [],
-            constructionWorks: [],
+            partnerCompanyIds: [],
+            constructionWorkIds: [],
             widgets: [],
             error: null,
         });
@@ -122,14 +122,26 @@ export class RentalAnalyticsDashboard extends Component {
         };
     }
 
+    get partnerDomain() {
+        return [
+            ["is_company", "=", true],
+            ["customer_type", "=", "renter"],
+            ["company_id", "in", this.companyService.activeCompanyIds],
+        ];
+    }
+
+    get constructionWorkDomain() {
+        return [
+            ["company_id", "in", this.companyService.activeCompanyIds],
+        ];
+    }
+
     async loadFilterOptions() {
         const options = await this.orm.call(
             "rental.analytics.dashboard",
             "get_filter_options",
             []
         );
-        this.state.partners = options.partners || [];
-        this.state.constructionWorks = options.construction_works || [];
         if (!this.state.asOfDate) {
             this.state.asOfDate = options.default_as_of_date;
         }
@@ -138,12 +150,8 @@ export class RentalAnalyticsDashboard extends Component {
     _filtersPayload(forceRefresh = false) {
         return {
             as_of_date: this.state.asOfDate,
-            partner_company_id: this.state.partnerCompanyId
-                ? Number(this.state.partnerCompanyId)
-                : false,
-            construction_work_id: this.state.constructionWorkId
-                ? Number(this.state.constructionWorkId)
-                : false,
+            partner_company_ids: this.state.partnerCompanyIds || [],
+            construction_work_ids: this.state.constructionWorkIds || [],
             only_active_contracts: true,
             force_refresh: forceRefresh,
         };
@@ -161,12 +169,12 @@ export class RentalAnalyticsDashboard extends Component {
             );
             this.state.asOfDate = data.filters.as_of_date;
             this.state.asOfDateDisplay = data.as_of_date_display;
-            this.state.partnerCompanyId = data.filters.partner_company_id
-                ? `${data.filters.partner_company_id}`
-                : "";
-            this.state.constructionWorkId = data.filters.construction_work_id
-                ? `${data.filters.construction_work_id}`
-                : "";
+            this.state.partnerCompanyIds = (data.filters.partner_company_ids || []).map(
+                (id) => Number(id)
+            );
+            this.state.constructionWorkIds = (
+                data.filters.construction_work_ids || []
+            ).map((id) => Number(id));
             this.state.widgets = data.widgets || [];
         } catch (error) {
             this.state.error = error?.data?.message || error?.message || `${error}`;
@@ -181,13 +189,13 @@ export class RentalAnalyticsDashboard extends Component {
         this.loadDashboard();
     }
 
-    onPartnerChange(ev) {
-        this.state.partnerCompanyId = ev.target.value || "";
+    onPartnerIdsUpdate(resIds) {
+        this.state.partnerCompanyIds = (resIds || []).map((id) => Number(id));
         this.loadDashboard();
     }
 
-    onConstructionWorkChange(ev) {
-        this.state.constructionWorkId = ev.target.value || "";
+    onConstructionWorkIdsUpdate(resIds) {
+        this.state.constructionWorkIds = (resIds || []).map((id) => Number(id));
         this.loadDashboard();
     }
 
@@ -212,6 +220,10 @@ export class RentalAnalyticsDashboard extends Component {
     }
 }
 RentalAnalyticsDashboard.template = "rental.AnalyticsDashboard";
-RentalAnalyticsDashboard.components = { Layout, RentalAnalyticsBarChart };
+RentalAnalyticsDashboard.components = {
+    Layout,
+    RentalAnalyticsBarChart,
+    MultiRecordSelector,
+};
 
 registry.category("actions").add("rental_analytics_dashboard", RentalAnalyticsDashboard);

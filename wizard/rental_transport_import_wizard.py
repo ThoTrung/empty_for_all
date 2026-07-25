@@ -45,7 +45,7 @@ class RentalTransportImportWizard(models.TransientModel):
     default_driver_id = fields.Many2one(
         "res.partner",
         string="Tài xế mặc định",
-        domain="[('customer_type', '=', 'driver')]",
+        domain="[('customer_type', '=', 'driver'), ('is_company', '=', False), ('company_id', 'in', allowed_company_ids)]",
     )
     auto_create_truck = fields.Boolean(
         string="Tự tạo xe nếu chưa có",

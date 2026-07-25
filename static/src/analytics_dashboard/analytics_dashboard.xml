@@ -22,37 +22,31 @@
                             t-on-change="onAsOfDateChange"
                         />
                     </div>
-                    <div>
-                        <label class="form-label mb-1" for="rental_analytics_partner">
+                    <div class="o_rental_analytics_filter">
+                        <label class="form-label mb-1">
                             Khách hàng
                         </label>
-                        <select
-                            id="rental_analytics_partner"
-                            class="form-select"
-                            t-att-value="state.partnerCompanyId"
-                            t-on-change="onPartnerChange"
-                        >
-                            <option value="">Tất cả</option>
-                            <t t-foreach="state.partners" t-as="partner" t-key="partner.id">
-                                <option t-att-value="partner.id" t-esc="partner.name"/>
-                            </t>
-                        </select>
+                        <MultiRecordSelector
+                            resModel="'res.partner'"
+                            resIds="state.partnerCompanyIds"
+                            domain="partnerDomain"
+                            update.bind="onPartnerIdsUpdate"
+                            fieldString="'Khách hàng'"
+                            placeholder="'Chọn khách hàng…'"
+                        />
                     </div>
-                    <div>
-                        <label class="form-label mb-1" for="rental_analytics_work">
+                    <div class="o_rental_analytics_filter">
+                        <label class="form-label mb-1">
                             Công trình
                         </label>
-                        <select
-                            id="rental_analytics_work"
-                            class="form-select"
-                            t-att-value="state.constructionWorkId"
-                            t-on-change="onConstructionWorkChange"
-                        >
-                            <option value="">Tất cả</option>
-                            <t t-foreach="state.constructionWorks" t-as="work" t-key="work.id">
-                                <option t-att-value="work.id" t-esc="work.name"/>
-                            </t>
-                        </select>
+                        <MultiRecordSelector
+                            resModel="'construction.work'"
+                            resIds="state.constructionWorkIds"
+                            domain="constructionWorkDomain"
+                            update.bind="onConstructionWorkIdsUpdate"
+                            fieldString="'Công trình'"
+                            placeholder="'Chọn công trình…'"
+                        />
                     </div>
                     <button
                         type="button"

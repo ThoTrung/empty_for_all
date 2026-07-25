@@ -57,7 +57,8 @@
             <field name="model">rental.analytics.on.hire.line</field>
             <field name="arch" type="xml">
                 <search string="SL đang thuê">
-                    <field name="partner_company_id"/>
+                    <field name="partner_company_id"
+                           domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]"/>
                     <field name="construction_work_id"/>
                     <field name="construction_project_id"/>
                     <field name="rental_contract_id"/>
@@ -95,7 +96,7 @@ action = env['rental.analytics.on.hire.line'].action_open_on_hire_detail()
         </record>
 
         <record id="action_rental_analytics_dashboard" model="ir.actions.client">
-            <field name="name">Dashboard</field>
+            <field name="name">Thống kê</field>
             <field name="tag">rental_analytics_dashboard</field>
             <field name="target">current</field>
         </record>
@@ -132,7 +133,8 @@ action = env['rental.analytics.on.hire.line'].action_open_on_hire_detail()
             <field name="inherit_id" ref="account.view_account_move_filter"/>
             <field name="arch" type="xml">
                 <xpath expr="//search" position="inside">
-                    <field name="rental_partner_company_id"/>
+                    <field name="rental_partner_company_id"
+                           domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]"/>
                     <field name="rental_construction_work_id"/>
                     <filter name="group_rental_partner"
                             string="Khách hàng thuê"

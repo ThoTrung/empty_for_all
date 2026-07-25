@@ -41,6 +41,9 @@
                 <field name="use_variant_multiplier" invisible="1"></field>
             </xpath>
 
+            <xpath expr="//div[hasclass('oe_title')]//field[@name='name']" position="attributes">
+                <attribute name="placeholder">Hộp</attribute>
+            </xpath>
             <xpath expr="//field[@name='list_price']" position="attributes">
                 <attribute name="string">Giá thuê theo tháng</attribute>
             </xpath>

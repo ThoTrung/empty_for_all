@@ -6,6 +6,8 @@
             <search>
                 <field name="code"/>
                 <field name="name"/>
+                <field name="driver_id"
+                       domain="[('customer_type', '=', 'driver'), ('is_company', '=', False), ('company_id', 'in', allowed_company_ids)]"/>
                 <field name="rental_contract_id" groups="rental.group_rental_staff"/>
                 <separator/>
                 <filter name="draft" string="Nháp" domain="[('state', '=', 'draft')]"/>
@@ -36,7 +38,7 @@
                 <field name="plate" optional="show"/>
                 <field name="driver_name" optional="show"/>
                 <field name="driver_phone" optional="show"/>
-                <field name="fee" optional="show"/>
+                <field name="fee" string="Giá vận chuyển" sum="Tổng giá vận chuyển" optional="show"/>
                 <field name="fee_billed_date" optional="hide"/>
                 <field name="state"
                        widget="badge"
@@ -96,14 +98,12 @@
                                    string="Người giao hàng"
                                    invisible="type == 'compensation'"
                                    readonly="state in ['done', 'cancel']"
-                                   domain="['|', ('id', '=', delivering_party), ('parent_id', '=?', delivering_party_parent_id)]"
                                    context="{'no_parent_prefix': True}"
                             />
                             <field name="deliverer_partner_id"
                                    string="Người xác nhận"
                                    invisible="type != 'compensation'"
                                    readonly="state in ['done', 'cancel']"
-                                   domain="['|', ('id', '=', delivering_party), ('parent_id', '=?', delivering_party_parent_id)]"
                                    context="{'no_parent_prefix': True}"
                             />
                             <field name="deliverer_phone" string="Số điện thoại" readonly="1"/>
@@ -122,14 +122,12 @@
                                    string="Người nhận hàng"
                                    invisible="type == 'compensation'"
                                    readonly="state in ['done', 'cancel']"
-                                   domain="['|', ('id', '=', receiving_party), ('parent_id', '=?', receiving_party_parent_id)]"
                                    context="{'no_parent_prefix': True}"
                             />
                             <field name="receiver_partner_id"
                                    string="Người xác nhận"
                                    invisible="type != 'compensation'"
                                    readonly="state in ['done', 'cancel']"
-                                   domain="['|', ('id', '=', receiving_party), ('parent_id', '=?', receiving_party_parent_id)]"
                                    context="{'no_parent_prefix': True}"
                             />
                             <field name="receiver_phone" string="Số điện thoại" readonly="1"/>
@@ -234,7 +232,7 @@
 
     <!-- Action & Menu -->
     <record id="action_rr_transport" model="ir.actions.act_window">
-        <field name="name">Xuất nhập kho</field>
+        <field name="name">Lịch sử chuyến xe</field>
         <field name="res_model">rr.transport</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_rr_transport_search"/>

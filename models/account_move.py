@@ -21,6 +21,7 @@ class AccountMove(models.Model):
         string="Khách hàng thuê",
         store=True,
         index=True,
+        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]",
     )
     rental_construction_work_id = fields.Many2one(
         related="rental_contract_id.construction_work_id",
@@ -50,8 +51,50 @@ class AccountMove(models.Model):
         copy=False,
     )
 
+    def _rental_release_transport_fees(self):
+        """Clear fee_billed_* on transports that pointed at these invoices."""
+        Transport = self.env["rr.transport"]
+        for move in self:
+            transports = Transport.search([("fee_invoice_id", "=", move.id)])
+            if transports:
+                transports.write({
+                    "fee_billed_date": False,
+                    "fee_invoice_id": False,
+                })
+
+    def unlink(self):
+        # Draft/posted rental invoices must be cancelled first (releases fee_billed_*).
+        blocked = self.filtered(
+            lambda m: m.rental_contract_id and m.state != "cancel"
+        )
+        if blocked:
+            raise UserError(
+                _(
+                    "Không được xóa hóa đơn thuê khi chưa hủy. Hãy hủy hóa đơn trước "
+                    "để thu hồi phí vận chuyển, rồi mới xóa."
+                )
+            )
+        rental_cancelled = self.filtered(
+            lambda m: m.rental_contract_id and m.state == "cancel"
+        )
+        if rental_cancelled:
+            rental_cancelled._rental_release_transport_fees()
+        return super().unlink()
+
+    def button_cancel(self):
+        rental = self.filtered("rental_contract_id")
+        res = super().button_cancel()
+        rental._rental_release_transport_fees()
+        return res
+
+    def button_draft(self):
+        rental = self.filtered("rental_contract_id")
+        res = super().button_draft()
+        rental._rental_release_transport_fees()
+        return res
+
     def action_download_business_xlsx(self):
-        """Regenerate KLCT+HSTT workbook (2 sheets) from current templates, then download."""
+        """Regenerate KLCT+HSTT(+ĐCCN) workbook from current templates, then download."""
         self.ensure_one()
         if not (
             self.rental_contract_id

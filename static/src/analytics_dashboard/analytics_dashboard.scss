@@ -23,6 +23,17 @@
     overflow-y: auto;
 }
 
-.o_rental_analytics_dashboard_body .form-select {
-    min-width: 180px;
+.o_rental_analytics_filter {
+    min-width: 260px;
+    max-width: 420px;
+    flex: 1 1 260px;
+
+    .o_multi_record_selector {
+        min-height: 38px;
+        padding: 4px 8px;
+        background-color: var(--o-input-background-color, #fff);
+        border: 1px solid var(--o-input-border-color, #ced4da);
+        border-radius: 0.25rem;
+        align-items: center;
+    }
 }

@@ -260,28 +260,17 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
-<!--        <record id="rental_res_partner_company_rule" model="ir.rule">-->
-<!--            <field name="name">Rental Res Partners: multi-company</field>-->
-<!--            <field name="model_id" ref="base.model_res_partner"/>-->
-<!--&lt;!&ndash;            <field name="domain_force">[('company_group_id','in', user.company_ids.company_group_id.ids)]</field>&ndash;&gt;-->
-<!--            <field name="domain_force">[('company_id', 'in', company_ids), ('customer_type', 'in', ['renter', 'driver'])]</field>-->
-<!--            <field name="groups" eval="[(4, ref('base.group_user'))]"/>-->
-<!--            <field name="perm_read" eval="True"/>-->
-<!--            <field name="perm_write" eval="True"/>-->
-<!--            <field name="perm_create" eval="True"/>-->
-<!--            <field name="perm_unlink" eval="True"/>-->
-<!--        </record>-->
-
-        <!-- Let everyone see their own partner (login/contact) explicitly -->
-<!--        <record id="rule_partner_self_visibility" model="ir.rule">-->
-<!--            <field name="name">Show own partner</field>-->
-<!--            <field name="model_id" ref="base.model_res_partner"/>-->
-<!--            <field name="domain_force">['|', ('id','=', user.partner_id.id), ('company_id', 'in', company_ids)]</field>-->
-<!--            <field name="perm_read" eval="True"/>-->
-<!--            <field name="perm_write" eval="False"/>-->
-<!--            <field name="perm_create" eval="False"/>-->
-<!--            <field name="perm_unlink" eval="False"/>-->
-<!--        </record>-->
+        <!-- Global AND with base.res_partner_rule: hide shared commercial partners
+             (company_id=False). Internal users (partner_share=False) stay visible. -->
+        <record id="rental_res_partner_company_strict_rule" model="ir.rule">
+            <field name="name">res.partner: strict multi-company (no shared)</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="domain_force">['|', ('partner_share', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
 
     </data>
 </odoo>

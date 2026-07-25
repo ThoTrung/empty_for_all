@@ -43,6 +43,7 @@ class RentalAnalyticsOnHireLine(models.Model):
         required=True,
         index=True,
         ondelete="cascade",
+        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]",
     )
     construction_work_id = fields.Many2one(
         "construction.work",
@@ -201,20 +202,28 @@ class RentalAnalyticsOnHireLine(models.Model):
         *,
         partner_company_id=None,
         construction_work_id=None,
+        partner_company_ids=None,
+        construction_work_ids=None,
         force=False,
         only_active_contracts=True,
     ):
-        """Ensure snapshot then optionally filter by customer / site."""
+        """Ensure snapshot then optionally filter by customer(s) / site(s)."""
         lines = self.ensure_snapshot(
             as_of_date,
             force=force,
             only_active_contracts=only_active_contracts,
         )
         domain = list(self._snapshot_domain(as_of_date))
-        if partner_company_id:
-            domain.append(("partner_company_id", "=", partner_company_id))
-        if construction_work_id:
-            domain.append(("construction_work_id", "=", construction_work_id))
+        partner_ids = list(partner_company_ids or [])
+        if not partner_ids and partner_company_id:
+            partner_ids = [partner_company_id]
+        work_ids = list(construction_work_ids or [])
+        if not work_ids and construction_work_id:
+            work_ids = [construction_work_id]
+        if partner_ids:
+            domain.append(("partner_company_id", "in", partner_ids))
+        if work_ids:
+            domain.append(("construction_work_id", "in", work_ids))
         return self.search(domain)
 
     @api.model

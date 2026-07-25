@@ -5,6 +5,15 @@ from odoo import _, api, fields, models
 from odoo.tools.misc import format_date, formatLang
 
 
+def _as_id_list(value):
+    """Normalize singular id / list of ids from dashboard filters."""
+    if not value:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return [int(v) for v in value if v]
+    return [int(value)]
+
+
 class RentalAnalyticsDashboard(models.AbstractModel):
     """Analytics Hub shell: widget registry + summary RPC for the OWL dashboard.
 
@@ -42,15 +51,29 @@ class RentalAnalyticsDashboard(models.AbstractModel):
         as_of_date = fields.Date.to_date(
             filters.get("as_of_date") or fields.Date.context_today(self)
         )
-        partner_company_id = filters.get("partner_company_id") or False
-        construction_work_id = filters.get("construction_work_id") or False
+        # Accept plural (multi) or singular (legacy) filter keys.
+        partner_company_ids = _as_id_list(
+            filters.get("partner_company_ids")
+            if "partner_company_ids" in filters
+            else filters.get("partner_company_id")
+        )
+        construction_work_ids = _as_id_list(
+            filters.get("construction_work_ids")
+            if "construction_work_ids" in filters
+            else filters.get("construction_work_id")
+        )
         only_active = bool(filters.get("only_active_contracts", True))
         force = bool(filters.get("force_refresh"))
 
         norm = {
             "as_of_date": fields.Date.to_string(as_of_date),
-            "partner_company_id": partner_company_id or False,
-            "construction_work_id": construction_work_id or False,
+            "partner_company_ids": partner_company_ids,
+            "construction_work_ids": construction_work_ids,
+            # Keep singular keys for older clients / tests.
+            "partner_company_id": partner_company_ids[0] if len(partner_company_ids) == 1 else False,
+            "construction_work_id": (
+                construction_work_ids[0] if len(construction_work_ids) == 1 else False
+            ),
             "only_active_contracts": only_active,
         }
         widgets = []
@@ -73,10 +96,12 @@ class RentalAnalyticsDashboard(models.AbstractModel):
     def _build_on_hire_by_product_widget(self, filters, force=False):
         OnHire = self.env["rental.analytics.on.hire.line"]
         as_of = fields.Date.to_date(filters["as_of_date"])
+        partner_ids = _as_id_list(filters.get("partner_company_ids"))
+        work_ids = _as_id_list(filters.get("construction_work_ids"))
         lines = OnHire.search_snapshot(
             as_of,
-            partner_company_id=filters.get("partner_company_id") or None,
-            construction_work_id=filters.get("construction_work_id") or None,
+            partner_company_ids=partner_ids or None,
+            construction_work_ids=work_ids or None,
             force=force,
             only_active_contracts=filters.get("only_active_contracts", True),
         )
@@ -152,14 +177,10 @@ class RentalAnalyticsDashboard(models.AbstractModel):
             ("company_id", "in", self.env.companies.ids),
             ("as_of_date", "=", as_of),
         ]
-        if filters.get("partner_company_id"):
-            domain.append(
-                ("partner_company_id", "=", filters["partner_company_id"])
-            )
-        if filters.get("construction_work_id"):
-            domain.append(
-                ("construction_work_id", "=", filters["construction_work_id"])
-            )
+        if partner_ids:
+            domain.append(("partner_company_id", "in", partner_ids))
+        if work_ids:
+            domain.append(("construction_work_id", "in", work_ids))
 
         detail_action = {
             "type": "ir.actions.act_window",
@@ -206,6 +227,8 @@ class RentalAnalyticsDashboard(models.AbstractModel):
     def _build_receivable_widget(self, filters, force=False):
         del force  # live residual; no snapshot
         Move = self.env["account.move"]
+        partner_ids = _as_id_list(filters.get("partner_company_ids"))
+        work_ids = _as_id_list(filters.get("construction_work_ids"))
         domain = [
             ("company_id", "in", self.env.companies.ids),
             ("move_type", "in", ("out_invoice", "out_refund")),
@@ -213,14 +236,10 @@ class RentalAnalyticsDashboard(models.AbstractModel):
             ("rental_contract_id", "!=", False),
             ("amount_residual", "!=", 0),
         ]
-        if filters.get("partner_company_id"):
-            domain.append(
-                ("rental_partner_company_id", "=", filters["partner_company_id"])
-            )
-        if filters.get("construction_work_id"):
-            domain.append(
-                ("rental_construction_work_id", "=", filters["construction_work_id"])
-            )
+        if partner_ids:
+            domain.append(("rental_partner_company_id", "in", partner_ids))
+        if work_ids:
+            domain.append(("rental_construction_work_id", "in", work_ids))
 
         groups = Move.read_group(
             domain,

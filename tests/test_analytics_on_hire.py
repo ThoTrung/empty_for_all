@@ -144,7 +144,7 @@ class TestAnalyticsOnHire(TransactionCase):
             widget["detail_action"]["domain"],
         )
         self.assertIn(
-            ("partner_company_id", "=", self.customer.id),
+            ("partner_company_id", "in", [self.customer.id]),
             widget["detail_action"]["domain"],
         )
 
@@ -180,6 +180,45 @@ class TestAnalyticsOnHire(TransactionCase):
         )
         self.assertFalse(on_hire["totals_by_uom"])
         self.assertFalse(on_hire["chart"]["labels"])
+
+    def test_dashboard_filters_multi_partner_and_work(self):
+        as_of = date(2026, 3, 15)
+        self._make_transport("delivery", date(2026, 3, 1), self.product_a, 5)
+        other_customer = self.env["res.partner"].create({
+            "name": "Other Renter Co",
+            "is_company": True,
+            "customer_type": "renter",
+            "company_id": self.env.company.id,
+        })
+        other_work = self.env["construction.work"].create({
+            "name": "Other Work Multi",
+            "project_id": self.project.id,
+            "address_ids": [(6, 0, self.address.ids)],
+            "company_id": self.env.company.id,
+        })
+        data = self.env["rental.analytics.dashboard"].get_dashboard_data({
+            "as_of_date": as_of.isoformat(),
+            "partner_company_ids": [self.customer.id, other_customer.id],
+            "construction_work_ids": [self.work.id, other_work.id],
+            "only_active_contracts": True,
+            "force_refresh": True,
+        })
+        self.assertEqual(
+            set(data["filters"]["partner_company_ids"]),
+            {self.customer.id, other_customer.id},
+        )
+        on_hire = next(
+            w for w in data["widgets"] if w["key"] == "on_hire_by_product"
+        )
+        self.assertTrue(on_hire["totals_by_uom"])
+        self.assertIn(
+            ("partner_company_id", "in", [self.customer.id, other_customer.id]),
+            on_hire["detail_action"]["domain"],
+        )
+        self.assertIn(
+            ("construction_work_id", "in", [self.work.id, other_work.id]),
+            on_hire["detail_action"]["domain"],
+        )
 
     def test_cron_cleanup_old_snapshots(self):
         OnHire = self.env["rental.analytics.on.hire.line"]
