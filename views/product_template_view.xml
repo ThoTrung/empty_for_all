@@ -91,7 +91,7 @@
 
     <!-- ===== Products (Templates) ===== -->
     <record id="action_rental_product_templates" model="ir.actions.act_window">
-        <field name="name">Products</field>
+        <field name="name">Mẫu sản phẩm</field>
         <field name="res_model">product.template</field>
         <!-- Reuse standard product views: kanban + list + form -->
         <field name="view_mode">kanban,tree,form</field>
@@ -117,7 +117,7 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//sheet" position="inside">
-                <group string="Product detail">
+                <group string="Chi tiết sản phẩm">
                     <group>
                         <field name="categ_id"/>
                         <field name="uom_id" domain="[('category_id.name','=','tbxd')]"/>  # Remember to create uom in inventory setting with category name is: tbxd - (thiết bị xây dựng)
@@ -130,21 +130,21 @@
                         <field name="compensation_price" placeholder="1.000.000"/>
                     </group>
                 </group>
-                <field name="description" placeholder="Description"/>
-                <separator string="Attributes &amp; Variants" class="text-danger text-medium"/>
+                <field name="description" placeholder="Mô tả"/>
+                <separator string="Thuộc tính &amp; biến thể" class="text-danger text-medium"/>
                 <field name="attribute_line_ids" nolabel="1" widget="one2many" context="{'show_attribute': False}">
-                    <tree string="Variants" editable="bottom" decoration-info="value_count &lt;= 1">
+                    <tree string="Biến thể" editable="bottom" decoration-info="value_count &lt;= 1">
                         <field name="value_count" column_invisible="True"/>
                         <field name="sequence" widget="handle"/>
                         <field name="attribute_id" readonly="id"/>
                         <field name="value_ids" widget="many2many_tags" options="{'no_create_edit': True, 'color_field': 'color'}" context="{'default_attribute_id': attribute_id, 'show_attribute': False}"/>
-                        <button string="Configure" class="float-end btn-secondary" type="object" name="action_open_attribute_values" groups="product.group_product_variant"/>
+                        <button string="Cấu hình" class="float-end btn-secondary" type="object" name="action_open_attribute_values" groups="product.group_product_variant"/>
                     </tree>
                 </field>
                     <p class="oe_grey oe_edit_only">
-                    <strong>Warning</strong>: adding or deleting attributes
-                    will delete and recreate existing variants and lead
-                    to the loss of their possible customizations.
+                    <strong>Cảnh báo</strong>: thêm hoặc xóa thuộc tính
+                    sẽ xóa và tạo lại các biến thể hiện có và dẫn đến
+                    mất các tùy chỉnh có thể đã áp dụng.
                 </p>
             </xpath>
         </field>

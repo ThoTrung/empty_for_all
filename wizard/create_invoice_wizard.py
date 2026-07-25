@@ -7,8 +7,8 @@ from odoo.exceptions import UserError
 class CreateInvoiceWizard(models.TransientModel):
     _name = "create.invoice.wizard"
 
-    start_date = fields.Date(string='Start date')
-    end_date = fields.Date(string='End date')
+    start_date = fields.Date(string='Từ ngày')
+    end_date = fields.Date(string='Đến ngày')
     transport_fee_until_date = fields.Date(
         string='Tính phí vận chuyển đến ngày',
         help='Lấy phí VC chưa tính của phiếu có ngày bắt đầu tính tiền ≤ ngày này. '
@@ -42,22 +42,22 @@ class CreateInvoiceWizard(models.TransientModel):
         active_ids = ctx.get('active_ids') or []
         method_name = ctx.get('date_range_callback')
         if not active_model or not active_ids or not method_name:
-            raise UserError(_("Wizard is missing context: 'active_model', 'active_ids', or 'date_range_callback'."))
+            raise UserError(_("Wizard thiếu context: 'active_model', 'active_ids', hoặc 'date_range_callback'."))
         # Security: enforce whitelist
         allowed = self._ALLOWED_CALLBACKS.get(active_model, set())
         if method_name not in allowed:
             raise UserError(_(
-                "Method '%(method)s' is not allowed for model %(model)s.",
+                "Phương thức '%(method)s' không được phép với model %(model)s.",
                 method=method_name, model=active_model
             ))
 
         recs = self.env[active_model].browse(active_ids).exists()
         if not recs:
-            raise UserError(_("No valid records found."))
+            raise UserError(_("Không tìm thấy bản ghi hợp lệ."))
 
         # Ensure the callback exists
         if not hasattr(recs, method_name):
-            raise UserError(_("Method '%s' not found on %s.") % (method_name, active_model))
+            raise UserError(_("Không tìm thấy phương thức '%s' trên %s.") % (method_name, active_model))
 
         return recs, method_name
 
@@ -65,7 +65,7 @@ class CreateInvoiceWizard(models.TransientModel):
         """Main entry: call the target method with (start_date, end_date)."""
         self.ensure_one()
         if self.end_date < self.start_date:
-            raise UserError(_("End date must be on or after Start date."))
+            raise UserError(_("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu."))
 
         recs, method_name = self._get_target_records_and_method()
 

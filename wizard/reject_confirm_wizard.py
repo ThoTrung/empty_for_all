@@ -4,7 +4,7 @@ from odoo.exceptions import UserError
 
 class RentalRejectConfirmWizard(models.TransientModel):
     _name = "rental.reject.confirm.wizard"
-    _description = "Reject rental contract confirmation"
+    _description = "Từ chối xác nhận hợp đồng thuê"
 
     message_reason = fields.Text(string="Lý do không xác nhận", required=True)
 

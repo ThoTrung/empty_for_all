@@ -27,7 +27,12 @@ export class RentalAnalyticsBarChart extends Component {
                     }
                 };
             },
-            () => [this.props.labels, this.props.values, this.props.datasetLabel]
+            () => [
+                this.props.labels,
+                this.props.values,
+                this.props.datasets,
+                this.props.datasetLabel,
+            ]
         );
 
         onWillUnmount(() => {
@@ -48,28 +53,42 @@ export class RentalAnalyticsBarChart extends Component {
             this.chart = null;
         }
         const labels = this.props.labels || [];
-        const values = this.props.values || [];
         if (!labels.length) {
             return;
         }
-        const colors = labels.map((_label, index) => getColor(index));
+
+        let datasets;
+        if (this.props.datasets && this.props.datasets.length) {
+            datasets = this.props.datasets.map((ds, index) => ({
+                label: ds.label || "",
+                data: ds.data || [],
+                backgroundColor: getColor(index),
+            }));
+        } else {
+            const values = this.props.values || [];
+            const colors = labels.map((_label, index) => getColor(index));
+            datasets = [
+                {
+                    label: this.props.datasetLabel || "",
+                    data: values,
+                    backgroundColor: colors,
+                },
+            ];
+        }
+
         this.chart = new Chart(canvas, {
             type: "bar",
             data: {
                 labels,
-                datasets: [
-                    {
-                        label: this.props.datasetLabel || "",
-                        data: values,
-                        backgroundColor: colors,
-                    },
-                ],
+                datasets,
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: Boolean(this.props.datasets && this.props.datasets.length > 1),
+                    },
                 },
                 scales: {
                     x: {
@@ -91,7 +110,8 @@ export class RentalAnalyticsBarChart extends Component {
 RentalAnalyticsBarChart.template = "rental.AnalyticsBarChart";
 RentalAnalyticsBarChart.props = {
     labels: { type: Array },
-    values: { type: Array },
+    values: { type: Array, optional: true },
+    datasets: { type: Array, optional: true },
     datasetLabel: { type: String, optional: true },
 };
 
@@ -102,17 +122,23 @@ export class RentalAnalyticsDashboard extends Component {
         this.companyService = useService("company");
         this.state = useState({
             loading: true,
+            xntLoading: false,
             asOfDate: "",
             asOfDateDisplay: "",
             partnerCompanyIds: [],
             constructionWorkIds: [],
+            warehouseIds: [],
+            xntDateFrom: "",
+            xntDateTo: "",
             widgets: [],
+            xnt: null,
             error: null,
+            xntError: null,
         });
 
         onWillStart(async () => {
             await this.loadFilterOptions();
-            await this.loadDashboard();
+            await Promise.all([this.loadDashboard(), this.loadXnt()]);
         });
     }
 
@@ -136,6 +162,12 @@ export class RentalAnalyticsDashboard extends Component {
         ];
     }
 
+    get warehouseDomain() {
+        return [
+            ["company_id", "in", this.companyService.activeCompanyIds],
+        ];
+    }
+
     async loadFilterOptions() {
         const options = await this.orm.call(
             "rental.analytics.dashboard",
@@ -145,6 +177,12 @@ export class RentalAnalyticsDashboard extends Component {
         if (!this.state.asOfDate) {
             this.state.asOfDate = options.default_as_of_date;
         }
+        if (!this.state.xntDateFrom) {
+            this.state.xntDateFrom = options.default_xnt_date_from;
+        }
+        if (!this.state.xntDateTo) {
+            this.state.xntDateTo = options.default_xnt_date_to;
+        }
     }
 
     _filtersPayload(forceRefresh = false) {
@@ -152,8 +190,17 @@ export class RentalAnalyticsDashboard extends Component {
             as_of_date: this.state.asOfDate,
             partner_company_ids: this.state.partnerCompanyIds || [],
             construction_work_ids: this.state.constructionWorkIds || [],
+            warehouse_ids: this.state.warehouseIds || [],
             only_active_contracts: true,
             force_refresh: forceRefresh,
+        };
+    }
+
+    _xntFiltersPayload() {
+        return {
+            ...this._filtersPayload(false),
+            date_from: this.state.xntDateFrom,
+            date_to: this.state.xntDateTo,
         };
     }
 
@@ -175,12 +222,39 @@ export class RentalAnalyticsDashboard extends Component {
             this.state.constructionWorkIds = (
                 data.filters.construction_work_ids || []
             ).map((id) => Number(id));
+            this.state.warehouseIds = (data.filters.warehouse_ids || []).map((id) =>
+                Number(id)
+            );
             this.state.widgets = data.widgets || [];
         } catch (error) {
             this.state.error = error?.data?.message || error?.message || `${error}`;
             this.state.widgets = [];
         } finally {
             this.state.loading = false;
+        }
+    }
+
+    async loadXnt() {
+        this.state.xntLoading = true;
+        this.state.xntError = null;
+        try {
+            this.state.xnt = await this.orm.call(
+                "rental.analytics.dashboard",
+                "get_xnt_summary",
+                [],
+                { filters: this._xntFiltersPayload() }
+            );
+            if (this.state.xnt?.date_from) {
+                this.state.xntDateFrom = this.state.xnt.date_from;
+            }
+            if (this.state.xnt?.date_to) {
+                this.state.xntDateTo = this.state.xnt.date_to;
+            }
+        } catch (error) {
+            this.state.xntError = error?.data?.message || error?.message || `${error}`;
+            this.state.xnt = null;
+        } finally {
+            this.state.xntLoading = false;
         }
     }
 
@@ -199,8 +273,26 @@ export class RentalAnalyticsDashboard extends Component {
         this.loadDashboard();
     }
 
+    onWarehouseIdsUpdate(resIds) {
+        this.state.warehouseIds = (resIds || []).map((id) => Number(id));
+        Promise.all([this.loadDashboard(), this.loadXnt()]);
+    }
+
+    onXntDateFromChange(ev) {
+        this.state.xntDateFrom = ev.target.value;
+        this.loadXnt();
+    }
+
+    onXntDateToChange(ev) {
+        this.state.xntDateTo = ev.target.value;
+        this.loadXnt();
+    }
+
     async onRefresh() {
-        await this.loadDashboard({ forceRefresh: true });
+        await Promise.all([
+            this.loadDashboard({ forceRefresh: true }),
+            this.loadXnt(),
+        ]);
     }
 
     async onOpenRentedQtyWizard() {
@@ -212,6 +304,20 @@ export class RentalAnalyticsDashboard extends Component {
             return;
         }
         await this.action.doAction(widget.detail_action);
+    }
+
+    async onOpenXntFull() {
+        const action = await this.orm.call(
+            "rental.analytics.dashboard",
+            "action_open_xnt_wizard",
+            [],
+            { filters: this._xntFiltersPayload() }
+        );
+        await this.action.doAction(action);
+    }
+
+    isWarehouseWidget(widget) {
+        return widget?.key === "warehouse_stock" || widget?.widget_kind === "warehouse_stock";
     }
 
     formatNumber(value) {

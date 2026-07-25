@@ -1,28 +1,29 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from odoo.osv import expression
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
     customer_type = fields.Selection(
         [
-            ("renter", "Renter"),
-            ("driver", "Driver"),
-            ("my_company_profile", "My company_profile"),
-            ("other", "Other"),
+            ("renter", "Khách thuê"),
+            ("driver", "Tài xế"),
+            ("my_company_profile", "Hồ sơ công ty"),
+            ("other", "Khác"),
         ],
-        string="Customer Type",
+        string="Loại khách hàng",
         index=True,
         tracking=True,
-        help="Classify this contact for rental operations."
+        help="Phân loại liên hệ cho nghiệp vụ thuê."
     )
-    bank_account = fields.Char(string="Bank account")
-    id_number = fields.Char(string='ID number', tracking=3)
-    birthday = fields.Date(string='Birthday')
-    id_issued_by = fields.Char(string='ID issued by')
-    id_issued_date = fields.Date(string='Issued Date')
-    id_permanent_residence = fields.Char(string="Permanent Residence")
-    id_temporary_residence = fields.Char(string="Temporary Residence")
+    bank_account = fields.Char(string="Tài khoản ngân hàng")
+    id_number = fields.Char(string='Số CCCD/CMND', tracking=3)
+    birthday = fields.Date(string='Ngày sinh')
+    id_issued_by = fields.Char(string='Nơi cấp')
+    id_issued_date = fields.Date(string='Ngày cấp')
+    id_permanent_residence = fields.Char(string="Thường trú")
+    id_temporary_residence = fields.Char(string="Tạm trú")
     fax = fields.Char(string="Fax")
 
     # company_id = fields.Many2one(
@@ -41,7 +42,7 @@ class ResPartner(models.Model):
     rental_contract_ids = fields.One2many(
         'rental.contract',
         'a_company_party',
-        string='Rental contracts'
+        string='Hợp đồng thuê'
     )
 
     @api.depends('name', 'parent_id')
@@ -66,6 +67,15 @@ class ResPartner(models.Model):
                 else:
                     node.attrib.pop('widget', None)
         return arch, view
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        """Honor domain pushed from DomainSelector patch via context."""
+        args = list(args or [])
+        extra = self.env.context.get('rental_partner_name_search_domain')
+        if extra:
+            args = expression.AND([args, list(extra)])
+        return super().name_search(name, args=args, operator=operator, limit=limit)
 
     def action_open_link_representative_wizard(self):
         self.ensure_one()

@@ -27,6 +27,7 @@
 - DEC-23 — «Xuất KLCT + HSTT» = post HĐ ngay; unlink HĐ thuê chỉ khi `cancel` (draft/posted phải hủy trước); cancel/draft/unlink-cancel nhả `fee_billed_*`; workbook gồm sheet `ĐCCN {mm-YYYY}` (tóm tắt nợ đầu kỳ / phát sinh / thanh toán / còn lại theo residual + `rental_end_date`) · `models/account_move.py`, `models/rental_contract.py`
 - DEC-24 — Partner commercial không shared: global `ir.rule` AND `company_id in company_ids` (giữ `partner_share=False`); `create` stamp `company_id`; migration stamp khi suy ra 1 cty · `security/ir_rule.xml`, `models/res_partner.py`, `migrations/17.0.1.0.61/`
 - DEC-25 — Tắt IAP Partner Autocomplete trên form `res.partner`: `_get_view` trả `name`→`text`, bỏ widget trên `vat` · `models/res_partner.py`
-- DEC-26 — Custom filter DomainSelector không truyền `field.domain` → patch `TreeEditor.getValueEditorInfo` inject domain (eval `allowed_company_ids`); M2O partner (driver/renter) siết `customer_type` + `company_id in allowed_company_ids` · `static/src/js/domain_selector_field_domain.js`, `models/transport.py`, search views
+- DEC-26 — Custom filter DomainSelector không truyền `field.domain`; SearchBar `Domain.toList()` không context. Vá: TreeEditor inject + RecordAutocomplete.getDomain fallback theo label «Tài xế» + Search More domain · `static/src/js/domain_selector_field_domain.js`
+- DEC-27 — Thống kê kho: tồn as-of + XNT kỳ từ `stock.move` done (internal locations; gồm rental/SO/PO/điều chỉnh), tách on-hire LIFO; UI Thống kê (card Tồn kho + khối XNT) + wizard/Excel · `services/rental_stock_xnt.py`, `models/rental_analytics_stock_onhand.py`, `wizard/rental_stock_xnt_wizard.py`, `static/src/analytics_dashboard/`
 
 **New ADR:** thêm 1 dòng `DEC-NN`.

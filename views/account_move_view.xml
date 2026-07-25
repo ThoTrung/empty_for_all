@@ -87,14 +87,14 @@
       <xpath expr="//search" position="inside">
         <field name="rental_contract_id"/>
         <filter name="group_rental_contract"
-                string="Contract"
+                string="Hợp đồng"
                 context="{'group_by': 'rental_contract_id'}"/>
       </xpath>
     </field>
   </record>
 
   <record id="action_move_out_invoice_and_refund_type" model="ir.actions.act_window">
-      <field name="name">Invoices and Refund</field>
+      <field name="name">Hóa đơn và hoàn tiền</field>
       <field name="res_model">account.move</field>
       <field name="view_mode">tree,kanban,form,activity</field>
       <field name="context">{'default_move_type': 'out_invoice'}</field>

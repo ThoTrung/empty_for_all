@@ -84,15 +84,15 @@ class RentalTransportMatrix(models.Model):
     """
 
     _name = "rental.transport.matrix"
-    _description = "Rental Transport Matrix"
+    _description = "Bảng xác nhận khối lượng"
     _rec_name = "name"
     _order = "id desc"
 
-    name = fields.Char(string="Name", required=True, default=lambda self: _("Rental Volume Confirmation"))
+    name = fields.Char(string="Tên", required=True, default=lambda self: _("Bảng xác nhận khối lượng"))
 
     rental_contract_id = fields.Many2one(
         "rental.contract",
-        string="Rental Contract",
+        string="Hợp đồng thuê",
         required=True,
         index=True,
         ondelete="cascade",
@@ -108,19 +108,19 @@ class RentalTransportMatrix(models.Model):
     b_representative_name = fields.Char(related="rental_contract_id.b_name", readonly=True)
     b_representative_function = fields.Char(related="rental_contract_id.b_function", readonly=True)
 
-    start_date = fields.Date(string="Start date", required=True)
-    end_date = fields.Date(string="End date", required=True)
+    start_date = fields.Date(string="Từ ngày", required=True)
+    end_date = fields.Date(string="Đến ngày", required=True)
 
     product_ids = fields.Many2many(
         "product.product",
-        string="Products (variants)",
+        string="Sản phẩm (biến thể)",
         compute="_compute_matrix",
         store=True,
         readonly=True,
     )
 
     matrix_html = fields.Html(
-        string="Confirmation table for rental volume",
+        string="Bảng xác nhận khối lượng",
         compute="_compute_matrix",
         sanitize=False,
     )
@@ -129,7 +129,7 @@ class RentalTransportMatrix(models.Model):
     def _check_date_range(self):
         for rec in self:
             if rec.start_date and rec.end_date and rec.end_date < rec.start_date:
-                raise models.ValidationError(_("End date must be on or after Start date."))
+                raise models.ValidationError(_("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu."))
 
     @api.constrains("rental_contract_id", "start_date", "end_date")
     def _check_no_overlap_same_contract(self):
@@ -149,7 +149,7 @@ class RentalTransportMatrix(models.Model):
             if other:
                 raise ValidationError(
                     _(
-                        "The date range overlaps another confirmation table on this contract: %(name)s.",
+                        "Khoảng ngày trùng với bảng xác nhận khác trên hợp đồng này: %(name)s.",
                         name=other.display_name,
                     )
                 )

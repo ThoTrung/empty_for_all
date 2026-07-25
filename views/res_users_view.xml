@@ -5,7 +5,7 @@
         <field name="inherit_id" ref="base.view_users_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook/page[@name='preferences']/group" position="inside">
-                <group string="Rental" groups="rental.group_rental_manager">
+                <group string="Cho thuê" groups="rental.group_rental_manager">
                     <field name="is_rental_leader"/>
                     <field name="rental_leader_id"
                            string="Leader phụ trách hợp đồng"

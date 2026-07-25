@@ -8,7 +8,7 @@
 
             <!-- Add Representative block near core identity fields -->
             <xpath expr="//group[.//field[@name='partner_id']]" position="after">
-                <group string="Representative">
+                <group string="Người đại diện">
                     <field name="representative_id"/>
                     <field name="representative_position"/>
                 </group>
@@ -16,7 +16,7 @@
 
             <!-- Add a Bank Accounts tab using standard res.partner.bank -->
             <xpath expr="//notebook" position="inside">
-                <page string="Bank Accounts">
+                <page string="Tài khoản ngân hàng">
                     <group>
 <!--                        <field name="company_partner_for_domain_id" invisible="1"/>-->
 

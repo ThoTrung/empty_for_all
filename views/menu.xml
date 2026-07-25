@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem name="Rental"
+    <menuitem name="Cho thuê"
               id="menu_rental_root"
               web_icon="rental, static/description/icon.png"
               sequence="0"/>
@@ -12,12 +12,12 @@
               sequence="0"
               groups="rental.group_rental_staff"/>
 
-    <menuitem name="Contract"
+    <menuitem name="Hợp đồng"
               id="menu_contract_master"
               parent="menu_rental_root"
               sequence="2"
               groups="rental.group_rental_staff"/>
-    <menuitem name="Rental contract"
+    <menuitem name="Hợp đồng thuê"
               id="menu_rental_contract"
               action="action_rental_contract"
               parent="menu_contract_master"
@@ -27,12 +27,12 @@
               parent="menu_contract_master"
               action="action_res_partner_renters"
               sequence="1"/>
-    <menuitem name="Confirmation tables"
+    <menuitem name="Bảng xác nhận KL"
               id="menu_rental_transport_matrix"
               action="action_rental_transport_matrix"
               parent="menu_contract_master"
               sequence="2"/>
-    <menuitem name="Rental invoice"
+    <menuitem name="Hóa đơn thuê"
               id="menu_rental_invoice_and_refund"
               action="action_move_out_invoice_and_refund_type"
               parent="menu_contract_master"
@@ -49,7 +49,7 @@
               sequence="6"/>
 
     <menuitem id="menu_stock_master"
-              name="Stock"
+              name="Tồn kho"
               parent="menu_rental_root"
               sequence="5"
               groups="rental.group_rental_staff,rental.group_rental_transport_courier"/>
@@ -59,14 +59,20 @@
               action="action_rr_transport"
               sequence="15"
               groups="rental.group_rental_staff,rental.group_rental_transport_courier"/>
+    <menuitem id="menu_rental_stock_xnt"
+              name="Xuất nhập tồn"
+              parent="menu_stock_master"
+              action="action_rental_stock_xnt_wizard"
+              sequence="16"
+              groups="rental.group_rental_staff"/>
     <menuitem id="menu_product_template"
-              name="Product template"
+              name="Mẫu sản phẩm"
               parent="menu_stock_master"
               action="action_rental_product_templates"
               sequence="0"
               groups="rental.group_rental_staff,rental.group_rental_transport_courier"/>
     <menuitem id="menu_product_product"
-              name="Product variant"
+              name="Biến thể sản phẩm"
               parent="menu_stock_master"
               action="action_rental_product_variants"
               sequence="0"
@@ -74,35 +80,35 @@
 
     <!-- Cũ: menu gốc "Khách thuê" — giữ xmlid, ẩn sau khi chuyển vào Hợp đồng -->
     <menuitem id="menu_res_partner_renters_master"
-              name="Renters"
+              name="Khách thuê"
               parent="menu_rental_root"
               sequence="10"
               active="False"
               groups="rental.group_rental_staff"/>
 
     <menuitem id="menu_res_partner_drivers_master"
-              name="Drivers"
+              name="Tài xế"
               parent="menu_rental_root"
               sequence="20"
               groups="rental.group_rental_staff"/>
     <menuitem id="menu_res_partner_drivers"
-              name="Drivers"
+              name="Tài xế"
               parent="menu_res_partner_drivers_master"
               action="action_res_partner_drivers"
               sequence="0"/>
     <menuitem id="menu_transport_truck"
-              name="Transport truck"
+              name="Xe vận chuyển"
               parent="menu_res_partner_drivers_master"
               action="action_transport_truck"
               sequence="5"/>
 
     <menuitem id="menu_setting_master"
-              name="Setting"
+              name="Cài đặt"
               parent="menu_rental_root"
               sequence="25"
               groups="rental.group_rental_staff"/>
     <menuitem id="menu_res_partner_my_company_profile"
-              name="My company profile"
+              name="Hồ sơ công ty"
               parent="menu_setting_master"
               action="action_ser_res_partner_my_company_profile"
               sequence="0"/>

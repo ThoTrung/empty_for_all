@@ -21,10 +21,10 @@ class ProductProduct(models.Model):
     )
 
     compensation_price = fields.Float(
-        string="Compensation Price",
+        string="Giá đền bù",
         compute="_compute_compensation_price",
         store=True,  # store for searching/sorting; drop to False if you prefer runtime only
-        help="Template compensation price multiplied by this variant's attribute multipliers.",
+        help="Giá đền bù mẫu nhân với hệ số thuộc tính của biến thể này.",
     )
     rental_price_day = fields.Float(
         string="Giá thuê theo ngày",
@@ -113,8 +113,8 @@ class ProductAttributeValue(models.Model):
     _inherit = "product.attribute.value"
 
     default_price_multiplier = fields.Float(
-        string="Default Price Multiplier",
+        string="Hệ số giá mặc định",
         default=1.0,
-        help="Default multiplier used to initialize product-specific multipliers "
-             "when this value is added to a product."
+        help="Hệ số mặc định dùng để khởi tạo hệ số giá trên sản phẩm "
+             "khi giá trị thuộc tính này được thêm vào sản phẩm."
     )

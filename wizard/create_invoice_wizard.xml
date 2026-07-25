@@ -16,18 +16,18 @@
                     <footer>
                         <button
                                 name="choose_invoice_date_range"
-                                string="Confirm date"
+                                string="Xác nhận ngày"
                                 type="object"
                                 class="btn-primary"
                         />
-                        <button special="cancel" data-hotkey="x" string="Discard" class="btn-secondary"/>
+                        <button special="cancel" data-hotkey="x" string="Hủy" class="btn-secondary"/>
                     </footer>
                 </form>
             </field>
         </record>
 
         <record id="action_create_invoice_wizard" model="ir.actions.act_window">
-            <field name="name">Form date to date</field>
+            <field name="name">Chọn khoảng ngày</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">create.invoice.wizard</field>
             <field name="view_mode">form</field>

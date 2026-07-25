@@ -22,7 +22,7 @@
                     <header>
                         <button name="%(action_create_invoice_wizard)d"
                                 type="action"
-                                string="Export debt confirmation comparison table"
+                                string="Xuất bảng đối chiếu xác nhận công nợ"
                                 class="btn-info me-2"
                                 context="{
                                     'date_range_callback': 'export_debt_confirmation_comparison_table',
@@ -72,13 +72,13 @@
                                 }"/>
                         <button
                                 name="action_download_rental_contract"
-                                string="Download rental contract"
+                                string="Tải hợp đồng thuê"
                                 type="object"
                                 class="btn-info"
                         />
                         <button
                                 name="action_print_rental_contract"
-                                string="Print rental contract"
+                                string="In hợp đồng thuê"
                                 type="object"
                                 class="btn-success"
                         />
@@ -102,7 +102,7 @@
                         />
                         <button
                                 name="leader_confirm_rental_contract"
-                                string="Leader confirm"
+                                string="Leader xác nhận"
                                 type="object"
                                 class="btn-warning"
                                 groups="rental.group_rental_leader"
@@ -133,7 +133,7 @@
 <!--                        />-->
                         <button
                                 name="active_rental_contract"
-                                string="Active rental contract"
+                                string="Kích hoạt hợp đồng thuê"
                                 type="object"
                                 class="btn-success"
                                 groups="rental.group_rental_staff"
@@ -141,7 +141,7 @@
                         />
                         <button
                                 name="finish_rental_contract"
-                                string="Finish rental contract"
+                                string="Kết thúc hợp đồng thuê"
                                 type="object"
                                 class="btn-danger"
                                 groups="rental.group_rental_staff"
@@ -161,10 +161,10 @@
                     <sheet>
                         <div class="oe_button_box" name="button_box">
                             <button name="action_open_transport_matrices" type="object" class="oe_stat_button" icon="fa-table" invisible="transport_matrix_count == 0">
-                                <field name="transport_matrix_count" widget="statinfo" string="Confirmation tables"/>
+                                <field name="transport_matrix_count" widget="statinfo" string="Bảng xác nhận KL"/>
                             </button>
                             <button name="action_open_account_moves" type="object" class="oe_stat_button" icon="fa-pencil-square-o" invisible="invoice_count == 0">
-                                <field name="invoice_count" widget="statinfo" string="Invoices in Range"/>
+                                <field name="invoice_count" widget="statinfo" string="Hóa đơn trong kỳ"/>
                             </button>
                         </div>
                         <div class="oe_title">
@@ -192,7 +192,7 @@
                             </group>
                         </div>
                         <notebook>
-                            <page string="Base info">
+                            <page string="Thông tin cơ bản">
                                 <group>
                                     <field name="status" invisible="1"/>
                                     <field name="company_id" invisible="1"/>
@@ -269,7 +269,7 @@
                                     <tree editable="bottom">
                                         <field name="sequence" widget="handle"/>
                                         <field name="product_tmpl_id" options="{'no_create': True, 'no_create_edit': True}"/>
-                                        <field name="name" placeholder="Description" optional="hide"/>
+                                        <field name="name" placeholder="Mô tả" optional="hide"/>
                                         <field name="uom_id" optional="show"/>
                                         <field name="product_uom_qty" column_invisible="1"/>
                                         <field name="company_id" optional="hide"/>
@@ -300,7 +300,7 @@
                                     </tree>
                                 </field>
                             </page>
-                            <page string="Transports">
+                            <page string="Vận chuyển">
                                 <div class="d-flex gap-2 mb-2">
                                     <button name="action_open_transport_import_wizard"
                                             type="object"
@@ -335,7 +335,7 @@
                                     </tree>
                                 </field>
                             </page>
-                            <page string="Invoice">
+                            <page string="Hóa đơn">
                                 <div class="d-flex justify-content-between">
                                     <div>
 <!--                                        <button name="%(action_create_invoice_wizard)d"-->
@@ -356,7 +356,7 @@
                                         />
                                         <button name="%(action_create_invoice_wizard)d"
                                                 type="action"
-                                                string="Export debt confirmation comparison table"
+                                                string="Xuất bảng đối chiếu xác nhận công nợ"
                                                 class="btn-info me-2"
                                                 context="{
                                                     'date_range_callback': 'export_debt_confirmation_comparison_table',
@@ -401,7 +401,7 @@
         </record>
 
         <record id="action_rental_contract" model="ir.actions.act_window">
-            <field name="name">Rental contract</field>
+            <field name="name">Hợp đồng thuê</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">rental.contract</field>
             <field name="view_mode">tree,form</field>

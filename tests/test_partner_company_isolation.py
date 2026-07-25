@@ -122,8 +122,7 @@ class TestPartnerCompanyIsolation(TransactionCase):
         domain_str = domain if isinstance(domain, str) else str(domain)
         self.assertIn("customer_type", domain_str)
         self.assertIn("driver", domain_str)
-        self.assertIn("company_id", domain_str)
-        self.assertIn("allowed_company_ids", domain_str)
+        self.assertIn("is_company", domain_str)
 
     def test_name_search_driver_domain_excludes_renter(self):
         """name_search with driver domain must not return renter companies."""
@@ -144,6 +143,36 @@ class TestPartnerCompanyIsolation(TransactionCase):
         self.assertIn(driver.id, ids)
         self.assertNotIn(self.partner_a.id, ids)
 
+    def test_name_search_empty_args_returns_non_drivers(self):
+        """Reproduce DomainSelector bug: empty args can suggest renters/companies."""
+        names = self.env["res.partner"].name_search(
+            "Isolation Customer A", args=[], operator="ilike", limit=30
+        )
+        ids = {pid for pid, _name in names}
+        self.assertIn(self.partner_a.id, ids)
+
+    def test_name_search_with_driver_domain_matches_ui_fix(self):
+        driver = self.env["res.partner"].create({
+            "name": "Isolation Driver Filter",
+            "is_company": False,
+            "customer_type": "driver",
+            "company_id": self.company_a.id,
+        })
+        names = self.env["res.partner"].name_search(
+            "",
+            args=[("customer_type", "=", "driver"), ("is_company", "=", False)],
+            operator="ilike",
+            limit=50,
+        )
+        ids = {pid for pid, _name in names}
+        self.assertIn(driver.id, ids)
+        self.assertNotIn(self.partner_a.id, ids)
+        # No company-type renters.
+        for pid in ids:
+            p = self.env["res.partner"].browse(pid)
+            self.assertEqual(p.customer_type, "driver")
+            self.assertFalse(p.is_company)
+
     def test_a_company_party_fields_get_domain(self):
         info = self.env["rental.contract"].fields_get(
             ["a_company_party"], attributes=["domain"]
@@ -151,5 +180,4 @@ class TestPartnerCompanyIsolation(TransactionCase):
         domain = info["a_company_party"].get("domain") or ""
         domain_str = domain if isinstance(domain, str) else str(domain)
         self.assertIn("renter", domain_str)
-        self.assertIn("company_id", domain_str)
-        self.assertIn("allowed_company_ids", domain_str)
+        self.assertIn("is_company", domain_str)

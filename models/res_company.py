@@ -7,7 +7,7 @@ class ResCompany(models.Model):
 
     company_group_id = fields.Many2one(
         "res.company",
-        string="Company Group (Root)",
+        string="Nhóm công ty (gốc)",
         compute="_compute_company_group_id",
         store=True,
         index=True,

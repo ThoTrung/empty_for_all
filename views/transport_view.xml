@@ -7,7 +7,7 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="driver_id"
-                       domain="[('customer_type', '=', 'driver'), ('is_company', '=', False), ('company_id', 'in', allowed_company_ids)]"/>
+                       domain="[('customer_type', '=', 'driver'), ('is_company', '=', False)]"/>
                 <field name="rental_contract_id" groups="rental.group_rental_staff"/>
                 <separator/>
                 <filter name="draft" string="Nháp" domain="[('state', '=', 'draft')]"/>
@@ -168,7 +168,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Products">
+                        <page string="Sản phẩm">
 <!--                            <field name="transport_line_ids" readonly="state in ['done', 'cancel']">-->
                             <field name="transport_line_ids" readonly="state in ['done', 'cancel']">
                                 <tree editable="bottom">
@@ -218,12 +218,12 @@
                     <footer>
                         <button name="action_export_equipment_delivery_receipt"
                                 type="object"
-                                string="Export Equipment Delivery Receipt"
+                                string="Xuất biên bản giao nhận thiết bị"
                                 class="btn-success"
                         />
-                        <button special="save" string="Save" class="btn-primary" data-hotkey="s" invisible="state == 'cancel'" groups="rental.group_rental_staff"/>
-                        <button name="action_create_pickings" type="object" string="Create Picking" invisible="state != 'draft'" groups="rental.group_rental_staff"/>
-                        <button special="cancel" string="Discard" class="btn-secondary" data-hotkey="x"/>
+                        <button special="save" string="Lưu" class="btn-primary" data-hotkey="s" invisible="state == 'cancel'" groups="rental.group_rental_staff"/>
+                        <button name="action_create_pickings" type="object" string="Tạo phiếu kho" invisible="state != 'draft'" groups="rental.group_rental_staff"/>
+                        <button special="cancel" string="Hủy" class="btn-secondary" data-hotkey="x"/>
                     </footer>
                 </sheet>
             </form>

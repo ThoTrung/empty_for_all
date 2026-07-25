@@ -3,7 +3,7 @@ from odoo import api, models
 
 class AmountToTextVI(models.AbstractModel):
     _name = 'amount_to_text.vi'
-    _description = 'Vietnamese amount to text (VND)'
+    _description = 'Đọc số tiền tiếng Việt (VND)'
 
     DIGITS = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"]
     SCALES = ["", "nghìn", "triệu", "tỷ", "nghìn tỷ", "triệu tỷ"]  # extend if you need hơn nữa

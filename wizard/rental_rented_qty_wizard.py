@@ -8,7 +8,7 @@ from odoo.addons.rental.services import rental_contract_services as rcs
 
 class RentalRentedQtyWizard(models.TransientModel):
     _name = "rental.rented.qty.wizard"
-    _description = "Rented quantity as of date"
+    _description = "Số lượng đang thuê theo ngày"
 
     company_id = fields.Many2one(
         "res.company",
@@ -122,7 +122,7 @@ class RentalRentedQtyWizard(models.TransientModel):
 
 class RentalRentedQtyWizardLine(models.TransientModel):
     _name = "rental.rented.qty.wizard.line"
-    _description = "Rented quantity as of date result"
+    _description = "Kết quả số lượng đang thuê theo ngày"
     _order = "partner_company_id, rental_contract_id, product_tmpl_id"
 
     wizard_id = fields.Many2one(

@@ -20,7 +20,7 @@ class RentalAnalyticsOnHireLine(models.Model):
     """
 
     _name = "rental.analytics.on.hire.line"
-    _description = "Analytics: products on hire as of date"
+    _description = "Thống kê: sản phẩm đang thuê theo ngày"
     _order = "partner_company_id, construction_work_id, rental_contract_id, product_tmpl_id"
     _rec_name = "product_tmpl_id"
 
@@ -30,7 +30,7 @@ class RentalAnalyticsOnHireLine(models.Model):
         index=True,
         ondelete="cascade",
     )
-    as_of_date = fields.Date(required=True, index=True)
+    as_of_date = fields.Date(string="Ngày tra cứu", required=True, index=True)
     computed_at = fields.Datetime(
         string="Tính lúc",
         required=True,
@@ -43,7 +43,7 @@ class RentalAnalyticsOnHireLine(models.Model):
         required=True,
         index=True,
         ondelete="cascade",
-        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]",
+        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]",
     )
     construction_work_id = fields.Many2one(
         "construction.work",
@@ -129,7 +129,7 @@ class RentalAnalyticsOnHireLine(models.Model):
     ):
         """Return company snapshot lines for ``as_of_date``, refreshing if stale."""
         if not as_of_date:
-            raise UserError(_("Ngày as-of là bắt buộc."))
+            raise UserError(_("Ngày tra cứu là bắt buộc."))
         as_of_date = fields.Date.to_date(as_of_date)
         if not force and self._snapshot_is_fresh(as_of_date, ttl_minutes=ttl_minutes):
             return self.search(self._snapshot_domain(as_of_date))
@@ -147,7 +147,7 @@ class RentalAnalyticsOnHireLine(models.Model):
     ):
         """Replace full snapshot rows for current companies at ``as_of_date``."""
         if not as_of_date:
-            raise UserError(_("Ngày as-of là bắt buộc."))
+            raise UserError(_("Ngày tra cứu là bắt buộc."))
         as_of_date = fields.Date.to_date(as_of_date)
 
         company_ids = self.env.companies.ids

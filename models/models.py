@@ -4,7 +4,7 @@ from odoo import fields, models
 
 class MultiCompanyGroupMixin(models.AbstractModel):
     _name = 'mc.group.mixin'
-    _description = 'Multi-company group mixin'
+    _description = 'Mixin nhóm đa công ty'
     _check_company_auto = True
 
     company_id = fields.Many2one(

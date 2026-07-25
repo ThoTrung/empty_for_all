@@ -14,3 +14,4 @@ from . import test_quotation_tab
 from . import test_rented_qty_as_of
 from . import test_analytics_on_hire
 from . import test_partner_company_isolation
+from . import test_stock_xnt

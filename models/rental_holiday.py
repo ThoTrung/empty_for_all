@@ -6,7 +6,7 @@ from odoo.exceptions import ValidationError
 
 class RentalHoliday(models.Model):
     _name = "rental.holiday"
-    _description = "Rental Holiday Range"
+    _description = "Kỳ nghỉ cho thuê"
     _order = "date_from desc, id desc"
 
     name = fields.Char(string="Tên kỳ nghỉ", required=True, tracking=True)

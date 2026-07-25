@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_stock_xnt_wizard_form" model="ir.ui.view">
+        <field name="name">rental.stock.xnt.wizard.form</field>
+        <field name="model">rental.stock.xnt.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Xuất nhập tồn">
+                <group>
+                    <group>
+                        <field name="company_id" invisible="1"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group>
+                        <field name="warehouse_ids" widget="many2many_tags"
+                                 options="{'no_create': True}"/>
+                        <field name="product_ids" widget="many2many_tags"
+                                 options="{'no_create': True}"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_compute" type="object" string="Tính"
+                            class="btn-primary"/>
+                    <button name="action_export_excel" type="object" string="Xuất Excel"
+                            class="btn-secondary"/>
+                    <button string="Đóng" special="cancel" class="btn-secondary"/>
+                </footer>
+                <field name="excel_file" invisible="1"/>
+                <field name="excel_filename" invisible="1"/>
+                <field name="line_ids">
+                    <tree create="false" delete="false" edit="false">
+                        <field name="product_tmpl_id"/>
+                        <field name="product_id" optional="hide"/>
+                        <field name="uom_id"/>
+                        <field name="opening_qty" sum="Tổng dư đầu"/>
+                        <field name="in_qty" sum="Tổng nhập"/>
+                        <field name="out_qty" sum="Tổng xuất"/>
+                        <field name="closing_qty" sum="Tổng tồn"/>
+                    </tree>
+                </field>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rental_stock_xnt_wizard" model="ir.actions.act_window">
+        <field name="name">Xuất nhập tồn</field>
+        <field name="res_model">rental.stock.xnt.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+    </record>
+</odoo>

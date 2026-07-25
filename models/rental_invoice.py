@@ -9,12 +9,12 @@ _logger = logging.getLogger(__name__)
 
 class RentalInvoice(models.Model):
     _name = "rental.invoice"
-    _description = "Rental invoice"
+    _description = "Hóa đơn thuê"
     _rec_name = "code"
 
-    name = fields.Char(string="Name")
-    code = fields.Char(string="Code")
-    rental_contract_id = fields.Many2one('rental.contract', string="Rental contract", ondelete='cascade', index=True)
+    name = fields.Char(string="Tên")
+    code = fields.Char(string="Mã")
+    rental_contract_id = fields.Many2one('rental.contract', string="Hợp đồng thuê", ondelete='cascade', index=True)
     company_id = fields.Many2one(
         'res.company',
         related='rental_contract_id.company_id',
@@ -22,16 +22,16 @@ class RentalInvoice(models.Model):
         readonly=True,
         index=True,
     )
-    start_date = fields.Date(string="Start date")
-    end_date = fields.Date(string="Start end")
+    start_date = fields.Date(string="Từ ngày")
+    end_date = fields.Date(string="Đến ngày")
     state = fields.Selection([
-        ('draft', 'Draft'),
-        ('done', 'Done'),
-        ('cancel', 'Cancelled'),
-    ], string='Status', default='draft', tracking=True)
+        ('draft', 'Nháp'),
+        ('done', 'Hoàn thành'),
+        ('cancel', 'Đã hủy'),
+    ], string='Trạng thái', default='draft', tracking=True)
 
-    rental_invoice_line_ids = fields.One2many('rental.invoice.line', 'rental_invoice_id', string='Rental invoice line')
-    total_price = fields.Float(string='Total price', compute='_compute_total_price')
+    rental_invoice_line_ids = fields.One2many('rental.invoice.line', 'rental_invoice_id', string='Dòng hóa đơn thuê')
+    total_price = fields.Float(string='Thành tiền', compute='_compute_total_price')
     currency_id = fields.Many2one(
         'res.currency', required=True,
         default=lambda self: self.env.company.currency_id.id,
@@ -65,11 +65,11 @@ class RentalInvoice(models.Model):
 
 class RentalInvoiceLine(models.Model):
     _name = "rental.invoice.line"
-    _description = "Rental invoice line"
+    _description = "Dòng hóa đơn thuê"
     _order = "product_tmpl_id, id"
 
-    name = fields.Char(string="Name")
-    rental_invoice_id = fields.Many2one('rental.invoice', string='Rental invoice')
+    name = fields.Char(string="Tên")
+    rental_invoice_id = fields.Many2one('rental.invoice', string='Hóa đơn thuê')
     company_id = fields.Many2one(
         'res.company',
         related='rental_invoice_id.company_id',
@@ -77,10 +77,10 @@ class RentalInvoiceLine(models.Model):
         readonly=True,
         index=True,
     )
-    start_date = fields.Date(string='Start date')
-    end_date = fields.Date(string='End date')
-    rental_days = fields.Integer(string='Rental days', compute='_compute_total_price', store=True)
-    product_id = fields.Many2one('product.product', string="Product", required=True)
+    start_date = fields.Date(string='Từ ngày')
+    end_date = fields.Date(string='Đến ngày')
+    rental_days = fields.Integer(string='Số ngày thuê', compute='_compute_total_price', store=True)
+    product_id = fields.Many2one('product.product', string="Sản phẩm", required=True)
     product_tmpl_id = fields.Many2one(
         related='product_id.product_tmpl_id',
         store=True,
@@ -99,9 +99,9 @@ class RentalInvoiceLine(models.Model):
         store=True,
         readonly=True,
     )
-    qty = fields.Integer(string="Quantity", default=1)
-    unit_price = fields.Float(string='Unit price')
-    total_price = fields.Float(string='Total price', compute='_compute_total_price', store=True)
+    qty = fields.Integer(string="Số lượng", default=1)
+    unit_price = fields.Float(string='Đơn giá')
+    total_price = fields.Float(string='Thành tiền', compute='_compute_total_price', store=True)
     currency_id = fields.Many2one(
         'res.currency',
         related='rental_invoice_id.currency_id',
@@ -135,8 +135,8 @@ class RentalInvoiceLine(models.Model):
 #     _name = "rr.price.list"
 #     _description = "Price list"
 #
-#     start_date = fields.Date(string="Start date")
-#     end_date = fields.Date(string="Start date")
+#     start_date = fields.Date(string="Từ ngày")
+#     end_date = fields.Date(string="Từ ngày")
 
 
 # class TransportLine(models.Model):
@@ -144,9 +144,9 @@ class RentalInvoiceLine(models.Model):
 #     _description = "Price list line"
 #
 #     price_list_id = fields.Many2one('rr.price.list', string="Price list", ondelete='cascade', required=True)
-#     product_id = fields.Many2one('product.product', string="Product", required=True)
+#     product_id = fields.Many2one('product.product', string="Sản phẩm", required=True)
 #     uom_id = fields.Many2one('uom.uom', string="UoM", related='product_id.uom_id', store=True)
-#     qty = fields.Integer(string="Quantity", default=1)
+#     qty = fields.Integer(string="Số lượng", default=1)
 #     name = fields.Char(string="Description")
 
 

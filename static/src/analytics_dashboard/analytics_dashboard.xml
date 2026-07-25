@@ -12,7 +12,7 @@
                 <div class="d-flex flex-wrap align-items-end gap-3 mb-3">
                     <div>
                         <label class="form-label mb-1" for="rental_analytics_as_of">
-                            Ngày as-of
+                            Ngày tra cứu
                         </label>
                         <input
                             id="rental_analytics_as_of"
@@ -48,11 +48,25 @@
                             placeholder="'Chọn công trình…'"
                         />
                     </div>
+                    <div class="o_rental_analytics_filter">
+                        <label class="form-label mb-1">
+                            Kho
+                        </label>
+                        <MultiRecordSelector
+                            resModel="'stock.warehouse'"
+                            resIds="state.warehouseIds"
+                            domain="warehouseDomain"
+                            update.bind="onWarehouseIdsUpdate"
+                            fieldString="'Kho'"
+                            placeholder="'Tất cả kho…'"
+                        />
+                        <div class="form-text">Áp dụng Tồn kho &amp; Xuất nhập tồn</div>
+                    </div>
                     <button
                         type="button"
                         class="btn btn-primary"
                         t-on-click="onRefresh"
-                        t-att-disabled="state.loading"
+                        t-att-disabled="state.loading or state.xntLoading"
                     >
                         Làm mới
                     </button>
@@ -102,16 +116,24 @@
                                             <t t-foreach="widget.totals_by_uom" t-as="uomRow" t-key="uomRow.uom_id or uomRow.uom_name">
                                                 <div class="d-flex flex-wrap justify-content-between gap-2 small border-bottom py-1">
                                                     <strong t-esc="uomRow.uom_name"/>
-                                                    <span>
-                                                        <span class="text-muted" t-esc="widget.metrics.rented_label"/>:
-                                                        <t t-esc="this.formatNumber(uomRow.rented_qty)"/>
-                                                        <span class="mx-1">|</span>
-                                                        <span class="text-muted" t-esc="widget.metrics.excess_label"/>:
-                                                        <t t-esc="this.formatNumber(uomRow.excess_qty)"/>
-                                                        <span class="mx-1">|</span>
-                                                        Vật lý:
-                                                        <t t-esc="this.formatNumber(uomRow.physical_qty)"/>
-                                                    </span>
+                                                    <t t-if="this.isWarehouseWidget(widget)">
+                                                        <span>
+                                                            <span class="text-muted" t-esc="widget.metrics.onhand_label or 'Tồn kho'"/>:
+                                                            <t t-esc="this.formatNumber(uomRow.physical_qty)"/>
+                                                        </span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span>
+                                                            <span class="text-muted" t-esc="widget.metrics.rented_label"/>:
+                                                            <t t-esc="this.formatNumber(uomRow.rented_qty)"/>
+                                                            <span class="mx-1">|</span>
+                                                            <span class="text-muted" t-esc="widget.metrics.excess_label"/>:
+                                                            <t t-esc="this.formatNumber(uomRow.excess_qty)"/>
+                                                            <span class="mx-1">|</span>
+                                                            Vật lý:
+                                                            <t t-esc="this.formatNumber(uomRow.physical_qty)"/>
+                                                        </span>
+                                                    </t>
                                                 </div>
                                             </t>
                                         </div>
@@ -136,6 +158,78 @@
                     </t>
                     <div t-if="!state.widgets.length" class="col-12 text-muted">
                         Chưa có widget thống kê nào được đăng ký.
+                    </div>
+                </div>
+
+                <div class="card o_rental_analytics_xnt mt-3">
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                            <div>
+                                <h3 class="h5 mb-1">Xuất nhập tồn</h3>
+                                <div class="text-muted small">
+                                    Biến động kho theo kỳ (rental + SO + PO + điều chỉnh)
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    class="btn btn-primary btn-sm"
+                                    t-on-click="onOpenXntFull"
+                                >
+                                    Bảng đầy đủ
+                                </button>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-end gap-3 mb-3">
+                            <div>
+                                <label class="form-label mb-1" for="rental_xnt_from">Từ ngày</label>
+                                <input
+                                    id="rental_xnt_from"
+                                    type="date"
+                                    class="form-control"
+                                    t-att-value="state.xntDateFrom"
+                                    t-on-change="onXntDateFromChange"
+                                />
+                            </div>
+                            <div>
+                                <label class="form-label mb-1" for="rental_xnt_to">Đến ngày</label>
+                                <input
+                                    id="rental_xnt_to"
+                                    type="date"
+                                    class="form-control"
+                                    t-att-value="state.xntDateTo"
+                                    t-on-change="onXntDateToChange"
+                                />
+                            </div>
+                        </div>
+
+                        <div t-if="state.xntLoading" class="text-muted">Đang tải xuất nhập tồn…</div>
+                        <div t-elif="state.xntError" class="alert alert-danger" t-esc="state.xntError"/>
+                        <t t-elif="state.xnt">
+                            <t t-if="state.xnt.totals_by_uom and state.xnt.totals_by_uom.length">
+                                <div class="o_rental_analytics_uom_totals mb-3">
+                                    <t t-foreach="state.xnt.totals_by_uom" t-as="uomRow" t-key="uomRow.uom_id or uomRow.uom_name">
+                                        <div class="d-flex flex-wrap justify-content-between gap-2 small border-bottom py-1">
+                                            <strong t-esc="uomRow.uom_name"/>
+                                            <span>
+                                                Nhập: <t t-esc="this.formatNumber(uomRow.in_qty)"/>
+                                                <span class="mx-1">|</span>
+                                                Xuất: <t t-esc="this.formatNumber(uomRow.out_qty)"/>
+                                            </span>
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
+                            <t t-if="state.xnt.chart and state.xnt.chart.labels and state.xnt.chart.labels.length">
+                                <RentalAnalyticsBarChart
+                                    labels="state.xnt.chart.labels"
+                                    datasets="state.xnt.chart.datasets"
+                                />
+                            </t>
+                            <div t-else="" class="text-muted py-4 text-center">
+                                <t t-esc="state.xnt.empty_message or 'Không có dữ liệu.'"/>
+                            </div>
+                        </t>
                     </div>
                 </div>
             </div>

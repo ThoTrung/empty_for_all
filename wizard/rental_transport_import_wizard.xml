@@ -64,7 +64,7 @@
                             class="btn-primary"
                             invisible="state != 'upload'"/>
                     <button name="action_import_transports"
-                            string="Import"
+                            string="Nhập"
                             type="object"
                             class="btn-primary"
                             invisible="state != 'preview'"

@@ -68,7 +68,7 @@
         </record>
 
         <record id="action_rental_invoice" model="ir.actions.act_window">
-            <field name="name">Area</field>
+            <field name="name">Khu vực</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">rental.invoice</field>
             <field name="view_mode">tree,form</field>

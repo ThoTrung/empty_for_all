@@ -9,7 +9,7 @@ from ..helper.import_transport_matrix import parse_transport_matrix_xlsx
 
 class RentalTransportImportPreviewLine(models.TransientModel):
     _name = "rental.transport.import.preview.line"
-    _description = "Transport import preview line"
+    _description = "Dòng xem trước nhập vận chuyển"
     _order = "row_number"
 
     wizard_id = fields.Many2one("rental.transport.import.wizard", required=True, ondelete="cascade")
@@ -32,7 +32,7 @@ class RentalTransportImportPreviewLine(models.TransientModel):
 
 class RentalTransportImportWizard(models.TransientModel):
     _name = "rental.transport.import.wizard"
-    _description = "Import transports from Excel matrix"
+    _description = "Nhập vận chuyển từ bảng Excel"
 
     rental_contract_id = fields.Many2one(
         "rental.contract",
@@ -45,7 +45,7 @@ class RentalTransportImportWizard(models.TransientModel):
     default_driver_id = fields.Many2one(
         "res.partner",
         string="Tài xế mặc định",
-        domain="[('customer_type', '=', 'driver'), ('is_company', '=', False), ('company_id', 'in', allowed_company_ids)]",
+        domain="[('customer_type', '=', 'driver'), ('is_company', '=', False)]",
     )
     auto_create_truck = fields.Boolean(
         string="Tự tạo xe nếu chưa có",

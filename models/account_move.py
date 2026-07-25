@@ -10,18 +10,18 @@ class AccountMove(models.Model):
 
     rental_contract_id = fields.Many2one(
         "rental.contract",
-        string="Rental Contract",
+        string="Hợp đồng thuê",
         index=True,
         ondelete="set null",
         tracking=True,
-        help="Contract this invoice belongs to.",
+        help="Hợp đồng mà hóa đơn này thuộc về.",
     )
     rental_partner_company_id = fields.Many2one(
         related="rental_contract_id.a_company_party",
         string="Khách hàng thuê",
         store=True,
         index=True,
-        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]",
+        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]",
     )
     rental_construction_work_id = fields.Many2one(
         related="rental_contract_id.construction_work_id",
@@ -29,8 +29,8 @@ class AccountMove(models.Model):
         store=True,
         index=True,
     )
-    rental_start_date = fields.Date(string="Invoice start date")
-    rental_end_date = fields.Date(string="Invoice end date")
+    rental_start_date = fields.Date(string="Ngày bắt đầu hóa đơn")
+    rental_end_date = fields.Date(string="Ngày kết thúc hóa đơn")
     transport_fee_until_date = fields.Date(
         string="Tính phí vận chuyển đến ngày",
         help="Cutoff phí VC đã dùng khi tạo hóa đơn này (audit).",
@@ -47,7 +47,7 @@ class AccountMove(models.Model):
     )
     business_xlsx_attachment_id = fields.Many2one(
         'ir.attachment',
-        string='Business XLSX',
+        string='File nghiệp vụ XLSX',
         copy=False,
     )
 
@@ -105,7 +105,7 @@ class AccountMove(models.Model):
             if not att:
                 raise UserError(
                     _(
-                        "No payment table file. Create a rental invoice with period dates first."
+                        "Chưa có file bảng thanh toán. Hãy tạo hóa đơn thuê với kỳ ngày trước."
                     )
                 )
             return {
@@ -154,7 +154,7 @@ class AccountMove(models.Model):
         self.ensure_one()
         if not (self.rental_contract_id and self.rental_start_date and self.rental_end_date):
             raise UserError(
-                _("This download is only available for rental invoices with contract and period dates.")
+                _("Chỉ tải được với hóa đơn thuê đã gắn hợp đồng và kỳ ngày.")
             )
         buffer = self.rental_contract_id._build_rental_payment_xlsx_buffer(
             self.rental_start_date,

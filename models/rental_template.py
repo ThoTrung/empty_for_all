@@ -174,7 +174,7 @@ class RentalTemplate(models.Model):
 
         default_filename = TEMPLATE_DEFAULT_FILES.get(template_type)
         if not default_filename:
-            raise ValidationError(_("Unknown template type: %s") % template_type)
+            raise ValidationError(_("Loại mẫu không xác định: %s") % template_type)
 
         template_path = get_module_resource(
             "rental",

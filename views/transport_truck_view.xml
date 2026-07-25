@@ -27,7 +27,7 @@
 
     <!-- Action & Menu -->
     <record id="action_transport_truck" model="ir.actions.act_window">
-        <field name="name">Transport truck</field>
+        <field name="name">Xe vận chuyển</field>
         <field name="res_model">transport.truck</field>
         <field name="view_mode">tree,form</field>
     </record>

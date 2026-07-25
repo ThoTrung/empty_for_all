@@ -10,8 +10,8 @@
                     </group>
                 </sheet>
                 <footer>
-                    <button name="action_reject" type="object" string="Ok" class="btn-primary"/>
-                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                    <button name="action_reject" type="object" string="Đồng ý" class="btn-primary"/>
+                    <button string="Hủy" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

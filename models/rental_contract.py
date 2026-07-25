@@ -24,7 +24,7 @@ import io
 class RentalContract(models.Model):
     _name = 'rental.contract'
     _inherit = ['mail.thread', 'mail.activity.mixin', 'mc.group.mixin']
-    _description = 'Rental Contract'
+    _description = 'Hợp đồng thuê'
     _rec_name = "code"
 
     code = fields.Char(
@@ -34,7 +34,7 @@ class RentalContract(models.Model):
         default=lambda self: self.env['ir.sequence'].next_by_code('rental.contract'),
     )
     name = fields.Char(string='Tên hợp đồng')
-    contract_date = fields.Date(string='Contract date', default=date.today())
+    contract_date = fields.Date(string='Ngày hợp đồng', default=date.today())
     contract_number = fields.Char(
         string='Số hợp đồng',
         help='Số hợp đồng ghi trên văn bản (xuất khi Tải HĐ / In HĐ).',
@@ -132,21 +132,21 @@ class RentalContract(models.Model):
 
     company_partner_id = fields.Many2one(
         'res.partner',
-        string='Company Partner (helper)',
+        string='Đối tác công ty (helper)',
         related='company_id.partner_id',
         store=False
     )
     currency_id = fields.Many2one(
-        'res.currency', string="Currency", required=True,
+        'res.currency', string="Tiền tệ", required=True,
         default=lambda self: self.env.company.currency_id.id
     )
     staff_id = fields.Many2one(
         'res.users',
-        string="Staff",
+        string="Nhân viên",
         default=lambda self: self.env.user,  # current logged-in user
         index=True,
         tracking=True,
-        help="User responsible for this contract."
+        help="User phụ trách hợp đồng này."
     )
     status = fields.Selection([
         ('new', 'Mới'),
@@ -171,25 +171,25 @@ class RentalContract(models.Model):
 
     a_company_party = fields.Many2one(
         'res.partner',
-        string='A company',
-        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]",
+        string='Công ty bên A',
+        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]",
         required=True,
         tracking=True,
     )
     a_party = fields.Many2one(
         'res.partner',
-        string='A representative user',
+        string='Đại diện bên A',
         domain="[('parent_id', '=', a_company_party)]",
         readonly="[('a_company_party', '=', False)]",
         required=True,
         tracking=True,
     )
-    a_name = fields.Char(string='A Name', compute='_compute_a_party', store=True)
-    a_address = fields.Char(string='A Address', compute='_compute_a_party', store=True)
-    a_function = fields.Char(string='A Function', compute='_compute_a_party', store=True)
-    a_phone = fields.Char(string='A Phone', compute='_compute_a_party', store=True)
-    a_bank_account = fields.Char(string='A Bank account', compute='_compute_a_party', store=True)
-    a_vat = fields.Char(string='A Vat', compute='_compute_a_party', store=True)
+    a_name = fields.Char(string='Tên bên A', compute='_compute_a_party', store=True)
+    a_address = fields.Char(string='Địa chỉ bên A', compute='_compute_a_party', store=True)
+    a_function = fields.Char(string='Chức vụ bên A', compute='_compute_a_party', store=True)
+    a_phone = fields.Char(string='SĐT bên A', compute='_compute_a_party', store=True)
+    a_bank_account = fields.Char(string='TK ngân hàng bên A', compute='_compute_a_party', store=True)
+    a_vat = fields.Char(string='MST bên A', compute='_compute_a_party', store=True)
 
     a_executor_id = fields.Many2one(
         'res.partner',
@@ -203,7 +203,7 @@ class RentalContract(models.Model):
 
     b_company_party = fields.Many2one(
         'res.partner',
-        string='B company',
+        string='Công ty bên B',
         domain="[('parent_id', '=', company_partner_id)]",
         default=lambda self: self.env.company.partner_id,
         required=True,
@@ -211,18 +211,18 @@ class RentalContract(models.Model):
     )
     b_party = fields.Many2one(
         'res.partner',
-        string='B representative user',
+        string='Đại diện bên B',
         domain="[('parent_id', '=', b_company_party)]",
         readonly="[('b_company_party', '=', False)]",
         required=True,
         tracking=True,
     )
-    b_name = fields.Char(string='B Name', compute='_compute_b_party', store=True)
-    b_address = fields.Char(string='B Address', compute='_compute_b_party', store=True)
-    b_function = fields.Char(string='B Function', compute='_compute_b_party', store=True)
-    b_phone = fields.Char(string='B Phone', compute='_compute_b_party', store=True)
-    b_bank_account = fields.Char(string='B Bank account', compute='_compute_b_party', store=True)
-    b_vat = fields.Char(string='B Vat', compute='_compute_b_party', store=True)
+    b_name = fields.Char(string='Tên bên B', compute='_compute_b_party', store=True)
+    b_address = fields.Char(string='Địa chỉ bên B', compute='_compute_b_party', store=True)
+    b_function = fields.Char(string='Chức vụ bên B', compute='_compute_b_party', store=True)
+    b_phone = fields.Char(string='SĐT bên B', compute='_compute_b_party', store=True)
+    b_bank_account = fields.Char(string='TK ngân hàng bên B', compute='_compute_b_party', store=True)
+    b_vat = fields.Char(string='MST bên B', compute='_compute_b_party', store=True)
 
     b_executor_id = fields.Many2one(
         'res.partner',
@@ -234,12 +234,12 @@ class RentalContract(models.Model):
     b_executor_name = fields.Char(string='Tên người thực hiện bên B', compute='_compute_b_party', store=True)
     b_executor_function = fields.Char(string='Chức vụ người thực hiện bên B', compute='_compute_b_party', store=True)
 
-    rental_contract_line_ids = fields.One2many('rental.contract.line', 'contract_id', string="Contract Lines", copy=True, tracking=True)
+    rental_contract_line_ids = fields.One2many('rental.contract.line', 'contract_id', string="Dòng hợp đồng", copy=True, tracking=True)
 
-    rr_transport_ids = fields.One2many('rr.transport', 'rental_contract_id', string='Transports', tracking=True)
-    rr_transport_line_ids = fields.One2many('rr.transport.line', 'rental_contract_id', string='Rental product', tracking=True)
+    rr_transport_ids = fields.One2many('rr.transport', 'rental_contract_id', string='Vận chuyển', tracking=True)
+    rr_transport_line_ids = fields.One2many('rr.transport.line', 'rental_contract_id', string='Sản phẩm thuê', tracking=True)
     rr_transport_matrix_json = fields.Json(
-        string='Transport matrix json',
+        string='JSON bảng xác nhận KL',
         compute='_compute_rr_transport_matrix_html',
         help='This store matrix data of truck that will export excel and show: Confirmation table for rental volume'
     )
@@ -249,20 +249,20 @@ class RentalContract(models.Model):
     #     sanitize=False,  # Allow our table classes/styles
     # )
 
-    rental_invoice_ids = fields.One2many('rental.invoice', 'rental_contract_id', string='Rental invoice', tracking=True)
-    amount_invoiced = fields.Monetary(string="Invoiced (Total)",
+    rental_invoice_ids = fields.One2many('rental.invoice', 'rental_contract_id', string='Hóa đơn thuê', tracking=True)
+    amount_invoiced = fields.Monetary(string="Đã xuất HĐ (tổng)",
                                       currency_field="currency_id",
                                       compute="_compute_accounting_totals", store=False)
-    amount_paid = fields.Monetary(string="Paid",
+    amount_paid = fields.Monetary(string="Đã thanh toán",
                                   currency_field="currency_id",
                                   compute="_compute_accounting_totals", store=False)
-    amount_due = fields.Monetary(string="Amount Due",
+    amount_due = fields.Monetary(string="Còn nợ",
                                  currency_field="currency_id",
                                  compute="_compute_accounting_totals", store=False)
     # invoice_start_date = fields.Date(string="Invoice start date")
     # invoice_end_date = fields.Date(string="Invoice end date")
 
-    construction_work_id = fields.Many2one('construction.work', string="Gói Thầu", tracking=True, help="Each contract will be for on Construction work")
+    construction_work_id = fields.Many2one('construction.work', string="Gói Thầu", tracking=True, help="Mỗi hợp đồng gắn với một gói thầu/công trình.")
     construction_work_project_id = fields.Many2one(related='construction_work_id.project_id', string="Dự án", store=True, readonly=True)
     construction_work_address_ids = fields.Many2many(
         related='construction_work_id.address_ids',
@@ -278,19 +278,19 @@ class RentalContract(models.Model):
     account_move_ids = fields.One2many(
         'account.move',
         'rental_contract_id',
-        string='Invoices',
+        string='Hóa đơn',
         tracking=True
     )
-    invoice_count = fields.Integer(string='Invoice count', compute='_compute_invoice_count')
+    invoice_count = fields.Integer(string='Số hóa đơn', compute='_compute_invoice_count')
 
     transport_matrix_ids = fields.One2many(
         'rental.transport.matrix',
         'rental_contract_id',
-        string='Confirmation tables',
+        string='Bảng xác nhận KL',
         read_only=True,
     )
     transport_matrix_count = fields.Integer(
-        string='Confirmation tables',
+        string='Bảng xác nhận KL',
         compute='_compute_transport_matrix_count',
     )
 
@@ -302,7 +302,7 @@ class RentalContract(models.Model):
              "toàn hệ thống khi tính số ngày thuê).",
     )
 
-    deposit = fields.Float(string='Deposit', tracking=True)
+    deposit = fields.Float(string='Đặt cọc', tracking=True)
     product_list_template_id = fields.Many2one(
         "rental.product.template.set",
         string="Mẫu sản phẩm",
@@ -311,7 +311,7 @@ class RentalContract(models.Model):
         help="Chọn mẫu để tự động nạp sẵn danh sách product.template vào bảng báo giá.",
     )
 
-    note = fields.Html(string='Note')
+    note = fields.Html(string='Ghi chú')
 
     @api.depends("status", "edit_unlocked")
     def _compute_can_edit(self):
@@ -342,7 +342,7 @@ class RentalContract(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Confirmation tables'),
+            'name': _('Bảng xác nhận KL'),
             'res_model': 'rental.transport.matrix',
             'view_mode': 'tree,form',
             'domain': [('rental_contract_id', '=', self.id)],
@@ -1612,13 +1612,13 @@ class RentalContract(models.Model):
             ("company_id", "=", self.company_id.id),
         ], limit=1)
         if not journal:
-            raise UserError(_("No Sale journal found for %s") % self.company_id.display_name)
+            raise UserError(_("Không tìm thấy nhật ký bán hàng cho %s") % self.company_id.display_name)
 
         fpos = partner.property_account_position_id
         accounts = product._get_product_accounts()
         income_account = accounts.get("income") or journal.default_account_id
         if not income_account:
-            raise UserError(_("No income account set for %s") % product.display_name)
+            raise UserError(_("Chưa cấu hình tài khoản doanh thu cho %s") % product.display_name)
         if fpos:
             income_account = fpos.map_account(income_account)
         # HSTT total invoices are explicitly configured at 8%; do not let a stale
@@ -1735,7 +1735,7 @@ class RentalContract(models.Model):
         # Build action in code only — do not ref() account actions (restricted to Admin/Settings).
         action = {
             'type': 'ir.actions.act_window',
-            'name': _('Invoices / Journal Entries'),
+            'name': _('Hóa đơn / Bút toán'),
             'res_model': 'account.move',
             'view_mode': 'tree,form',
             'target': 'current',
@@ -1768,7 +1768,7 @@ class RentalContract(models.Model):
             ('company_id', '=', self.company_id.id)
         ], limit=1)
         if not journal:
-            raise UserError(_("No Sale journal found for %s") % self.company_id.display_name)
+            raise UserError(_("Không tìm thấy nhật ký bán hàng cho %s") % self.company_id.display_name)
 
         fpos = partner.property_account_position_id
         invoice_lines = []
@@ -1776,7 +1776,7 @@ class RentalContract(models.Model):
         for item in product_items:
             product = Product.browse(item['product_id'])
             if not product.exists():
-                raise UserError(_("Product not found (ID %s)") % item['product_id'])
+                raise UserError(_("Không tìm thấy sản phẩm (ID %s)") % item['product_id'])
 
             qty = item.get('qty', 0.0)
             # if qty <= 0:
@@ -1787,7 +1787,7 @@ class RentalContract(models.Model):
             accounts = product._get_product_accounts()
             income_account = accounts.get('income')  # Pull code from OCA git and update account_payment?
             if not income_account:
-                raise UserError(_("No income account set for %s") % product.display_name)
+                raise UserError(_("Chưa cấu hình tài khoản doanh thu cho %s") % product.display_name)
             if fpos:
                 income_account = fpos.map_account(income_account)
 
@@ -1814,7 +1814,7 @@ class RentalContract(models.Model):
             accounts = product._get_product_accounts()
             income_account = accounts.get('income')
             if not income_account:
-                raise UserError(_("No income account set for %s") % product.display_name)
+                raise UserError(_("Chưa cấu hình tài khoản doanh thu cho %s") % product.display_name)
             if fpos:
                 income_account = fpos.map_account(income_account)
             taxes = product.taxes_id.filtered(lambda t: t.company_id == self.company_id)
@@ -1963,7 +1963,7 @@ class RentalContract(models.Model):
             if not customer_id:
                 customer_id = rec.a_party.id
             elif customer_id != rec.a_party.id:
-                raise UserError(_("Only allow calculate debt for one customer each time"))
+                raise UserError(_("Mỗi lần chỉ tính công nợ cho một khách hàng"))
             for inv in rec.account_move_ids:
                 if inv.state in ("draft", "cancel") or not inv.rental_end_date:
                     continue
@@ -2095,7 +2095,7 @@ class RentalContract(models.Model):
         """Standalone ĐCCN XLSX download (same builder as combined KLCT+HSTT sheet)."""
         data = self._collect_debt_confirmation_data(start_date, end_date)
         if not data["customer_id"]:
-            raise UserError(_("No customer on selected contracts."))
+            raise UserError(_("Các hợp đồng đã chọn chưa có khách hàng."))
         contract = self[:1]
         src_wb = contract._load_debt_confirmation_workbook()
         ws = src_wb.active
@@ -2234,7 +2234,7 @@ class RentalContract(models.Model):
         })
         return {
             "type": "ir.actions.act_window",
-            "name": _("Confirmation table for rental volume"),
+            "name": _("Bảng xác nhận khối lượng"),
             "res_model": "rental.transport.matrix",
             "view_mode": "form",
             "target": "current",
@@ -2484,22 +2484,22 @@ class RentalContract(models.Model):
 class RentalContractLine(models.Model):
     _name = "rental.contract.line"
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _description = "Rental Contract Line"
+    _description = "Dòng hợp đồng thuê"
     _order = "sequence, id"
 
     sequence = fields.Integer(default=10)
-    contract_id = fields.Many2one('rental.contract', string="Contract", required=True, ondelete='cascade', index=True)
+    contract_id = fields.Many2one('rental.contract', string="Hợp đồng", required=True, ondelete='cascade', index=True)
     company_id = fields.Many2one(related='contract_id.company_id', store=True, readonly=True, index=True)
     company_group_id = fields.Many2one(related='contract_id.company_group_id', store=True, index=True, readonly=True)
     currency_id = fields.Many2one(related='contract_id.currency_id', store=True, readonly=True)
     partner_id = fields.Many2one(related='contract_id.a_party', store=True, readonly=True)
 
     product_tmpl_id = fields.Many2one(
-        'product.template', string="Product", required=True,
+        'product.template', string="Sản phẩm", required=True,
         domain=[('sale_ok', '=', True), ('active', '=', True)]
     )
-    name = fields.Text(string="Description")
-    product_uom_qty = fields.Integer(string="Quantity", default=1, readonly=True)
+    name = fields.Text(string="Mô tả")
+    product_uom_qty = fields.Integer(string="Số lượng", default=1, readonly=True)
     price_unit = fields.Float(
         string="Đơn giá thuê / tháng",
         required=True,
@@ -2512,9 +2512,9 @@ class RentalContractLine(models.Model):
         readonly=True,
         help="Quy đổi từ đơn giá tháng ÷ 30 (cùng quy ước xuất báo giá).",
     )
-    standard_price = fields.Float(string="Standard Price")
-    compensation_price = fields.Float(string="Compensation Price")
-    uom_id = fields.Many2one('uom.uom', 'Unit of Measure')
+    standard_price = fields.Float(string="Giá chuẩn")
+    compensation_price = fields.Float(string="Giá đền bù")
+    uom_id = fields.Many2one('uom.uom', string='Đơn vị tính')
     minimum_rental_months = fields.Integer(
         string="Kỳ tối thiểu (tháng)",
         default=0,
@@ -2675,4 +2675,4 @@ class ConstructionWork(models.Model):
     project_id = fields.Many2one('construction.project', string='Dự án', tracking=True, required=True)
     address_ids = fields.Many2many('construction.address', string='Địa chỉ', tracking=True, required=True)
     # Legacy field kept for compatibility with mail tracking and old data
-    address = fields.Char(string='Address', tracking=True)
+    address = fields.Char(string='Địa chỉ', tracking=True)

@@ -5,11 +5,11 @@ from odoo import fields, models
 
 class RentalTransportMatrixOverlapWizard(models.TransientModel):
     _name = "rental.transport.matrix.overlap.wizard"
-    _description = "Rental transport matrix date overlap warning"
+    _description = "Cảnh báo trùng ngày bảng xác nhận KL"
 
     rental_contract_id = fields.Many2one(
         "rental.contract",
-        string="Rental contract",
+        string="Hợp đồng thuê",
         required=True,
         readonly=True,
     )

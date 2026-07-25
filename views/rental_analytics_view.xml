@@ -58,7 +58,7 @@
             <field name="arch" type="xml">
                 <search string="SL đang thuê">
                     <field name="partner_company_id"
-                           domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]"/>
+                           domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]"/>
                     <field name="construction_work_id"/>
                     <field name="construction_project_id"/>
                     <field name="rental_contract_id"/>
@@ -75,7 +75,7 @@
                             context="{'group_by': 'product_tmpl_id'}"/>
                     <filter name="group_contract" string="Hợp đồng"
                             context="{'group_by': 'rental_contract_id'}"/>
-                    <filter name="group_as_of" string="Ngày as-of"
+                    <filter name="group_as_of" string="Ngày tra cứu"
                             context="{'group_by': 'as_of_date'}"/>
                     <searchpanel>
                         <field name="partner_company_id" enable_counters="1"/>
@@ -134,7 +134,7 @@ action = env['rental.analytics.on.hire.line'].action_open_on_hire_detail()
             <field name="arch" type="xml">
                 <xpath expr="//search" position="inside">
                     <field name="rental_partner_company_id"
-                           domain="[('customer_type', '=', 'renter'), ('is_company', '=', True), ('company_id', 'in', allowed_company_ids)]"/>
+                           domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]"/>
                     <field name="rental_construction_work_id"/>
                     <filter name="group_rental_partner"
                             string="Khách hàng thuê"
@@ -146,6 +146,68 @@ action = env['rental.analytics.on.hire.line'].action_open_on_hire_detail()
                             string="Còn nợ thuê"
                             domain="[('rental_contract_id', '!=', False), ('amount_residual', '!=', 0), ('state', '=', 'posted'), ('move_type', 'in', ('out_invoice', 'out_refund'))]"/>
                 </xpath>
+            </field>
+        </record>
+
+        <!-- Warehouse on-hand drill-down -->
+        <record id="view_rental_analytics_stock_onhand_tree" model="ir.ui.view">
+            <field name="name">rental.analytics.stock.onhand.line.tree</field>
+            <field name="model">rental.analytics.stock.onhand.line</field>
+            <field name="arch" type="xml">
+                <tree create="false" delete="false" edit="false"
+                      default_order="product_tmpl_id, product_id">
+                    <field name="as_of_date"/>
+                    <field name="computed_at" optional="hide"/>
+                    <field name="product_tmpl_id"/>
+                    <field name="product_id" optional="show"/>
+                    <field name="uom_id"/>
+                    <field name="qty_on_hand" sum="Tổng tồn"/>
+                    <field name="warehouse_key" optional="hide"/>
+                    <field name="company_id" column_invisible="1"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_rental_analytics_stock_onhand_graph" model="ir.ui.view">
+            <field name="name">rental.analytics.stock.onhand.line.graph</field>
+            <field name="model">rental.analytics.stock.onhand.line</field>
+            <field name="arch" type="xml">
+                <graph string="Tồn kho" type="bar" sample="1">
+                    <field name="uom_id" type="row"/>
+                    <field name="product_tmpl_id" type="row"/>
+                    <field name="qty_on_hand" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="view_rental_analytics_stock_onhand_pivot" model="ir.ui.view">
+            <field name="name">rental.analytics.stock.onhand.line.pivot</field>
+            <field name="model">rental.analytics.stock.onhand.line</field>
+            <field name="arch" type="xml">
+                <pivot string="Tồn kho" sample="1">
+                    <field name="uom_id" type="row"/>
+                    <field name="product_tmpl_id" type="row"/>
+                    <field name="qty_on_hand" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="view_rental_analytics_stock_onhand_search" model="ir.ui.view">
+            <field name="name">rental.analytics.stock.onhand.line.search</field>
+            <field name="model">rental.analytics.stock.onhand.line</field>
+            <field name="arch" type="xml">
+                <search string="Tồn kho">
+                    <field name="product_tmpl_id"/>
+                    <field name="product_id"/>
+                    <field name="uom_id"/>
+                    <field name="as_of_date"/>
+                    <filter name="group_product" string="Sản phẩm"
+                            context="{'group_by': 'product_tmpl_id'}"/>
+                    <filter name="group_uom" string="ĐVT"
+                            context="{'group_by': 'uom_id'}"/>
+                    <filter name="group_as_of" string="Ngày tra cứu"
+                            context="{'group_by': 'as_of_date'}"/>
+                </search>
             </field>
         </record>
     </data>

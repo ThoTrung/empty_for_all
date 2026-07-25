@@ -10,15 +10,15 @@ _logger = logging.getLogger(__name__)
 class Transport(models.Model):
     _name = "rr.transport"
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _description = "Transport"
+    _description = "Vận chuyển"
     _order = "start_rental_or_return_date"
     _rec_name = 'code'
 
-    name = fields.Char(string="Name")
-    code = fields.Char(string="Code", copy=False, index=True)
+    name = fields.Char(string="Tên")
+    code = fields.Char(string="Mã", copy=False, index=True)
     rental_contract_id = fields.Many2one(
         'rental.contract',
-        string="Rental contract",
+        string="Hợp đồng thuê",
         ondelete='cascade',
         index=True,
         tracking=2,
@@ -29,22 +29,22 @@ class Transport(models.Model):
         compute='_compute_rental_contract_summary',
     )
     type = fields.Selection([
-        ('delivery', 'Delivery'),
-        ('return', 'Return'),
+        ('delivery', 'Giao hàng'),
+        ('return', 'Trả hàng'),
         ('compensation', 'Đền bù'),
-    ], string="Type", default='delivery', required=True, tracking=3)
+    ], string="Loại", default='delivery', required=True, tracking=3)
     driver_id = fields.Many2one(
         'res.partner',
-        string="Driver",
-        domain="[('customer_type', '=', 'driver'), ('is_company', '=', False), ('company_id', 'in', allowed_company_ids)]",
+        string="Tài xế",
+        domain="[('customer_type', '=', 'driver'), ('is_company', '=', False)]",
         required=True,
         tracking=4,
     )
-    start_rental_or_return_date = fields.Date(string='Start rental or return date', required=True, tracking=5)
-    delivering_party = fields.Many2one('res.partner', string='Delivering party', compute='_compute_delivering_receiving_party', store=True, tracking=6)
+    start_rental_or_return_date = fields.Date(string='Ngày thuê / trả', required=True, tracking=5)
+    delivering_party = fields.Many2one('res.partner', string='Bên giao', compute='_compute_delivering_receiving_party', store=True, tracking=6)
     delivering_party_parent_id = fields.Many2one(
         'res.partner',
-        string='Delivering party company',
+        string='Công ty bên giao',
         related='delivering_party.parent_id',
         readonly=True,
     )
@@ -56,9 +56,9 @@ class Transport(models.Model):
         required=True,
         tracking=True,
     )
-    dp_name = fields.Char(string='Delivering party', compute='_compute_delivering_receiving_party', store=True)
-    dp_owner_name = fields.Char(string='DP owner name', compute='_compute_delivering_receiving_party', store=True)
-    dp_owner_function = fields.Char(string='DP owner function', compute='_compute_delivering_receiving_party', store=True)
+    dp_name = fields.Char(string='Bên giao', compute='_compute_delivering_receiving_party', store=True)
+    dp_owner_name = fields.Char(string='Tên đại diện bên giao', compute='_compute_delivering_receiving_party', store=True)
+    dp_owner_function = fields.Char(string='Chức vụ đại diện bên giao', compute='_compute_delivering_receiving_party', store=True)
     dp_party_phone = fields.Char(
         string='SĐT đại diện (bên giao)',
         compute='_compute_delivering_receiving_party',
@@ -72,10 +72,10 @@ class Transport(models.Model):
         store=True,
     )
 
-    receiving_party = fields.Many2one('res.partner', string='Receiving party', compute='_compute_delivering_receiving_party', store=True, tracking=7)
+    receiving_party = fields.Many2one('res.partner', string='Bên nhận', compute='_compute_delivering_receiving_party', store=True, tracking=7)
     receiving_party_parent_id = fields.Many2one(
         'res.partner',
-        string='Receiving party company',
+        string='Công ty bên nhận',
         related='receiving_party.parent_id',
         readonly=True,
     )
@@ -87,9 +87,9 @@ class Transport(models.Model):
         required=True,
         tracking=True,
     )
-    rp_name = fields.Char(string='Receiving party', compute='_compute_delivering_receiving_party', store=True)
-    rp_owner_name = fields.Char(string='RP owner name', compute='_compute_delivering_receiving_party', store=True)
-    rp_owner_function = fields.Char(string='RP owner function', compute='_compute_delivering_receiving_party', store=True)
+    rp_name = fields.Char(string='Bên nhận', compute='_compute_delivering_receiving_party', store=True)
+    rp_owner_name = fields.Char(string='Tên đại diện bên nhận', compute='_compute_delivering_receiving_party', store=True)
+    rp_owner_function = fields.Char(string='Chức vụ đại diện bên nhận', compute='_compute_delivering_receiving_party', store=True)
     rp_party_phone = fields.Char(
         string='SĐT đại diện (bên nhận)',
         compute='_compute_delivering_receiving_party',
@@ -103,12 +103,12 @@ class Transport(models.Model):
         store=True,
     )
 
-    driver_name = fields.Char(string="Driver", compute='_compute_driver', store=True, tracking=8)
-    driver_phone = fields.Char(string="Driver Phone", compute='_compute_driver', store=True)
-    transport_truck_id = fields.Many2one('transport.truck', name='Transport truck', required=True, tracking=9)
-    plate = fields.Char(string="Plate", compute='_compute_plate', store=True)
-    vehicle_start_time = fields.Datetime(string="Vehicle start time", required=True, default=date.today(), tracking=10)
-    vehicle_arrival_time = fields.Datetime(string="Vehicle arrival time", tracking=11)
+    driver_name = fields.Char(string="Tài xế", compute='_compute_driver', store=True, tracking=8)
+    driver_phone = fields.Char(string="SĐT tài xế", compute='_compute_driver', store=True)
+    transport_truck_id = fields.Many2one('transport.truck', string='Xe vận chuyển', required=True, tracking=9)
+    plate = fields.Char(string="Biển số", compute='_compute_plate', store=True)
+    vehicle_start_time = fields.Datetime(string="Giờ xe xuất phát", required=True, default=date.today(), tracking=10)
+    vehicle_arrival_time = fields.Datetime(string="Giờ xe đến", tracking=11)
     fee = fields.Float(string="Giá vận chuyển", default=0, tracking=12)
     fee_billed_date = fields.Date(
         string="Ngày tính phí VC (HSTT)",
@@ -131,11 +131,11 @@ class Transport(models.Model):
     )
     # currency_id = fields.Many2one('res.currency', string='Currency', related='sale_order_id.currency_id', store=True)
     state = fields.Selection([
-        ('draft', 'Draft'),
-        ('done', 'Done'),
-        ('cancel', 'Cancelled'),
-    ], string='Status', default='draft', tracking=13)
-    transport_line_ids = fields.One2many('rr.transport.line', 'transport_id', string="Products on truck")
+        ('draft', 'Nháp'),
+        ('done', 'Hoàn thành'),
+        ('cancel', 'Đã hủy'),
+    ], string='Trạng thái', default='draft', tracking=13)
+    transport_line_ids = fields.One2many('rr.transport.line', 'transport_id', string="Sản phẩm trên xe")
     picking_ids = fields.One2many(
         'stock.picking',
         'rental_transport_id',
@@ -160,11 +160,11 @@ class Transport(models.Model):
     )
 
     equipment_carrier = fields.Selection([
-        ('a_party_carrier', 'A party carrier'),
-        ('b_party_carrier', 'B party carrier'),
-    ], string='Equipment carrier', default='a_party_carrier', required=True, tracking=16)
-    equipment_carrier_name = fields.Char(string='Equipment carrier name', compute='_compute_equipment_carrier_name')
-    equipment_load = fields.Float(string='Equipment load')
+        ('a_party_carrier', 'Bên A vận chuyển'),
+        ('b_party_carrier', 'Bên B vận chuyển'),
+    ], string='Bên vận chuyển thiết bị', default='a_party_carrier', required=True, tracking=16)
+    equipment_carrier_name = fields.Char(string='Tên bên vận chuyển', compute='_compute_equipment_carrier_name')
+    equipment_load = fields.Float(string='Tải trọng thiết bị')
 
     company_id = fields.Many2one(related='rental_contract_id.company_id', store=True, readonly=True, index=True)
     company_group_id = fields.Many2one(related='rental_contract_id.company_group_id', store=True, index=True, readonly=True)
@@ -180,7 +180,7 @@ class Transport(models.Model):
     )
     picking_type_id = fields.Many2one(
         'stock.picking.type',
-        string='Operation Type',
+        string='Loại phiếu kho',
         required=True,
         default=lambda self: self._default_picking_type_for_type(self.env.context.get('default_type', 'delivery')),
         domain="[('code', '=', type == 'delivery' and 'outgoing' or 'incoming'),"
@@ -192,8 +192,8 @@ class Transport(models.Model):
         for rec in self:
             rec.picking_count = len(rec.picking_ids)
 
-    location_id = fields.Many2one('stock.location', string='Source Location')
-    location_dest_id = fields.Many2one('stock.location', string='Destination Location')
+    location_id = fields.Many2one('stock.location', string='Địa điểm nguồn')
+    location_dest_id = fields.Many2one('stock.location', string='Địa điểm đích')
 
     # who_pay_transport_fee =
 
@@ -558,9 +558,9 @@ class Transport(models.Model):
         if self.state != 'draft':
             raise UserError(_("Chỉ tạo phiếu kho khi phiếu xuất nhập kho đang ở trạng thái Nháp."))
         if not self.rental_contract_id:
-            raise UserError(_("Dont have contract for this transport."))
+            raise UserError(_("Chuyến xe chưa gắn hợp đồng."))
         if not self.transport_line_ids:
-            raise UserError(_("Add at least one line before creating a picking."))
+            raise UserError(_("Thêm ít nhất một dòng sản phẩm trước khi tạo phiếu kho."))
 
         scheduled_date = self.start_rental_or_return_date or fields.Datetime.now()
         company = self.company_id or self.rental_contract_id.company_id
@@ -722,16 +722,16 @@ class Transport(models.Model):
 class TransportLine(models.Model):
     _name = "rr.transport.line"
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _description = "Products assigned to a transport"
+    _description = "Sản phẩm trên chuyến xe"
     _order = "product_tmpl_id, id"
 
-    transport_id = fields.Many2one('rr.transport', string="Transport", ondelete='cascade', required=True)
+    transport_id = fields.Many2one('rr.transport', string="Chuyến xe", ondelete='cascade', required=True)
     company_id = fields.Many2one(related='transport_id.company_id', store=True, readonly=True, index=True)
     company_group_id = fields.Many2one(related='transport_id.company_group_id', store=True, index=True,
                                        readonly=True)
     rental_contract_id = fields.Many2one(related="transport_id.rental_contract_id", store=True)
     start_rental_or_return_date = fields.Date(related="transport_id.start_rental_or_return_date", store=True)
-    product_id = fields.Many2one('product.product', string="Product", required=True, tracking=True)
+    product_id = fields.Many2one('product.product', string="Sản phẩm", required=True, tracking=True)
     product_tmpl_id = fields.Many2one(
         related='product_id.product_tmpl_id',
         store=True,
@@ -751,7 +751,7 @@ class TransportLine(models.Model):
         store=True,
         readonly=True,
     )
-    qty = fields.Integer(string="Quantity", default=1, tracking=True)
+    qty = fields.Integer(string="Số lượng", default=1, tracking=True)
     non_billable_qty = fields.Integer(
         string="SL chuyển dư (không tính tiền)",
         default=0,
@@ -790,7 +790,7 @@ class TransportLine(models.Model):
         help="Tiền đền bù = Số lượng × giá đền bù 1 sản phẩm × % đền bù. "
              "Mặc định tính tự động, cho phép nhân viên sửa.",
     )
-    name = fields.Char(string="Description")
+    name = fields.Char(string="Mô tả")
 
     # No contract lock enforcement here; only rental.contract base info is locked.
 
@@ -851,8 +851,8 @@ class TransportTruck(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin', 'mc.group.mixin']
     _rec_name = 'plate'
 
-    name = fields.Char(string='Name', tracking=True)
-    plate = fields.Char(string='Plate', tracking=True)
+    name = fields.Char(string='Tên', tracking=True)
+    plate = fields.Char(string='Biển số', tracking=True)
 
 
 #
@@ -869,10 +869,10 @@ class TransportTruck(models.Model):
 #     _description = "Price list line"
 #
 #     price_list_id = fields.Many2one('rr.price.list', string="Price list", ondelete='cascade', required=True)
-#     product_id = fields.Many2one('product.product', string="Product", required=True)
+#     product_id = fields.Many2one('product.product', string="Sản phẩm", required=True)
 #     uom_id = fields.Many2one('uom.uom', string="UoM", related='product_id.uom_id', store=True)
-#     qty = fields.Integer(string="Quantity", default=1)
-#     name = fields.Char(string="Description")
+#     qty = fields.Integer(string="Số lượng", default=1)
+#     name = fields.Char(string="Mô tả")
 
 
 
@@ -880,8 +880,8 @@ class TransportTruck(models.Model):
 #     _name = "rr.transport.driver"
 #     _description = "Driver who transport product."
 #
-#     name = fields.Char(string='Name')
+#     name = fields.Char(string='Tên')
 #     driver_name =
 #     phone = fields.Char(string='Phone')
-#     plate = fields.Char(string='Plate')
+#     plate = fields.Char(string='Biển số')
 

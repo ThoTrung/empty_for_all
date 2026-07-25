@@ -20,7 +20,7 @@ class RentalLinkChildContactWizard(models.TransientModel):
     )
     allowed_partner_ids = fields.Many2many(
         "res.partner",
-        string="Internal users (partners)",
+        string="User nội bộ (liên hệ)",
         compute="_compute_allowed_partner_ids",
     )
     partner_id = fields.Many2one(

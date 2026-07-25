@@ -9,7 +9,7 @@ class ProductTemplate(models.Model):
     detailed_type = fields.Selection(default="product")
 
     compensation_price = fields.Float(
-        string="Compensation Price",
+        string="Giá đền bù",
         # company_dependent=True,  # separate value per company
         tracking=True,
     )
@@ -21,9 +21,9 @@ class ProductTemplate(models.Model):
     )
 
     use_variant_multiplier = fields.Boolean(
-        string="Use Variant Price Multiplier",
+        string="Dùng hệ số giá biến thể",
         default=True,
-        help="If enabled, variant price = base list price × multiplier from attribute values."
+        help="Nếu bật, giá biến thể = giá mẫu × hệ số từ giá trị thuộc tính."
     )
 
     company_id = fields.Many2one(
@@ -81,10 +81,10 @@ class ProductTemplateAttributeValue(models.Model):
 
     # New field used as multiplier instead of default price_extra
     price_multiplier = fields.Float(
-        string="Price Multiplier",
+        string="Hệ số giá",
         default=1.0,
-        help="Variant price will be: template list price × this multiplier.\n"
-             "The underlying price_extra will be set accordingly."
+        help="Giá biến thể = giá mẫu × hệ số này.\n"
+             "price_extra bên dưới sẽ được cập nhật tương ứng."
     )
 
     @api.model
