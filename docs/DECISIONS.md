@@ -16,6 +16,42 @@ Track architecture and implementation decisions so future agents keep consistenc
 
 ## Decisions
 
+### [BC-DEC-2026-07-26-02] Lịch phục vụ cho Spa Booking Operator
+- Date: 2026-07-26
+- Status: accepted
+- Context: Cần màn nhân viên nhận việc: chỉ confirmed/doing/done; Phục vụ/Hoàn thành; bắt buộc có Nhân viên thực hiện (`staff_ids` hoặc line `staff_id`); không CRUD; máy chung một login.
+- Decision: record rule gate theo state khi có `group_spa_booking_operator` và không có `group_spa_staff`; ACL read booking/line/offering; `action_doing`/`action_done` dùng sudo+`spa_booking_operator_transition` cho operator-only; chặn create/write/unlink/confirm/cancel/draft; menu/action **Lịch phục vụ** với view primary create/edit/delete=0; popover chỉ Phục vụ/Hoàn thành cho operator.
+- Consequences: `action_doing` bắt buộc NV thực hiện với **mọi** user; legacy `staff_id` alone không đủ.
+- Alternatives considered: acting-staff session (rejected); lọc done theo env.user (rejected trên máy chung).
+- Related files/modules: `security/staff_booking_operator_security.xml`, `models/spa_service_booking.py`, views/menu, popover JS/XML, `tests/test_booking_operator.py`.
+
+### [BC-DEC-2026-07-26-01] Calendar menus split by booking_board selection
+- Date: 2026-07-26
+- Status: accepted
+- Context: Trước đây menu Đặt lịch (Bác sĩ) / (Chuyên viên) lọc theo computed `is_doctor_route` (product yêu cầu doctor hoặc có NV doctor). User muốn không phụ thuộc cấp độ NV nữa.
+- Decision: Thêm Selection `booking_board` (`specialist` / `doctor`, default `specialist`). Action Doctor/Specialist domain theo `booking_board`; context `default_booking_board` theo menu. Giữ `spa_allowed_staff_levels` khi chọn thẻ/NV. Migrate dữ liệu cũ từ `is_doctor_route`. Xóa field compute `is_doctor_route`.
+- Consequences: Đổi NV/dịch vụ không chuyển bảng lịch; `booking_board` ẩn trên form/tree/search (chỉ gán từ menu context / copy parent). Recurring/child copy `booking_board` từ parent.
+- Alternatives considered: Giữ compute theo cấp độ; chỉ thêm field song song với `is_doctor_route`.
+- Related files/modules: `models/spa_service_booking.py`, `views/spa_service_booking_view.xml`, `migrations/17.0.1.1.0/pre-migrate.py`
+
+### [BC-DEC-2026-07-14-02] Customer-requested calendar color lives in spa_staff_payroll
+- Date: 2026-07-14
+- Status: accepted
+- Context: Flag `spa_payroll_customer_requested` thuộc payroll; cần tô cam lịch ở draft/confirmed, cấu hình được, và bắt buộc có NV khi tick.
+- Decision: implement override color compute + settings ICP + staff constrains trong `spa_staff_payroll` (không thêm depends ngược vào `booking_calendar`). Customer-requested thắng mọi draft-special khi draft; confirmed dùng state HEX override; doing/done/cancel không đổi. Booking gộp: bất kỳ line tick cũng áp màu parent.
+- Consequences: màu lịch phụ thuộc module payroll khi module được cài; JS calendar không cần đổi nếu compute `state_*` / `draft_special_*` đủ.
+- Alternatives considered: đưa field/color vào `booking_calendar` (tạo coupling payroll vào core calendar).
+- Related files/modules: `spa_staff_payroll/models/spa_booking_payroll_fields.py`, `spa_staff_payroll/models/res_config_settings.py`
+
+### [BC-DEC-2026-07-14-01] Calendar title shows customer_code before customer name
+- Date: 2026-07-14
+- Status: accepted
+- Context: staff cần nhận diện nhanh KH trên ô lịch; `customer_code` đã có trong `@api.depends` nhưng chưa được ghép vào title.
+- Decision: format khách trên `calendar_event_title` là `CODE Name (phone)` (bỏ mã nếu trống).
+- Consequences: ô lịch dài hơn một chút khi mã dài; không đổi popover (`partner_id` vẫn dùng `name_get`).
+- Alternatives considered: chỉ hiện mã (thiếu tên), hoặc `name_get` đầy đủ phone/code/name/sub_phones (quá dài cho ô calendar).
+- Related files/modules: `models/spa_service_booking.py`, `tests/test_booking_calendar.py`
+
 ### [BC-DEC-2026-05-08-05] Calendar behavior extension through guarded JS patches
 - Date: 2026-05-08
 - Status: accepted (existing)

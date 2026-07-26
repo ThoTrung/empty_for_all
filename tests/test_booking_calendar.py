@@ -485,103 +485,109 @@ class TestBookingCalendar(TransactionCase):
         self.assertTrue(ordered_ids)
         self.assertEqual(ordered_ids[0], staff_b.id)
 
-    def test_is_doctor_route_for_menu_filter(self):
-        """Menu Bác sĩ / Chuyên viên: dịch vụ bác sĩ hoặc NV bác sĩ => is_doctor_route."""
+    def test_booking_board_from_context_and_independent_of_staff_level(self):
+        """Menu board comes from booking_board / context, not staff or product level."""
         Level = self.env["spa.staff.level"]
         doc = Level.search([("level_group", "=", "doctor")], limit=1)
         sen = Level.search([("level_group", "=", "senior")], limit=1)
         if not doc or not sen:
             self.skipTest("Thiếu spa.staff.level doctor/senior.")
-        tmpl_doc = self.env["product.template"].create(
-            {
-                "name": "Svc Doctor route test",
-                "detailed_type": "service",
-                "list_price": 1,
-                "spa_required_staff_level_id": doc.id,
-            }
-        )
         tmpl_sen = self.env["product.template"].create(
             {
-                "name": "Svc Senior route test",
+                "name": "Svc Senior board test",
                 "detailed_type": "service",
                 "list_price": 1,
                 "spa_required_staff_level_id": sen.id,
             }
         )
-        p_doc = tmpl_doc.product_variant_id
         p_sen = tmpl_sen.product_variant_id
         u_doc = self.env["res.users"].create(
             {
-                "name": "User Doc",
-                "login": "user_doc_route_test",
+                "name": "User Doc Board",
+                "login": "user_doc_board_test",
                 "spa_staff_level_id": doc.id,
+                "spa_shift_start_hour": 8,
+                "spa_shift_duration_hours": 10.0,
             }
         )
         u_sen = self.env["res.users"].create(
             {
-                "name": "User Sen",
-                "login": "user_sen_route_test",
+                "name": "User Sen Board",
+                "login": "user_sen_board_test",
                 "spa_staff_level_id": sen.id,
+                "spa_shift_start_hour": 8,
+                "spa_shift_duration_hours": 10.0,
             }
         )
+        Booking = self.env["spa.service.booking"]
+        start = fields.Datetime.to_datetime(
+            datetime.now().replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        )
+        self._ensure_shift_lines(start, [([u_doc.id, u_sen.id], 8.0, 10.0)])
         c1 = self.env["spa.treatment.card"].create(
             {
-                "name": "CR doc",
+                "name": "CR board doctor ctx",
                 "partner_id": self.partner.id,
                 "product_id": p_sen.id,
                 "total_sessions": 1,
                 "duration_minutes": 30,
             }
         )
-        b1 = self.env["spa.service.booking"].create(
+        b_doc = Booking.with_context(default_booking_board="doctor").create(
             {
                 "partner_id": self.partner.id,
                 "card_id": c1.id,
                 "product_id": p_sen.id,
-                "staff_ids": [(6, 0, [u_doc.id])],
-            }
-        )
-        self.assertTrue(b1.is_doctor_route, "NV bác sĩ gán lịch chuyên viên => tuyến bác sĩ")
-        c2 = self.env["spa.treatment.card"].create(
-            {
-                "name": "CR doc prod",
-                "partner_id": self.partner.id,
-                "product_id": p_doc.id,
-                "total_sessions": 1,
-                "duration_minutes": 30,
-            }
-        )
-        b2 = self.env["spa.service.booking"].create(
-            {
-                "partner_id": self.partner.id,
-                "card_id": c2.id,
-                "product_id": p_doc.id,
+                "start_datetime": start,
+                "duration": 30,
                 "staff_ids": [(6, 0, [u_sen.id])],
             }
         )
-        self.assertTrue(
-            b2.is_doctor_route, "Dịch vụ yêu cầu bác sĩ dù gán NV chuyên => tuyến bác sĩ"
-        )
-        c3 = self.env["spa.treatment.card"].create(
+        self.assertEqual(b_doc.booking_board, "doctor")
+        c2 = self.env["spa.treatment.card"].create(
             {
-                "name": "CR spec only",
+                "name": "CR board specialist ctx",
                 "partner_id": self.partner.id,
                 "product_id": p_sen.id,
                 "total_sessions": 1,
                 "duration_minutes": 30,
             }
         )
-        b3 = self.env["spa.service.booking"].create(
+        b_spec = Booking.with_context(default_booking_board="specialist").create(
+            {
+                "partner_id": self.partner.id,
+                "card_id": c2.id,
+                "product_id": p_sen.id,
+                "start_datetime": start + timedelta(hours=1),
+                "duration": 30,
+                "staff_ids": [(6, 0, [u_doc.id])],
+            }
+        )
+        self.assertEqual(
+            b_spec.booking_board,
+            "specialist",
+            "Gán NV bác sĩ không đổi bảng đặt lịch chuyên viên",
+        )
+        c3 = self.env["spa.treatment.card"].create(
+            {
+                "name": "CR board default",
+                "partner_id": self.partner.id,
+                "product_id": p_sen.id,
+                "total_sessions": 1,
+                "duration_minutes": 30,
+            }
+        )
+        b_default = Booking.create(
             {
                 "partner_id": self.partner.id,
                 "card_id": c3.id,
                 "product_id": p_sen.id,
+                "start_datetime": start + timedelta(hours=2),
+                "duration": 30,
                 "staff_ids": [(6, 0, [u_sen.id])],
             }
         )
-        self.assertFalse(
-            b3.is_doctor_route, "Chuyên + NV chuyên, không tuyến bác sĩ"
-        )
+        self.assertEqual(b_default.booking_board, "specialist")
 
     def test_unassigned_staff_excluded_when_product_requires_senior(self):
         """Sản phẩm bắt cấp: NV chưa gắn spa_staff_level_id không nằm luân ca / gợi ý."""
@@ -1883,7 +1889,12 @@ class TestBookingCalendar(TransactionCase):
         self.user_a.spa_staff_nickname = "Trang"
         start = datetime.now() + timedelta(days=1)
         start = start.replace(hour=10, minute=0, second=0, microsecond=0)
-        partner = self.env["res.partner"].create({"name": "KH A", "phone": "0909"})
+        partner = self.env["res.partner"].create({
+            "name": "KH A",
+            "phone": "0909",
+            "customer_code": "KHTEST01",
+        })
+        self.product_svc.default_code = "SVC60"
         self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
         booking = self.env["spa.service.booking"].create({
             "partner_id": partner.id,
@@ -1897,14 +1908,13 @@ class TestBookingCalendar(TransactionCase):
         booking._compute_calendar_event_title()
         title = booking.calendar_event_title
         self.assertIn("(Trang)", title)
-        self.assertIn("KH A (0909)", title)
+        self.assertIn("KHTEST01 KH A (0909)", title)
         # calendar_note appears right after customer label
         booking.calendar_note = "Ghi chú test"
         booking._compute_calendar_event_title()
-        self.assertIn("KH A (0909) - Ghi chú test", booking.calendar_event_title)
+        self.assertIn("KHTEST01 KH A (0909) - Ghi chú test", booking.calendar_event_title)
         # service line should include internal reference
-        self.assertTrue(bool(self.product_svc.default_code))
-        self.assertIn(self.product_svc.default_code, title)
+        self.assertIn("SVC60", title)
         self.assertNotIn("\n", title)
 
     def test_calendar_view_uses_hex_color_field(self):

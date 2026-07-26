@@ -19,6 +19,12 @@
                   parent="spa.menu_booking_master"
                   groups="spa.group_spa_staff,spa.group_spa_staff_readonly"
                   sequence="3"/>
+        <menuitem name="Lịch phục vụ"
+                  id="menu_spa_service_booking_operator"
+                  action="action_spa_service_booking_operator"
+                  parent="spa.menu_booking_master"
+                  groups="spa.group_spa_booking_operator"
+                  sequence="4"/>
         <menuitem name="Loại hoạt động không trừ buổi"
                   id="menu_spa_booking_non_session_offering"
                   action="action_spa_booking_non_session_offering"

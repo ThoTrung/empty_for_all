@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Booking Calendar",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.1.0",
     "category": "Services",
     "summary": "Đặt lịch dịch vụ & lịch (tách từ Spa)",
     "author": "Trung Tho",
@@ -16,6 +16,7 @@
         "security/ir.model.access.xml",
         "security/spa_customer_booking_security.xml",
         "security/staff_readonly_booking_security.xml",
+        "security/staff_booking_operator_security.xml",
         "data/spa_booking_non_session_offering_data.xml",
         "data/booking_cron.xml",
         "views/spa_booking_non_session_offering_view.xml",

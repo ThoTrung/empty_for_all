@@ -4,7 +4,7 @@
 
 ## 1) Business Scope
 - Purpose: manage spa booking operations separated from core SPA module (calendar planning, staff capacity, recurring/composite bookings, reminder activities).
-- Main roles: spa staff (daily scheduling), spa manager (configuration and catalog), spa customer (limited self-visibility via record rules).
+- Main roles: spa staff (daily scheduling), spa booking operator (serve/complete only), spa manager (configuration and catalog), spa customer (limited self-visibility via record rules).
 - Expected outcomes: conflict-aware scheduling, predictable staff rotation, accurate booking completion linkage.
 
 ## 2) Technical Scope
@@ -23,10 +23,12 @@
 - Important fields:
   - chain display: `parent_booking_id`, `child_booking_ids`, `display_is_calendar_parent`, `display_start_datetime`, `display_end_datetime`
   - staffing/capacity: `staff_ids`, `staff_level_filter`, capacity percent checks
+  - menu calendar board: `booking_board` (`specialist` | `doctor`) — Selection ẩn trên UI; domain menu Doctor/Specialist; default từ context `default_booking_board` khi tạo từ menu tương ứng (model default = `specialist`)
   - completion delegation: `completion_res_model_id`, `completion_res_id`
   - recurring setup: `recurring_*` fields and parent-child recurring links
 - Compute/store design:
   - numerous computed fields for calendar rendering and booking aggregation; some are stored for fast search/filter.
+  - Menu Doctor/Specialist **không** còn dựa trên cấp độ NV/product (`is_doctor_route` đã gỡ); lọc thẻ/NV khi tạo vẫn dùng context `spa_allowed_staff_levels`.
 - Constraints:
   - datetime ordering, staff capacity, shift windows, completion target validity, bed conflict prevention.
 - Side-effect points:
@@ -42,22 +44,30 @@
   - `views/spa_treatment_session_booking_views.xml` adds booking reference to treatment session form.
 - Calendar color/filter logic:
   - event color fields are computed in model and normalized in JS layer for display/readability.
+  - Extension (`spa_staff_payroll`): khi `spa_payroll_customer_requested` (booking hoặc bất kỳ line) và `state` ∈ {draft, confirmed}, màu HEX ICP `spa.booking_calendar_hex_color_customer_requested` (default `#FF8C00`) ghi đè state + draft-special; trạng thái khác giữ logic cũ.
+- Calendar event title (`calendar_event_title` / `create_name_field`):
+  - format: `(staff nicknames) customer_code Name (phone) [ - note] service_internal_ref[+ ...]`
+  - mã KH (`res.partner.customer_code`) luôn đứng trước tên KH khi có mã.
 
 ## 5) Security Model
 - Access rights:
   - `spa.group_spa_staff`: CRUD booking + booking lines + recurring wizard, read offerings.
   - `spa.group_spa_manager`: CRUD shift config and offering management.
   - `spa.group_spa_customer`: read-only booking/line/offering views.
+  - `spa.group_spa_booking_operator`: read booking/line/offering; menu **Lịch phục vụ**; serve/complete via sudo transitions (no booking CRUD).
 - Record rules:
   - customer can only see own/commercial-partner booking tree and related lines; offerings must be active.
+  - booking operator (without spa staff): `state in (confirmed, doing, done)` on booking + lines.
 - Sensitive risk notes:
   - selected flows use `sudo()` for config/activity convenience; verify security impact whenever extending reminder/auto-write paths.
+  - operator `action_doing`/`action_done` use `sudo()` + context `spa_booking_operator_transition` after staff validation.
 
 ## 6) Main Workflows
 - Booking lifecycle:
   - trigger: create/edit booking from calendar/form.
   - methods: duration/end compute, chain re-link, capacity/shift checks, composite sync.
   - side effects: card availability recalculation and potential chain propagation.
+  - `action_doing` requires Nhân viên thực hiện (`staff_ids` or any line `staff_id`) for all users.
 - Recurring scheduling:
   - trigger: recurring wizard or booking recurring actions.
   - methods: generate weekday bookings, cleanup future unused recurring children, align dates.
@@ -73,7 +83,9 @@
 
 ## 7) Dependencies
 - Declared in `__manifest__.py`: `spa`, `mail`, `web`.
+- Optional downstream: `spa_staff_payroll` (depends `booking_calendar`) extends calendar colors + constrains staff khi «Khách chủ động đặt NV».
 - Read-only staff: `spa.group_spa_staff_readonly` nhận ACL đọc trên `spa.service.booking` / line / non-session offering (mirror staff), không có quyền wizard recurring; nút chuyển trạng thái trên form gắn `groups=\"spa.group_spa_staff\"`; `set_calendar_display_config` chặn user chỉ đọc.
+- Booking operator: `spa.group_spa_booking_operator` — menu Lịch phục vụ; form nút Phục vụ/Hoàn thành; không CRUD; record rule state confirmed/doing/done; không dùng chung Read-only.
 - Cross-module assumptions:
   - relies heavily on `spa` models/fields (`spa.treatment.card`, staff levels, beds, partner/service structures).
 - Hidden dependency caution:
@@ -82,6 +94,7 @@
 ## 8) Tests
 - Existing tests:
   - `tests/test_booking_calendar.py` (large TransactionCase suite)
+  - `tests/test_booking_operator.py` (Spa Booking Operator ACL/serve/complete)
   - `static/tests/booking_calendar_color_tests.js` (frontend color logic)
 - Covered scenarios:
   - recurring wizard basics, capacity handling, shift availability, staff rotation, composite line sync, non-session completion, color behavior.

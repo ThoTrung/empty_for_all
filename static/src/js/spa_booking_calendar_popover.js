@@ -6,25 +6,51 @@ import {
 import {
     useService
 } from "@web/core/utils/hooks";
+import { onWillStart } from "@odoo/owl";
 
 export class SpaBookingCalendarPopover extends CalendarCommonPopover {
     setup() {
         super.setup();
         this.orm = useService("orm");
+        this.user = useService("user");
+        this.isSpaStaff = false;
+        this.isBookingOperator = false;
+        onWillStart(async () => {
+            this.isSpaStaff = await this.user.hasGroup("spa.group_spa_staff");
+            this.isBookingOperator = await this.user.hasGroup(
+                "spa.group_spa_booking_operator"
+            );
+        });
     }
 
     get state() {
         return this.props.record.rawRecord?.state?? "draft";
     }
 
+    /** Full schedule buttons (confirm/cancel/edit) — Spa Staff only. */
+    get canManageBooking() {
+        return this.isSpaStaff;
+    }
+
+    /** Serve / complete — staff or booking operator. */
+    get canServeOrComplete() {
+        return this.isSpaStaff || this.isBookingOperator;
+    }
+
     get hasFooter() {
-        return (
-            this.isEventEditable ||
-            this.isEventDeletable ||
-            this.state === "draft" ||
-            this.state === "confirmed" ||
-            this.state === "doing"
-        );
+        if (this.canManageBooking) {
+            return (
+                this.isEventEditable ||
+                this.isEventDeletable ||
+                this.state === "draft" ||
+                this.state === "confirmed" ||
+                this.state === "doing"
+            );
+        }
+        if (this.canServeOrComplete) {
+            return this.state === "confirmed" || this.state === "doing" || this.state === "draft";
+        }
+        return false;
     }
 
     /** Thứ tự hiển thị field trong body popover: trạng thái → KH → Thẻ → buổi → NV → Giường, sau đó Thời gian ở cuối. */

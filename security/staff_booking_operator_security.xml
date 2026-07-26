@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Operator-only: confirmed / doing / done. Spa Staff (even with operator) unrestricted. -->
+        <record id="rule_spa_service_booking_operator_state_gate" model="ir.rule">
+            <field name="name">Booking operator gate: confirmed/doing/done only</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking"/>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('spa.group_spa_staff') or not user.has_group('spa.group_spa_booking_operator') else [('state', 'in', ('confirmed', 'doing', 'done'))]</field>
+        </record>
+
+        <record id="rule_spa_service_booking_line_operator_state_gate" model="ir.rule">
+            <field name="name">Booking line operator gate: lines of confirmed/doing/done</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking_line"/>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('spa.group_spa_staff') or not user.has_group('spa.group_spa_booking_operator') else [('booking_id.state', 'in', ('confirmed', 'doing', 'done'))]</field>
+        </record>
+    </data>
+</odoo>

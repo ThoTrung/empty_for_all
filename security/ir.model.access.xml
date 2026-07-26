@@ -84,5 +84,25 @@
             <field name="group_id" ref="spa.group_spa_staff_readonly"/>
             <field name="perm_read" eval="1"/>
         </record>
+
+        <!-- Spa Booking Operator: read booking surfaces only (serve/complete via sudo transitions) -->
+        <record id="access_spa_service_booking_operator" model="ir.model.access">
+            <field name="name">booking_calendar.spa_service_booking_operator</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking"/>
+            <field name="group_id" ref="spa.group_spa_booking_operator"/>
+            <field name="perm_read" eval="1"/>
+        </record>
+        <record id="access_spa_booking_non_session_offering_operator" model="ir.model.access">
+            <field name="name">booking_calendar.booking.non_session_offering_operator</field>
+            <field name="model_id" ref="booking_calendar.model_spa_booking_non_session_offering"/>
+            <field name="group_id" ref="spa.group_spa_booking_operator"/>
+            <field name="perm_read" eval="1"/>
+        </record>
+        <record id="access_spa_service_booking_line_operator" model="ir.model.access">
+            <field name="name">booking_calendar.spa_service_booking_line_operator</field>
+            <field name="model_id" ref="booking_calendar.model_spa_service_booking_line"/>
+            <field name="group_id" ref="spa.group_spa_booking_operator"/>
+            <field name="perm_read" eval="1"/>
+        </record>
     </data>
 </odoo>

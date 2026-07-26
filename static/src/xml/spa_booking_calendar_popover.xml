@@ -36,26 +36,36 @@
         </ul>
     </t>
 
-    <!-- Footer: nút trạng thái (Xác nhận, Phục vụ, Hoàn thành, Hủy) + Chỉnh sửa + Xoá -->
+    <!-- Footer: staff = full; operator = Phục vụ/Hoàn thành only -->
     <t t-name="spa.SpaBookingCalendarPopover.footer">
         <div class="d-flex gap-1 justify-content-end flex-wrap w-100">
-            <t t-if="state === 'draft'">
+            <t t-if="canManageBooking and state === 'draft'">
                 <button type="button" class="btn btn-warning" t-on-click="onActionConfirm">Xác nhận</button>
                 <button type="button" class="btn btn-success" t-on-click="onActionDoing">Phục vụ</button>
                 <button type="button" class="btn btn-danger" t-on-click="onActionCancel">Hủy</button>
             </t>
-            <t t-if="state === 'confirmed'">
+            <t t-if="canManageBooking and state === 'confirmed'">
                 <button type="button" class="btn btn-success" t-on-click="onActionDoing">Phục vụ</button>
                 <button type="button" class="btn btn-info" t-on-click="onActionDone">Hoàn thành</button>
                 <button type="button" class="btn btn-danger" t-on-click="onActionCancel">Hủy</button>
             </t>
-            <t t-if="state === 'doing'">
+            <t t-if="canManageBooking and state === 'doing'">
                 <button type="button" class="btn btn-info" t-on-click="onActionDone">Hoàn thành</button>
             </t>
-            <t t-if="isEventEditable">
+            <t t-if="!canManageBooking and canServeOrComplete and state === 'draft'">
+                <button type="button" class="btn btn-success" t-on-click="onActionDoing">Phục vụ</button>
+            </t>
+            <t t-if="!canManageBooking and canServeOrComplete and state === 'confirmed'">
+                <button type="button" class="btn btn-success" t-on-click="onActionDoing">Phục vụ</button>
+                <button type="button" class="btn btn-info" t-on-click="onActionDone">Hoàn thành</button>
+            </t>
+            <t t-if="!canManageBooking and canServeOrComplete and state === 'doing'">
+                <button type="button" class="btn btn-info" t-on-click="onActionDone">Hoàn thành</button>
+            </t>
+            <t t-if="canManageBooking and isEventEditable">
                 <a href="#" class="btn btn-primary o_cw_popover_edit" t-on-click.prevent="onEditEvent">Chỉnh sửa</a>
             </t>
-            <t t-if="isEventDeletable">
+            <t t-if="canManageBooking and isEventDeletable">
                 <a href="#" class="btn btn-danger o_cw_popover_delete" t-on-click.prevent="onDeleteEvent">Xoá</a>
             </t>
         </div>

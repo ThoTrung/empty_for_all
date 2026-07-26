@@ -19,6 +19,134 @@ Use this file for short session-level handoff notes.
 
 ## Entries
 
+### 2026-07-26 - Spa Booking Operator + Lịch phục vụ
+- Goal: Nhóm/màn nhân viên nhận lịch: confirmed/doing/done; Phục vụ/Hoàn thành; bắt buộc Nhân viên thực hiện; không CRUD.
+- Changes made: group + ACL + record rule; sudo transitions; menu/action/views operator; popover JS; tests.
+- Files touched: spa groups/ACL/`res_users`/`custome_menu`/menu; booking_calendar security/model/views/menu/popover/tests/docs.
+- Validation done: `--test-tags=/booking_calendar:TestBookingOperator` trên DB `drlai` — 0 fail.
+- Dependency impact check:
+  - Dependents reviewed: `spa_staff_payroll` (không đổi); completion `spa_complete_booking`; readonly rules vẫn độc lập; menus staff/readonly không đổi action cũ.
+  - Contract compatibility result: additive group/action; `action_doing` thêm validate NV cho mọi user.
+  - Regression tests/manual checks run: TestBookingOperator.
+- Open risks: gán nhầm Operator + Staff sẽ bỏ record-rule gate (by design).
+- Next suggested steps: tạo user kiosk chỉ Operator; `-u spa,booking_calendar`; UI Lịch phục vụ.
+
+### 2026-07-26 - Ẩn booking_board trên UI đặt lịch
+- Goal: Không cho chọn «Bảng đặt lịch» trên form/list/search; chỉ gán từ menu.
+- Changes made: form `invisible="1"`; gỡ khỏi tree/search filters/group_by; cập nhật test/docs.
+- Files touched: `views/spa_service_booking_view.xml`, `tests/test_booking_route_menu_domains.py`, docs.
+- Validation done: view arch ẩn field; domain/action context giữ nguyên.
+- Dependency impact check:
+  - Dependents reviewed: actions Doctor/Specialist vẫn dùng `booking_board` + `default_booking_board`.
+  - Contract compatibility result: field vẫn tồn tại; chỉ ẩn UI.
+  - Regression tests/manual checks run: assertion form có `booking_board` invisible.
+- Open risks: không đổi board thủ công sau khi tạo (đúng yêu cầu).
+- Next suggested steps: reload UI, xác nhận field không hiện trên form.
+
+### 2026-07-26 - booking_board thay is_doctor_route
+- Goal: Phân chia menu Đặt lịch (Bác sĩ)/(Chuyên viên) bằng Selection «Bảng đặt lịch», không phụ thuộc cấp độ NV/dịch vụ.
+- Changes made:
+  - Thêm `booking_board` (specialist/doctor, default specialist); xóa compute `is_doctor_route`.
+  - Action domains/context `default_booking_board`; form ẩn / tree+search không hiện.
+  - Copy board khi tạo recurring child và composite child.
+  - Pre-migrate 17.0.1.1.0 từ `is_doctor_route`.
+- Files touched:
+  - `models/spa_service_booking.py`
+  - `views/spa_service_booking_view.xml`
+  - `__manifest__.py`
+  - `migrations/17.0.1.1.0/pre-migrate.py`
+  - `tests/test_booking_calendar.py`, `tests/test_booking_route_menu_domains.py`
+  - `docs/DECISIONS.md`, `AGENT_REFERENCE.md`, `WORKLOG.md`
+- Validation done: unit tests booking_board + action domains — `0 failed, 0 error(s)` với `--test-tags=/booking_calendar:TestBookingRouteMenuDomains,booking_calendar.test_booking_board_from_context_and_independent_of_staff_level` trên `drlai`.
+- Dependency impact check:
+  - Dependents reviewed: `spa_staff_payroll` (không dùng `is_doctor_route`); spa staff level vẫn dùng cho domain chọn NV/thẻ; menus/actions trong booking_calendar.
+  - Contract compatibility result: breaking field rename `is_doctor_route` → `booking_board` (có chủ đích + migrate); XML action domains đổi; `spa_allowed_staff_levels` giữ nguyên.
+  - Regression tests/manual checks run: `TestBookingRouteMenuDomains` + `test_booking_board_from_context_and_independent_of_staff_level` (pass).
+- Open risks: child recurring cũ migrate theo từng record; user có thể đổi board thủ công trên form.
+- Next suggested steps: restart/reload server `drlai`; kiểm UI hai menu calendar.
+
+### 2026-07-26 - Spa display Drlai + clinic_only (no booking code change)
+- Goal: Ghi nhận dependency: spa đổi display name → Drlai và thêm `group_clic_clinic_only`.
+- Changes made: none in booking_calendar.
+- Files touched: `docs/WORKLOG.md` only.
+- Validation done: n/a (spa-side tests).
+- Dependency impact check:
+  - Dependents reviewed: booking menus under `spa.menu_spa_root`; không gắn `group_clic_clinic_only`.
+  - Contract compatibility result: XML ids spa không đổi; user clinic_only không thấy booking menus trừ khi có group spa staff.
+  - Regression tests/manual checks run: none in this module.
+- Open risks: none for booking.
+- Next suggested steps: none.
+
+### 2026-07-22 - (spa) Tab Thông tin khám: CCCD / vị trí / phân tích da — không đụng booking_calendar
+- Goal: Ghi nhận dependency check khi spa đổi reception exam fields + exam sheet print.
+- Changes made: none in booking_calendar code.
+- Files touched: `docs/WORKLOG.md` only.
+- Validation done: n/a (spa-only).
+- Dependency impact check:
+  - Dependents reviewed: `spa_service_booking` / calendar views — không đọc `lesion_location` / `free_skin_analysis` / exam sheet placeholders.
+  - Contract compatibility result: compatible; no booking_calendar contract change.
+  - Regression tests/manual checks run: none required for booking_calendar.
+- Open risks: none.
+- Next suggested steps: none.
+
+### 2026-07-14 - Calendar màu cam khi «Khách chủ động đặt NV» (spa_staff_payroll)
+- Goal: tick `spa_payroll_customer_requested` → lịch cam (configurable) ở draft/confirmed; trạng thái khác giữ logic cũ; bắt buộc có staff khi tick.
+- Changes made:
+  - Override `_compute_state_calendar_hex_*` + `_compute_draft_special_colors` trong `spa_staff_payroll`.
+  - ICP/settings: `spa.booking_calendar_hex_color_customer_requested` (default `#FF8C00`) + text color.
+  - Constrains booking `staff_ids` / line `staff_id` khi flag True; form `required` attrs.
+- Files touched:
+  - `custom_addons/spa_staff_payroll/models/spa_booking_payroll_fields.py`
+  - `custom_addons/spa_staff_payroll/models/res_config_settings.py`
+  - `custom_addons/spa_staff_payroll/views/spa_booking_payroll_views.xml`
+  - `custom_addons/spa_staff_payroll/views/res_config_settings_views.xml`
+  - `custom_addons/spa_staff_payroll/tests/test_spa_staff_payroll.py`
+  - `custom_addons/spa_staff_payroll/__manifest__.py`, `models/__init__.py`
+  - `booking_calendar/docs/WORKLOG.md`, `DECISIONS.md`, `AGENT_REFERENCE.md`
+- Validation done: unit tests payroll (color + staff constraint); xem lệnh trong phản hồi task.
+- Dependency impact check:
+  - Dependents reviewed: calendar JS `applySpaBookingEventColors` (vẫn đọc `state_*` / `draft_special_*`); form booking/line payroll inherit; Spa settings màu lịch.
+  - Contract compatibility result: additive ICP + override compute trong downstream module; không đổi XML id/field calendar core.
+  - Regression tests/manual checks run: tests mới trong `spa_staff_payroll`.
+- Open risks: DB chưa upgrade `spa_staff_payroll` sẽ chưa thấy setting/màu; composite tree line chưa hiện flag (chỉ form line) — constraint vẫn enforce.
+- Next suggested steps: upgrade `-u spa_staff_payroll` rồi kiểm UI lịch.
+
+### 2026-07-14 - Calendar title: hiển thị mã KH trước tên KH
+- Goal: trên ô lịch đặt lịch, hiện thêm `customer_code` ngay trước tên khách hàng.
+- Changes made:
+  - `_compute_calendar_event_title`: ghép `partner_id.customer_code` trước tên (`CODE Name (phone)`); field đã có trong `@api.depends` từ trước nhưng chưa dùng.
+  - Cập nhật assertion test tiêu đề lịch.
+- Files touched:
+  - `models/spa_service_booking.py`
+  - `tests/test_booking_calendar.py`
+  - `docs/WORKLOG.md`, `docs/AGENT_REFERENCE.md`
+- Validation done:
+  - targeted test `test_calendar_event_title_one_line_with_nickname_phone_service` (xem lệnh trong mục Validation của phản hồi task).
+- Dependency impact check:
+  - Dependents reviewed: calendar `create_name_field="calendar_event_title"`; popover dùng `partner_id` (name_get) riêng, không phụ thuộc title; reminder activity summary không đổi; JS color patches không đọc format title.
+  - Contract compatibility result: không đổi tên field/XML id; chỉ đổi chuỗi compute `calendar_event_title`.
+  - Regression tests/manual checks run: test title ở trên; manual: reload lịch → ô event có mã KH trước tên.
+- Open risks: KH thiếu `customer_code` vẫn hiện tên như cũ.
+- Next suggested steps: none.
+
+### 2026-06-20 - Nhắc lịch KH qua Zalo ZNS (module mới spa_zalo_oa)
+- Goal: gửi tin tự động cho khách hàng qua Zalo; làm trước tính năng nhắc lịch hẹn (cấu hình trước N giờ/ngày).
+- Changes made:
+  - Tạo module mới `custom_addons/spa_zalo_oa` (depends `booking_calendar`) gửi ZNS qua Zalo OA: model token OA (`spa.zalo.oa.account`) + helper `zalo_oapi` + hàng đợi/nhật ký tin (`spa.zalo.message`) + cron refresh token / enqueue reminder / gửi hàng đợi.
+  - Inherit `spa.service.booking`: thêm field `zalo_reminder_sent` (cờ RIÊNG, không đụng `reminder_sent` của nhắc nhân viên) + `_cron_send_zalo_reminders()` enqueue tin nhắc cho lịch sắp tới.
+- Files touched:
+  - Mới: toàn bộ `custom_addons/spa_zalo_oa/**`.
+  - Không sửa file gốc của `booking_calendar` (chỉ `_inherit` từ module mới).
+- Validation done:
+  - `py_compile` toàn bộ python + validate XML well-formed (pass).
+  - Tests module-local `spa_zalo_oa/tests/test_zalo_reminder.py` (mock network) — xem lệnh chạy trong WORKLOG spa.
+- Dependency impact check:
+  - Dependents reviewed: `spa.service.booking` (thêm field/cron qua inherit), cron `_cron_send_booking_reminders` (nhắc NV) KHÔNG đổi; calendar/list views không phụ thuộc field mới.
+  - Contract compatibility result: không đổi field/model/XML id hiện có; chỉ thêm field `zalo_reminder_sent` (additive, index).
+  - Regression tests/manual checks run: tests mới (enqueue/optout/queue/refresh/cron window). Manual: bật setting + nhập OA + template → tạo booking trong window → chạy cron → tin vào hàng đợi → gửi.
+- Open risks: ZNS cần OA thật + template duyệt + đúng tên tham số template (`name/date/time/service`); token phải được refresh (cron 12h). Phí/tin theo Zalo.
+- Next suggested steps: bổ sung sự kiện booking_confirm, birthday, session_done, promo theo cùng hàng đợi.
+
 ### 2026-05-27 - Booking: chỉ hiển thị mã tham chiếu nội bộ cho dịch vụ
 - Goal: trong màn Đặt lịch, hiển thị dịch vụ bằng `default_code` (mã tham chiếu nội bộ) thay vì `code - name`.
 - Changes made:

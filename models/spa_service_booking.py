@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from odoo import api, fields, models, _
 from markupsafe import Markup, escape
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import AccessError, ValidationError, UserError
 
 from .booking_schedule_sanitize import (
     CTX_SCHEDULE_END_ONLY_WRITE,
@@ -185,13 +185,16 @@ class SpaServiceBooking(models.Model):
         store=False,
         help="Giá trị phục vụ bộ lọc checkbox trên calendar (theo cấp độ nhân viên).",
     )
-    is_doctor_route = fields.Boolean(
-        string="Lịch tuyến bác sĩ",
-        compute="_compute_is_doctor_route",
-        store=True,
+    booking_board = fields.Selection(
+        selection=[
+            ("specialist", "Chuyên viên"),
+            ("doctor", "Bác sĩ"),
+        ],
+        string="Bảng đặt lịch",
+        default="specialist",
+        required=True,
         index=True,
-        help="True nếu dịch vụ (sản phẩm) yêu cầu cấp bác sĩ hoặc gán NV bác sĩ. "
-        "Dùng bộ lọc menu Đặt lịch (Bác sĩ) / (Chuyên viên/Chuyên gia) — cần lưu trữ, không dùng domain trên trường tính không lưu.",
+        help="Xác định lịch thuộc menu Đặt lịch (Bác sĩ) hay (Chuyên viên/Chuyên gia).",
     )
     # Màu trên calendar: theo trạng thái (HEX cấu hình trong Cấu hình Spa)
     state_calendar_hex_color = fields.Char(
@@ -628,15 +631,20 @@ class SpaServiceBooking(models.Model):
                 if nicks:
                     nick = "/".join(nicks)
 
-            # Customer: Name (phone)
+            # Customer: Code Name (phone) — mã KH trước tên KH
             cust = ""
             if rec.partner_id:
                 phone = (rec.partner_id.phone or rec.partner_id.mobile or "").strip()
                 name = (rec.partner_id.name or rec.partner_id.display_name or "").strip()
-                if phone and name:
-                    cust = f"{name} ({phone})"
+                code = (rec.partner_id.customer_code or "").strip()
+                if code and name:
+                    label = f"{code} {name}"
                 else:
-                    cust = name or phone
+                    label = name or code
+                if phone and label:
+                    cust = f"{label} ({phone})"
+                else:
+                    cust = label or phone
             # Free note shown right after customer label on calendar
             note_txt = (rec.calendar_note or "").strip()
             if cust and note_txt:
@@ -648,7 +656,7 @@ class SpaServiceBooking(models.Model):
             service_line = " + ".join(service_lines)
 
             # One-line title that can wrap when the cell is narrow:
-            # (Nickname) Customer (phone) ServiceCode - ServiceName
+            # (Nickname) Code Name (phone) ServiceCode
             parts = []
             if nick:
                 parts.append(f"({nick})")
@@ -747,58 +755,6 @@ class SpaServiceBooking(models.Model):
         ):
             return self.card_id.product_id
         return self._spa_effective_service_product()
-
-    @api.depends(
-        "booking_kind",
-        "product_id",
-        "product_id.spa_required_staff_level_id",
-        "product_id.spa_required_staff_level_id.level_group",
-        "card_id",
-        "card_id.product_id",
-        "card_id.product_id.spa_required_staff_level_id",
-        "card_id.product_id.spa_required_staff_level_id.level_group",
-        "non_session_offering_id",
-        "non_session_offering_id.product_id",
-        "non_session_offering_id.product_id.spa_required_staff_level_id",
-        "non_session_offering_id.product_id.spa_required_staff_level_id.level_group",
-        "staff_ids",
-        "staff_ids.spa_staff_level_id",
-        "staff_ids.spa_staff_level_id.level_group",
-        "booking_line_ids",
-        "booking_line_ids.staff_id",
-        "booking_line_ids.staff_id.spa_staff_level_id",
-        "booking_line_ids.staff_id.spa_staff_level_id.level_group",
-        "booking_line_ids.product_id",
-        "booking_line_ids.product_id.spa_required_staff_level_id",
-        "booking_line_ids.product_id.spa_required_staff_level_id.level_group",
-    )
-    def _compute_is_doctor_route(self):
-        for rec in self:
-            is_doc = False
-            p = rec._spa_effective_service_product()
-            if p and p.spa_required_staff_level_id and p.spa_required_staff_level_id.level_group == "doctor":
-                is_doc = True
-            if not is_doc and rec.staff_ids:
-                for u in rec.staff_ids:
-                    s = u.spa_staff_level_id
-                    if s and s.level_group == "doctor":
-                        is_doc = True
-                        break
-            if not is_doc and rec.booking_line_ids:
-                for line in rec.booking_line_ids:
-                    s = line.staff_id.spa_staff_level_id if line.staff_id else self.env["spa.staff.level"].browse()
-                    if s and s.level_group == "doctor":
-                        is_doc = True
-                        break
-                    lp = line.product_id
-                    if (
-                        lp
-                        and lp.spa_required_staff_level_id
-                        and lp.spa_required_staff_level_id.level_group == "doctor"
-                    ):
-                        is_doc = True
-                        break
-            rec.is_doctor_route = is_doc
 
     @api.depends(
         "booking_kind",
@@ -1447,6 +1403,7 @@ class SpaServiceBooking(models.Model):
                     "duration": duration,
                     "bed_id": False,
                     "recurring_parent_id": self.id,
+                    "booking_board": self.booking_board,
                 })
                 created += 1
             current += timedelta(days=1)
@@ -1683,6 +1640,13 @@ class SpaServiceBooking(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if self.env.user.spa_staff_is_booking_operator_only():
+            raise AccessError(
+                _(
+                    "Spa Booking Operator cannot create bookings. "
+                    "Use Lịch phục vụ for Phục vụ / Hoàn thành only."
+                )
+            )
         vals_list = [sanitize_booking_write_vals(vals, is_create=True) for vals in vals_list]
         for vals in vals_list:
             if not vals.get("name"):
@@ -1734,6 +1698,16 @@ class SpaServiceBooking(models.Model):
         return result
 
     def write(self, vals):
+        if (
+            self.env.user.spa_staff_is_booking_operator_only()
+            and not self.env.context.get("spa_booking_operator_transition")
+        ):
+            raise AccessError(
+                _(
+                    "Spa Booking Operator cannot edit bookings. "
+                    "Use Phục vụ / Hoàn thành on Lịch phục vụ."
+                )
+            )
         if self.env.context.get("skip_composite_duration_sync"):
             return super().write(vals)
 
@@ -1814,6 +1788,13 @@ class SpaServiceBooking(models.Model):
         return result
 
     def unlink(self):
+        if self.env.user.spa_staff_is_booking_operator_only():
+            raise AccessError(
+                _(
+                    "Spa Booking Operator cannot delete bookings. "
+                    "Use Lịch phục vụ for Phục vụ / Hoàn thành only."
+                )
+            )
         card_ids = self.card_id.ids
         result = super().unlink()
         if card_ids:
@@ -1822,14 +1803,40 @@ class SpaServiceBooking(models.Model):
             )
         return result
 
+    def _spa_booking_has_performing_staff(self):
+        """True when Nhân viên thực hiện is set (staff_ids and/or composite line staff)."""
+        self.ensure_one()
+        if self.staff_ids:
+            return True
+        return bool(self.booking_line_ids.filtered("staff_id"))
+
+    def _spa_booking_assert_performing_staff_for_doing(self):
+        for booking in self:
+            if not booking._spa_booking_has_performing_staff():
+                raise UserError(
+                    _(
+                        "Phải chọn Nhân viên thực hiện trước khi Phục vụ."
+                    )
+                )
+
+    def _spa_booking_operator_records_for_transition(self):
+        """Return self under sudo+flag when caller is Booking Operator-only."""
+        if self.env.user.spa_staff_is_booking_operator_only():
+            return self.sudo().with_context(spa_booking_operator_transition=True)
+        return self
+
     def action_confirm(self):
+        self.env.user.spa_staff_raise_if_booking_operator_only()
         self.write({"state": "confirmed"})
 
     def action_doing(self):
-        self.write({"state": "doing"})
+        self._spa_booking_assert_performing_staff_for_doing()
+        records = self._spa_booking_operator_records_for_transition()
+        records.write({"state": "doing"})
 
     def action_open_recurring_booking_wizard(self):
         """Mở wizard đặt lịch theo ngày trong tuần ngay từ form đặt lịch."""
+        self.env.user.spa_staff_raise_if_booking_operator_only()
         self.ensure_one()
         ctx = dict(self.env.context)
         if self.partner_id:
@@ -1905,6 +1912,7 @@ class SpaServiceBooking(models.Model):
             "start_datetime": parent.start_datetime if position == "before" else (last.end_datetime if last and last.end_datetime else parent.end_datetime),
             "duration": 60,
             "bed_id": parent.bed_id.id if parent.bed_id else False,
+            "booking_board": parent.booking_board,
         }
         child = self.create(vals)
         parent._spa_rechain_children()
@@ -1919,9 +1927,10 @@ class SpaServiceBooking(models.Model):
         }
 
     def action_done(self):
-        for booking in self:
+        records = self._spa_booking_operator_records_for_transition()
+        for booking in records:
             if (
-                not self.env.context.get("spa_skip_child_done")
+                not records.env.context.get("spa_skip_child_done")
                 and booking.display_is_calendar_parent
                 and booking.child_booking_ids
             ):
@@ -1945,9 +1954,11 @@ class SpaServiceBooking(models.Model):
             target.spa_complete_booking(booking)
 
     def action_cancel(self):
+        self.env.user.spa_staff_raise_if_booking_operator_only()
         self.write({"state": "cancel"})
 
     def action_draft(self):
+        self.env.user.spa_staff_raise_if_booking_operator_only()
         self.write({"state": "draft"})
 
     def _send_reminder_activity(self):
@@ -2007,6 +2018,7 @@ class SpaServiceBooking(models.Model):
     def set_calendar_display_config(self, pixels_per_hour=None, min_time=None, max_time=None):
         """Lưu cấu hình lịch (gọi từ màn hình lịch hoặc Cấu hình)."""
         self.env.user.spa_staff_raise_if_readonly_observer()
+        self.env.user.spa_staff_raise_if_booking_operator_only()
         ICP = self.env["ir.config_parameter"].sudo()
         if pixels_per_hour is not None:
             px = max(40, min(360, int(pixels_per_hour)))
