@@ -18,4 +18,41 @@
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
     </record>
+
+    <record id="rule_spa_staff_payroll_company" model="ir.rule">
+        <field name="name">spa.staff.payroll: multi-company</field>
+        <field name="model_id" ref="model_spa_staff_payroll"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_user'))]"/>
+    </record>
+    <record id="rule_spa_staff_payroll_line_company" model="ir.rule">
+        <field name="name">spa.staff.payroll.line: multi-company</field>
+        <field name="model_id" ref="model_spa_staff_payroll_line"/>
+        <field name="domain_force">[('payroll_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_user'))]"/>
+    </record>
+    <record id="rule_spa_staff_payroll_service_line_company" model="ir.rule">
+        <field name="name">spa.staff.payroll.service.line: multi-company</field>
+        <field name="model_id" ref="model_spa_staff_payroll_service_line"/>
+        <field name="domain_force">[('payroll_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_user'))]"/>
+    </record>
+    <record id="rule_spa_staff_payroll_overtime_line_company" model="ir.rule">
+        <field name="name">spa.staff.payroll.overtime.line: multi-company</field>
+        <field name="model_id" ref="model_spa_staff_payroll_overtime_line"/>
+        <field name="domain_force">[('payroll_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_user'))]"/>
+    </record>
+    <record id="rule_spa_staff_payroll_commission_line_company" model="ir.rule">
+        <field name="name">spa.staff.payroll.commission.line: multi-company</field>
+        <field name="model_id" ref="model_spa_staff_payroll_commission_line"/>
+        <field name="domain_force">[('payroll_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_user'))]"/>
+    </record>
+    <record id="rule_spa_staff_payroll_kpi_line_company" model="ir.rule">
+        <field name="name">spa.staff.payroll.kpi.line: multi-company</field>
+        <field name="model_id" ref="model_spa_staff_payroll_kpi_line"/>
+        <field name="domain_force">[('payroll_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_user'))]"/>
+    </record>
 </odoo>

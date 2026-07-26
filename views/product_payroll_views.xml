@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_staff_payroll_inherit_product_template_form" model="ir.ui.view">
+        <field name="name">spa.staff.payroll.inherit.product.template.form</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="spa.view_spa_inherit_product_template_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='service_employee_salary']" position="after">
+                <field name="spa_payroll_profile_id" groups="spa_staff_payroll.group_spa_payroll_manager,spa.group_spa_manager" invisible="detailed_type != 'service'"/>
+                <!-- Legacy: giữ field, ẩn UI — % hoa hồng lấy từ danh mục sản phẩm -->
+                <field name="spa_sales_commission_percent" invisible="1"/>
+            </xpath>
+            <xpath expr="//page[@name='general_information']" position="inside">
+                <group string="Payroll Spa (theo profile)" invisible="detailed_type != 'service'">
+                    <field name="spa_payroll_profile_payout_line_ids" readonly="1" nolabel="1">
+                        <tree>
+                            <field name="staff_level_id"/>
+                            <field name="amount_fixed"/>
+                            <field name="percent"/>
+                        </tree>
+                    </field>
+                    <div class="text-muted">
+                        Chỉnh sửa các dòng payout trong menu <b>Lương NV → Profile payroll sản phẩm</b>.
+                        % thưởng bán hàng cấu hình trên <b>Danh mục sản phẩm</b>.
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_category_form_spa_payroll_commission" model="ir.ui.view">
+        <field name="name">product.category.form.spa.payroll.commission</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet//group" position="inside">
+                <field name="spa_sales_commission_percent"
+                         groups="spa_staff_payroll.group_spa_payroll_manager,spa.group_spa_manager"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_spa_product_payroll_profile_tree" model="ir.ui.view">
+        <field name="name">spa.product.payroll.profile.tree</field>
+        <field name="model">spa.product.payroll.profile</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_spa_product_payroll_profile_form" model="ir.ui.view">
+        <field name="name">spa.product.payroll.profile.form</field>
+        <field name="model">spa.product.payroll.profile</field>
+        <field name="arch" type="xml">
+            <form string="Profile payroll sản phẩm">
+                <header>
+                    <button name="action_copy_profile" type="object" string="Sao chép profile" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id" groups="base.group_multi_company"
+                                 placeholder="Để trống = mọi công ty"
+                                 options="{'no_create': True}"/>
+                    </group>
+                    <group string="Tiền công theo cấp">
+                        <field name="payout_line_ids" nolabel="1" colspan="2">
+                            <tree editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="staff_level_id"/>
+                                <field name="amount_fixed"/>
+                                <field name="percent"/>
+                            </tree>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_spa_product_payroll_profile" model="ir.actions.act_window">
+        <field name="name">Profile payroll sản phẩm</field>
+        <field name="res_model">spa.product.payroll.profile</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

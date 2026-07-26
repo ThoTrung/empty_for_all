@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_spa_staff_payroll" model="ir.actions.report">
+        <field name="name">Phiếu lương Spa</field>
+        <field name="model">spa.staff.payroll</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">spa_staff_payroll.report_spa_staff_payroll_document</field>
+        <field name="report_file">spa_staff_payroll.report_spa_staff_payroll_document</field>
+        <field name="print_report_name">'PL-%s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_spa_staff_payroll"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_spa_staff_payroll_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Phiếu lương <span t-field="o.name"/></h2>
+                        <div class="row mt16 mb16">
+                            <div class="col-6">
+                                <strong>Nhân viên:</strong> <span t-field="o.employee_id"/><br/>
+                                <strong>Thâm niên:</strong> <span t-field="o.spa_seniority_display"/><br/>
+                                <strong>Kỳ:</strong>
+                                <span t-field="o.date_from"/> — <span t-field="o.date_to"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Lương cố định:</strong> <span t-field="o.wage_fixed"/><br/>
+                                <strong>Doanh thu KPI cơ sở:</strong> <span t-field="o.kpi_revenue_base"/><br/>
+                                <strong>Tổng phải trả:</strong>
+                                <span t-field="o.amount_total_payable" class="fw-bold"/>
+                            </div>
+                        </div>
+                        <h4>Các khoản</h4>
+                        <table class="table table-sm o_main_table">
+                            <thead>
+                                <tr>
+                                    <th>Loại</th>
+                                    <th>Diễn giải</th>
+                                    <th class="text-end">Số tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.line_ids" t-as="line">
+                                    <td><span t-field="line.category"/></td>
+                                    <td><span t-field="line.name"/></td>
+                                    <td class="text-end"><span t-field="line.amount"/></td>
+                                </tr>
+                                <tr t-foreach="o.overtime_line_ids" t-as="ot">
+                                    <td>Làm thêm</td>
+                                    <td><span t-field="ot.overtime_date"/> — <span t-field="ot.hours"/>h</td>
+                                    <td class="text-end"><span t-field="ot.amount_subtotal"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="text-muted mt32">
+                            Lương cố định theo HĐ — chưa trừ ngày nghỉ tự động. Tab dịch vụ legacy không cộng vào tổng.
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

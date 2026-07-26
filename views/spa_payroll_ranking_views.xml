@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_payroll_ranking_prize_tree" model="ir.ui.view">
+        <field name="name">spa.payroll.ranking.prize.tree</field>
+        <field name="model">spa.payroll.ranking.prize</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="name"/>
+                <field name="period_type"/>
+                <field name="metric"/>
+                <field name="rank"/>
+                <field name="amount"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_spa_payroll_ranking_prize" model="ir.actions.act_window">
+        <field name="name">Giải thưởng xếp hạng</field>
+        <field name="res_model">spa.payroll.ranking.prize</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <record id="view_spa_payroll_ranking_result_tree" model="ir.ui.view">
+        <field name="name">spa.payroll.ranking.result.tree</field>
+        <field name="model">spa.payroll.ranking.result</field>
+        <field name="arch" type="xml">
+            <tree decoration-warning="state=='need_review'" decoration-success="state=='confirmed'">
+                <field name="year"/>
+                <field name="month"/>
+                <field name="period_type"/>
+                <field name="metric"/>
+                <field name="rank"/>
+                <field name="employee_id"/>
+                <field name="score"/>
+                <field name="amount"/>
+                <field name="state"/>
+                <field name="payroll_id"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_spa_payroll_ranking_result_form" model="ir.ui.view">
+        <field name="name">spa.payroll.ranking.result.form</field>
+        <field name="model">spa.payroll.ranking.result</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" type="object" string="Chốt &amp; đẩy lên phiếu" class="btn-primary"
+                            invisible="state == 'confirmed'"/>
+                    <button name="action_reset_draft" type="object" string="Hủy chốt"
+                            invisible="state != 'confirmed'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="period_type"/>
+                            <field name="year"/>
+                            <field name="month" invisible="period_type != 'month'"/>
+                            <field name="metric"/>
+                            <field name="rank"/>
+                        </group>
+                        <group>
+                            <field name="employee_id" readonly="state == 'confirmed'"/>
+                            <field name="score"/>
+                            <field name="amount"/>
+                            <field name="prize_id"/>
+                            <field name="payroll_id" readonly="1"/>
+                            <field name="note"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_spa_payroll_ranking_result" model="ir.actions.act_window">
+        <field name="name">Kết quả xếp hạng</field>
+        <field name="res_model">spa.payroll.ranking.result</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_spa_payroll_ranking_compute_wizard" model="ir.ui.view">
+        <field name="name">spa.payroll.ranking.compute.wizard.form</field>
+        <field name="model">spa.payroll.ranking.compute.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Chốt xếp hạng kỳ">
+                <group>
+                    <field name="company_id"/>
+                    <field name="period_type"/>
+                    <field name="year"/>
+                    <field name="month" invisible="period_type != 'month'"/>
+                </group>
+                <footer>
+                    <button name="action_compute" type="object" string="Tính xếp hạng" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_spa_payroll_ranking_compute_wizard" model="ir.actions.act_window">
+        <field name="name">Chốt xếp hạng kỳ</field>
+        <field name="res_model">spa.payroll.ranking.compute.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_spa_payroll_load_default_tiers_wizard" model="ir.ui.view">
+        <field name="name">spa.payroll.load.default.tiers.wizard.form</field>
+        <field name="model">spa.payroll.load.default.tiers.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Nạp bậc lương mặc định">
+                <group>
+                    <field name="company_id"/>
+                    <div class="text-muted" colspan="2">
+                        Idempotent: ca dài 38/48, khách đặt 1/28, KPI 50tr…300tr, giải thưởng tháng/năm (năm amount=0).
+                    </div>
+                </group>
+                <footer>
+                    <button name="action_load" type="object" string="Nạp bậc" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_spa_payroll_load_default_tiers_wizard" model="ir.actions.act_window">
+        <field name="name">Nạp bậc lương mặc định</field>
+        <field name="res_model">spa.payroll.load.default.tiers.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Đối soát flag: session done thiếu long/requested so với booking -->
+    <record id="action_spa_payroll_session_flag_audit" model="ir.actions.act_window">
+        <field name="name">Đối soát ca payroll (session)</field>
+        <field name="res_model">spa.treatment.session</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[("state", "=", "done")]</field>
+        <field name="context">{}</field>
+    </record>
+</odoo>

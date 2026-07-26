@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_treatment_session_payroll_form_inherit" model="ir.ui.view">
+        <field name="name">spa.treatment.session.payroll.form</field>
+        <field name="model">spa.treatment.session</field>
+        <field name="inherit_id" ref="spa.view_spa_treatment_session_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Payroll (ca / khách đặt)" groups="spa_staff_payroll.group_spa_payroll_user">
+                    <field name="spa_payroll_flags_from_booking" invisible="1"/>
+                    <field name="spa_payroll_shift_kind"
+                            readonly="spa_payroll_flags_from_booking"
+                            groups="spa_staff_payroll.group_spa_payroll_manager"/>
+                    <field name="spa_payroll_customer_requested"
+                            readonly="spa_payroll_flags_from_booking"
+                            groups="spa_staff_payroll.group_spa_payroll_manager"/>
+                    <div class="text-muted" colspan="2" invisible="not spa_payroll_flags_from_booking">
+                        Flag đồng bộ từ đặt lịch. Sửa trên booking (trừ khi phiên đã khóa trên phiếu done).
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_hr_employee_spa_seniority_form" model="ir.ui.view">
+        <field name="name">hr.employee.spa.seniority.form</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='hr_settings']" position="inside">
+                <group string="Thâm niên Spa" groups="spa_staff_payroll.group_spa_payroll_user">
+                    <field name="spa_work_start_date"/>
+                    <field name="spa_seniority_display" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

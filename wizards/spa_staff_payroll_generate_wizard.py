@@ -78,18 +78,22 @@ class SpaStaffPayrollGenerateWizard(models.TransientModel):
             if existing:
                 created |= existing
                 continue
-            p = Payroll.create({
+            p_vals = {
                 "employee_id": emp.id,
                 "company_id": self.company_id.id,
                 "date_from": date_from,
                 "date_to": date_to,
                 "contract_id": contract.id,
-                "wage_fixed": contract.wage,
-                "overtime_hourly_rate": contract.spa_overtime_hourly_rate,
                 "currency_id": contract.currency_id.id,
-            })
-            p.action_recompute_service_lines()
+            }
+            p_vals.update(
+                Payroll._spa_prorate_contract_wage(contract, date_from, date_to)
+            )
+            p_vals["overtime_hourly_rate"] = contract.spa_overtime_hourly_rate
+            p = Payroll.create(p_vals)
+            # Ledger service_payout_session (1 dòng tổng) + tab Buổi làm = SoT tiền công buổi.
             p.action_recompute_overtime_lines()
+            p.action_recompute_payroll_extras()
             created |= p
 
         if not created:

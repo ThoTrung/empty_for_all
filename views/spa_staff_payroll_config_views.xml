@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_payroll_config_form" model="ir.ui.view">
+        <field name="name">spa.payroll.config.form</field>
+        <field name="model">spa.payroll.config</field>
+        <field name="arch" type="xml">
+            <form string="Cấu hình payroll Spa">
+                <sheet>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="lunch_support_amount"/>
+                        <field name="lunch_min_minutes"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_spa_payroll_long_shift_tier_tree" model="ir.ui.view">
+        <field name="name">spa.payroll.long.shift.tier.tree</field>
+        <field name="model">spa.payroll.long.shift.tier</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="name"/>
+                <field name="min_count"/>
+                <field name="max_count"/>
+                <field name="amount_per_shift"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_spa_payroll_requested_shift_tier_tree" model="ir.ui.view">
+        <field name="name">spa.payroll.requested.shift.tier.tree</field>
+        <field name="model">spa.payroll.requested.shift.tier</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="name"/>
+                <field name="min_count"/>
+                <field name="max_count"/>
+                <field name="amount_per_shift"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_spa_payroll_kpi_revenue_tier_tree" model="ir.ui.view">
+        <field name="name">spa.payroll.kpi.revenue.tier.tree</field>
+        <field name="model">spa.payroll.kpi.revenue.tier</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="name"/>
+                <field name="min_revenue"/>
+                <field name="percent"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_spa_payroll_config" model="ir.actions.act_window">
+        <field name="name">Cấu hình payroll Spa</field>
+        <field name="res_model">spa.payroll.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_spa_payroll_long_shift_tiers" model="ir.actions.act_window">
+        <field name="name">Bậc thưởng ca dài</field>
+        <field name="res_model">spa.payroll.long.shift.tier</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <record id="action_spa_payroll_requested_shift_tiers" model="ir.actions.act_window">
+        <field name="name">Bậc thưởng khách đặt</field>
+        <field name="res_model">spa.payroll.requested.shift.tier</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <record id="action_spa_payroll_kpi_revenue_tiers" model="ir.actions.act_window">
+        <field name="name">Bậc KPI doanh thu</field>
+        <field name="res_model">spa.payroll.kpi.revenue.tier</field>
+        <field name="view_mode">tree</field>
+    </record>
+</odoo>

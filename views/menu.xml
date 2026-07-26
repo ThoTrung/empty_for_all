@@ -34,6 +34,75 @@
               sequence="5"
               groups="spa_staff_payroll.group_spa_payroll_manager"/>
 
+    <menuitem id="menu_spa_payroll_config_root"
+              name="Cấu hình payroll"
+              parent="menu_spa_payroll_root"
+              sequence="7"
+              groups="spa_staff_payroll.group_spa_payroll_manager"/>
+
+    <menuitem id="menu_spa_payroll_product_profiles"
+              name="Profile payroll sản phẩm"
+              parent="menu_spa_payroll_config_root"
+              action="action_spa_product_payroll_profile"
+              sequence="10"/>
+
+    <menuitem id="menu_spa_payroll_company_config"
+              name="Cấu hình công ty"
+              parent="menu_spa_payroll_config_root"
+              action="action_spa_payroll_config"
+              sequence="20"/>
+
+    <menuitem id="menu_spa_payroll_long_shift_tiers_menu"
+              name="Bậc thưởng ca dài"
+              parent="menu_spa_payroll_config_root"
+              action="action_spa_payroll_long_shift_tiers"
+              sequence="30"/>
+
+    <menuitem id="menu_spa_payroll_requested_shift_tiers_menu"
+              name="Bậc thưởng khách đặt"
+              parent="menu_spa_payroll_config_root"
+              action="action_spa_payroll_requested_shift_tiers"
+              sequence="40"/>
+
+    <menuitem id="menu_spa_payroll_kpi_revenue_tiers_menu"
+              name="Bậc KPI doanh thu"
+              parent="menu_spa_payroll_config_root"
+              action="action_spa_payroll_kpi_revenue_tiers"
+              sequence="50"/>
+
+    <menuitem id="menu_spa_payroll_ranking_prize"
+              name="Giải thưởng xếp hạng"
+              parent="menu_spa_payroll_config_root"
+              action="action_spa_payroll_ranking_prize"
+              sequence="60"/>
+
+    <menuitem id="menu_spa_payroll_load_default_tiers"
+              name="Nạp bậc lương mặc định"
+              parent="menu_spa_payroll_config_root"
+              action="action_spa_payroll_load_default_tiers_wizard"
+              sequence="90"/>
+
+    <menuitem id="menu_spa_payroll_ranking_compute"
+              name="Chốt xếp hạng kỳ"
+              parent="menu_spa_payroll_root"
+              action="action_spa_payroll_ranking_compute_wizard"
+              sequence="12"
+              groups="spa_staff_payroll.group_spa_payroll_manager"/>
+
+    <menuitem id="menu_spa_payroll_ranking_result"
+              name="Kết quả xếp hạng"
+              parent="menu_spa_payroll_root"
+              action="action_spa_payroll_ranking_result"
+              sequence="13"
+              groups="spa_staff_payroll.group_spa_payroll_manager"/>
+
+    <menuitem id="menu_spa_payroll_session_flag_audit"
+              name="Đối soát ca payroll"
+              parent="menu_spa_payroll_root"
+              action="action_spa_payroll_session_flag_audit"
+              sequence="14"
+              groups="spa_staff_payroll.group_spa_payroll_manager"/>
+
     <menuitem id="menu_spa_staff_overtime"
               name="Làm thêm giờ"
               parent="menu_spa_payroll_root"

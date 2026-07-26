@@ -4,7 +4,26 @@
         <field name="name">hr.contract.form.spa.payroll</field>
         <field name="model">hr.contract</field>
         <field name="inherit_id" ref="hr_contract.hr_contract_view_form"/>
+        <field name="priority" eval="90"/>
         <field name="arch" type="xml">
+            <!-- Phiếu lương Spa chỉ đọc wage + spa_overtime_hourly_rate từ hợp đồng; ẩn các trường HR không dùng cho tính lương. -->
+            <xpath expr="//group[@name='top_info_right']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//label[@for='resource_calendar_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//div[@id='resource_calendar_warning']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- Ghi chú: bỏ khỏi tab Chi tiết (tab sẽ ẩn), hiển thị dưới Ngày kết thúc HĐ -->
+            <xpath expr="//page[@name='other']//group[@name='notes_group']" position="replace"/>
+            <xpath expr="//notebook/page[@name='other']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='date_end']" position="after">
+                <field name="notes" string="Ghi chú" colspan="2" placeholder="Ghi chú về hợp đồng (nếu có)"/>
+            </xpath>
             <xpath expr="//page[@name='information']//group[@name='salary']" position="inside">
                 <label for="spa_overtime_hourly_rate"/>
                 <div class="o_row">

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_spa_staff_payroll_calendar_color" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.spa.staff.payroll.calendar.color</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="booking_calendar.res_config_settings_view_form_booking_calendar"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='booking_calendar_hex_text_color_cancel']/ancestor::setting[1]" position="after">
+                <setting string="Màu lịch: Khách chủ động đặt NV">
+                    <div class="text-muted content-group mt16 d-flex flex-wrap align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted">Nền</span>
+                            <field name="booking_calendar_hex_color_customer_requested"
+                                    class="text-right"
+                                    style="width: 8rem;"
+                                    placeholder="#FF8C00"/>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted">Chữ</span>
+                            <field name="booking_calendar_hex_text_color_customer_requested"
+                                    class="text-right"
+                                    style="width: 8rem;"
+                                    placeholder="#000"/>
+                        </div>
+                        <span class="small text-muted">
+                            Áp dụng khi tick «Khách chủ động đặt NV» và trạng thái Đặt lịch / Đã xác nhận.
+                        </span>
+                    </div>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

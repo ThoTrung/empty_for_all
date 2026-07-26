@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ẩn nút "Mới" trên Kanban / List nhân viên (hr.employee). -->
+    <record id="hr_employee_kanban_hide_create" model="ir.ui.view">
+        <field name="name">hr.employee.kanban.hide.create</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.hr_kanban_view_employees"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="attributes">
+                <attribute name="create">0</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="hr_employee_tree_hide_create" model="ir.ui.view">
+        <field name="name">hr.employee.tree.hide.create</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="attributes">
+                <attribute name="create">0</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

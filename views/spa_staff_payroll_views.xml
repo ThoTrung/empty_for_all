@@ -23,13 +23,14 @@
         <field name="arch" type="xml">
             <form string="Phiếu lương">
                 <header>
-                    <button name="action_load_contract_values" string="Lấy từ hợp đồng" type="object" class="btn-secondary" invisible="state != 'draft'"/>
-                    <button name="action_recompute_service_lines" string="Tính lại dịch vụ" type="object" class="btn-secondary" invisible="state != 'draft'"/>
+                    <button name="action_load_contract_values" string="Lấy từ hợp đồng" type="object" class="btn-secondary" invisible="state not in ('draft', 'to_approve')"/>
                     <button name="action_recompute_overtime_lines" string="Tính lại làm thêm" type="object" class="btn-secondary" invisible="state != 'draft'"/>
-                    <button name="action_confirm" string="Xác nhận" type="object" class="btn-primary" invisible="state != 'draft'"/>
-                    <button name="action_draft" string="Mở lại" type="object" invisible="state != 'done'"/>
-                    <button name="action_cancel" string="Hủy" type="object" invisible="state != 'draft'"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                    <button name="action_recompute_payroll_extras" string="Tính các khoản (buổi/KPI/SP)" type="object" class="btn-secondary" invisible="state != 'draft'"/>
+                    <button name="action_submit_approve" string="Gửi duyệt" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_confirm" string="Xác nhận" type="object" class="btn-primary" invisible="state != 'to_approve'" groups="spa_staff_payroll.group_spa_payroll_manager"/>
+                    <button name="action_draft" string="Mở lại nháp" type="object" invisible="state not in ('done', 'to_approve', 'cancel')"/>
+                    <button name="action_cancel" string="Hủy" type="object" invisible="state not in ('draft', 'to_approve')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,to_approve,done"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -44,47 +45,92 @@
                             <field name="employee_id" readonly="state != 'draft'"/>
                             <field name="user_id" invisible="1"/>
                             <field name="contract_id" readonly="state != 'draft'"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="currency_id" groups="base.group_multi_currency"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
                         </group>
                         <group>
                             <field name="date_from" readonly="state != 'draft'"/>
                             <field name="date_to" readonly="state != 'draft'"/>
-                            <field name="wage_fixed"/>
-                            <field name="overtime_hourly_rate"/>
-                        </group>
-                    </group>
-                    <group string="Tổng hợp">
-                        <group>
-                            <field name="amount_service" readonly="1"/>
-                            <field name="amount_overtime" readonly="1"/>
-                            <field name="amount_bonus"/>
-                        </group>
-                        <group>
-                            <field name="amount_insurance"/>
-                            <field name="amount_other_deduction"/>
-                            <field name="amount_total_payable" class="fw-bold"/>
+                            <field name="overtime_hourly_rate" string="Đơn giá OT/giờ"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Dịch vụ (buổi)" name="service_lines">
-                            <field name="service_line_ids" readonly="state != 'draft'">
-                                <tree editable="bottom" create="0" delete="0">
-                                    <field name="session_date" string="Ngày buổi"/>
-                                    <field name="partner_id" string="Tên khách hàng"/>
-                                    <field name="product_id" string="Dịch vụ / gói"/>
-                                    <field name="amount_total" string="Tiền buổi"/>
-                                    <field name="staff_count" string="Số NV"/>
-                                    <field name="therapist_names" string="Danh sách nhân viên"/>
-                                    <field name="amount_share" string="Tiền NV này" sum="Tiền NV này"/>
-                                    <field name="session_id" column_invisible="1"/>
+                        <page string="Lương" name="salary_summary">
+                            <group>
+                                <group string="Lương cố định">
+                                    <field name="wage_fixed"/>
+                                    <field name="wage_period_start" readonly="1"/>
+                                    <field name="wage_period_end" readonly="1"/>
+                                    <field name="wage_days" readonly="1"/>
+                                    <field name="wage_days_period" readonly="1"/>
+                                    <field name="amount_payroll_lines" string="Cộng ledger" readonly="1"/>
+                                    <field name="amount_total_payable" string="Tổng phải trả" class="fw-bold"/>
+                                </group>
+                                <group string="Tổng hợp">
+                                    <field name="amount_service" string="Cộng DV (TK)" readonly="1"/>
+                                    <field name="amount_overtime" readonly="1"/>
+                                    <field name="amount_bonus"/>
+                                    <field name="amount_insurance" string="BH / khấu trừ"/>
+                                    <field name="amount_other_deduction"/>
+                                    <field name="kpi_revenue_base" readonly="1"/>
+                                    <field name="spa_seniority_display" readonly="1"/>
+                                </group>
+                            </group>
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <tree editable="bottom">
+                                    <field name="category"/>
+                                    <field name="code" optional="hide"/>
+                                    <field name="name"/>
+                                    <field name="amount" sum="Tổng"/>
+                                    <field name="is_manual"/>
+                                    <field name="note" optional="show"/>
+                                    <field name="source_model" column_invisible="1"/>
+                                    <field name="source_id" column_invisible="1"/>
                                     <field name="currency_id" column_invisible="1"/>
                                 </tree>
                             </field>
                             <p class="text-muted">
-                                Nguồn: <code>spa.treatment.session</code> trạng thái Hoàn thành trong kỳ;
-                                tiền buổi = trường <b>Lương nhân viên / 1 lần dịch vụ</b> trên sản phẩm (module Spa);
-                                chia đều cho các nhân viên trong buổi.
+                                Tổng phải trả = lương cố định + làm thêm + tổng ledger + thưởng − BH − khấu trừ khác.
+                                Dòng ledger <b>tự động</b> bị xóa/tạo lại khi «Tính các khoản…»; dòng <b>nhập tay</b> được giữ.
+                                Chi tiết HH / KPI / OT / buổi / nghỉ xem các tab bên cạnh.
+                            </p>
+                        </page>
+                        <page string="Hoa hồng SP" name="commission_lines">
+                            <field name="commission_line_ids" readonly="1">
+                                <tree create="0" delete="0">
+                                    <field name="product_id"/>
+                                    <field name="categ_id"/>
+                                    <field name="sale_order_id"/>
+                                    <field name="move_id" optional="show"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit"/>
+                                    <field name="discount"/>
+                                    <field name="price_subtotal" sum="Thành tiền"/>
+                                    <field name="commission_percent"/>
+                                    <field name="commission_amount" sum="Hoa hồng"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                            <p class="text-muted">
+                                Chi tiết theo dòng SP (SO settled / HĐ lẻ paid). Tổng HH khớp dòng
+                                <b>sales_commission</b> trên tab «Lương».
+                            </p>
+                        </page>
+                        <page string="KPI" name="kpi_lines">
+                            <field name="kpi_line_ids" readonly="1">
+                                <tree create="0" delete="0">
+                                    <field name="source_name"/>
+                                    <field name="sale_order_id"/>
+                                    <field name="move_id" optional="show"/>
+                                    <field name="revenue_amount" sum="Doanh thu"/>
+                                    <field name="kpi_percent"/>
+                                    <field name="kpi_amount" sum="Tiền KPI"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                            <p class="text-muted">
+                                Phân bổ KPI theo từng nguồn doanh thu (SO / HĐ). Tổng khớp dòng
+                                <b>kpi_revenue</b> trên tab «Lương».
                             </p>
                         </page>
                         <page string="Làm thêm giờ" name="overtime_lines">
@@ -101,6 +147,27 @@
                             </field>
                             <p class="text-muted">
                                 Nguồn: đăng ký làm thêm đã <b>Duyệt</b> trong kỳ; thành tiền = giờ × đơn giá trên phiếu.
+                                Tổng khớp <b>Cộng làm thêm</b> trên tab «Lương».
+                            </p>
+                        </page>
+                        <page string="Buổi làm" name="service_lines">
+                            <field name="service_line_ids" readonly="1">
+                                <tree editable="bottom" create="0" delete="0">
+                                    <field name="session_date" string="Ngày buổi"/>
+                                    <field name="partner_id" string="Tên khách hàng"/>
+                                    <field name="product_id" string="Dịch vụ / gói"/>
+                                    <field name="amount_total" string="Tiền buổi"/>
+                                    <field name="staff_count" string="Số NV"/>
+                                    <field name="therapist_names" string="Danh sách nhân viên"/>
+                                    <field name="amount_share" string="Tiền NV này" sum="Tiền NV này"/>
+                                    <field name="session_id" column_invisible="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                            <p class="text-muted">
+                                Chi tiết từng buổi / thẻ. Tổng <b>Tiền NV này</b> khớp dòng
+                                <b>service_payout_session</b> trên tab «Lương» (SoT tổng phải trả).
+                                Rebuild khi bấm «Tính các khoản».
                             </p>
                         </page>
                         <page string="Ngày nghỉ (tham khảo)" name="dayoffs">
@@ -113,6 +180,10 @@
                                 </tree>
                             </field>
                             <field name="dayoff_count" invisible="1"/>
+                            <p class="text-muted">
+                                Lương cố định theo hợp đồng — <b>chưa trừ ngày nghỉ</b>.
+                                Điều chỉnh tay bằng khấu trừ / dòng điều chỉnh trên ledger tab «Lương» nếu cần.
+                            </p>
                         </page>
                     </notebook>
                 </sheet>

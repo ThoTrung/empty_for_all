@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_staff_payroll_inherit_booking_form" model="ir.ui.view">
+        <field name="name">spa.staff.payroll.inherit.spa.service.booking.form</field>
+        <field name="model">spa.service.booking</field>
+        <field name="inherit_id" ref="booking_calendar.view_spa_service_booking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='staff_ids'][@invisible='is_composite_booking']" position="attributes">
+                <attribute name="required">spa_payroll_customer_requested and not is_composite_booking</attribute>
+            </xpath>
+            <xpath expr="//field[@name='staff_ids'][@invisible='is_composite_booking']" position="after">
+                <field name="spa_payroll_shift_kind" invisible="is_composite_booking"/>
+                <field name="spa_payroll_customer_requested" invisible="is_composite_booking"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_spa_staff_payroll_inherit_booking_line_form" model="ir.ui.view">
+        <field name="name">spa.staff.payroll.inherit.spa.service.booking.line.form</field>
+        <field name="model">spa.service.booking.line</field>
+        <field name="inherit_id" ref="booking_calendar.view_spa_service_booking_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='staff_id']" position="attributes">
+                <attribute name="required">spa_payroll_customer_requested</attribute>
+            </xpath>
+            <xpath expr="//field[@name='staff_id']" position="after">
+                <field name="spa_payroll_shift_kind"/>
+                <field name="spa_payroll_customer_requested"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

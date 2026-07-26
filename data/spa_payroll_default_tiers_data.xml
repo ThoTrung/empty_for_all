@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Global defaults (company_id trống = mọi công ty). User sửa sau không bị reset khi upgrade. -->
+
+        <!-- Ca dài -->
+        <record id="spa_payroll_long_tier_38" model="spa.payroll.long.shift.tier">
+            <field name="name">38–47 ca dài</field>
+            <field name="sequence">10</field>
+            <field name="min_count">38</field>
+            <field name="max_count">48</field>
+            <field name="amount_per_shift">5000</field>
+        </record>
+        <record id="spa_payroll_long_tier_48" model="spa.payroll.long.shift.tier">
+            <field name="name">48–57 ca dài</field>
+            <field name="sequence">20</field>
+            <field name="min_count">48</field>
+            <field name="max_count">58</field>
+            <field name="amount_per_shift">10000</field>
+        </record>
+
+        <!-- Khách đặt (chỉ ca dài khi tính) -->
+        <record id="spa_payroll_requested_tier_lt28" model="spa.payroll.requested.shift.tier">
+            <field name="name">Khách đặt &lt; 28</field>
+            <field name="sequence">10</field>
+            <field name="min_count">1</field>
+            <field name="max_count">28</field>
+            <field name="amount_per_shift">5000</field>
+        </record>
+        <record id="spa_payroll_requested_tier_gte28" model="spa.payroll.requested.shift.tier">
+            <field name="name">Khách đặt ≥ 28</field>
+            <field name="sequence">20</field>
+            <field name="min_count">28</field>
+            <field name="amount_per_shift">10000</field>
+        </record>
+
+        <!-- KPI doanh thu -->
+        <record id="spa_payroll_kpi_tier_50m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 50tr</field>
+            <field name="sequence">10</field>
+            <field name="min_revenue">50000000</field>
+            <field name="percent">0.2</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_60m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 60tr</field>
+            <field name="sequence">20</field>
+            <field name="min_revenue">60000000</field>
+            <field name="percent">0.3</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_70m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 70tr</field>
+            <field name="sequence">30</field>
+            <field name="min_revenue">70000000</field>
+            <field name="percent">0.4</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_80m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 80tr</field>
+            <field name="sequence">40</field>
+            <field name="min_revenue">80000000</field>
+            <field name="percent">0.5</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_100m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 100tr</field>
+            <field name="sequence">50</field>
+            <field name="min_revenue">100000000</field>
+            <field name="percent">0.8</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_120m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 120tr</field>
+            <field name="sequence">60</field>
+            <field name="min_revenue">120000000</field>
+            <field name="percent">1.0</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_150m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 150tr</field>
+            <field name="sequence">70</field>
+            <field name="min_revenue">150000000</field>
+            <field name="percent">1.1</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_180m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 180tr</field>
+            <field name="sequence">80</field>
+            <field name="min_revenue">180000000</field>
+            <field name="percent">1.2</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_200m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 200tr</field>
+            <field name="sequence">90</field>
+            <field name="min_revenue">200000000</field>
+            <field name="percent">1.3</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_250m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 250tr</field>
+            <field name="sequence">100</field>
+            <field name="min_revenue">250000000</field>
+            <field name="percent">1.4</field>
+        </record>
+        <record id="spa_payroll_kpi_tier_300m" model="spa.payroll.kpi.revenue.tier">
+            <field name="name">KPI từ 300tr</field>
+            <field name="sequence">110</field>
+            <field name="min_revenue">300000000</field>
+            <field name="percent">1.5</field>
+        </record>
+
+        <!-- Giải thưởng xếp hạng tháng -->
+        <record id="spa_payroll_prize_month_sales_1" model="spa.payroll.ranking.prize">
+            <field name="name">Nhất doanh số tháng</field>
+            <field name="period_type">month</field>
+            <field name="metric">sales_revenue</field>
+            <field name="rank">1</field>
+            <field name="amount">1000000</field>
+        </record>
+        <record id="spa_payroll_prize_month_sales_2" model="spa.payroll.ranking.prize">
+            <field name="name">Nhì doanh số tháng</field>
+            <field name="period_type">month</field>
+            <field name="metric">sales_revenue</field>
+            <field name="rank">2</field>
+            <field name="amount">500000</field>
+        </record>
+        <record id="spa_payroll_prize_month_requested_1" model="spa.payroll.ranking.prize">
+            <field name="name">Nhất khách đặt tháng</field>
+            <field name="period_type">month</field>
+            <field name="metric">customer_requested_count</field>
+            <field name="rank">1</field>
+            <field name="amount">500000</field>
+        </record>
+        <record id="spa_payroll_prize_month_ot_1" model="spa.payroll.ranking.prize">
+            <field name="name">Nhất OT tháng</field>
+            <field name="period_type">month</field>
+            <field name="metric">overtime_hours</field>
+            <field name="rank">1</field>
+            <field name="amount">0</field>
+        </record>
+
+        <!-- Giải thưởng xếp hạng năm (amount=0 đến khi QL nhập) -->
+        <record id="spa_payroll_prize_year_sales_1" model="spa.payroll.ranking.prize">
+            <field name="name">Nhất doanh số năm</field>
+            <field name="period_type">year</field>
+            <field name="metric">sales_revenue</field>
+            <field name="rank">1</field>
+            <field name="amount">0</field>
+        </record>
+        <record id="spa_payroll_prize_year_sales_2" model="spa.payroll.ranking.prize">
+            <field name="name">Nhì doanh số năm</field>
+            <field name="period_type">year</field>
+            <field name="metric">sales_revenue</field>
+            <field name="rank">2</field>
+            <field name="amount">0</field>
+        </record>
+        <record id="spa_payroll_prize_year_requested_1" model="spa.payroll.ranking.prize">
+            <field name="name">Nhất khách đặt năm</field>
+            <field name="period_type">year</field>
+            <field name="metric">customer_requested_count</field>
+            <field name="rank">1</field>
+            <field name="amount">0</field>
+        </record>
+        <record id="spa_payroll_prize_year_ot_1" model="spa.payroll.ranking.prize">
+            <field name="name">Nhất OT năm</field>
+            <field name="period_type">year</field>
+            <field name="metric">overtime_hours</field>
+            <field name="rank">1</field>
+            <field name="amount">0</field>
+        </record>
+    </data>
+</odoo>
