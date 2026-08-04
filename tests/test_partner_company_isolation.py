@@ -17,20 +17,23 @@ class TestPartnerCompanyIsolation(TransactionCase):
         cls.partner_a = cls.env["res.partner"].create({
             "name": "Isolation Customer A",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
             "company_id": cls.company_a.id,
         })
         cls.partner_b = cls.env["res.partner"].sudo().create({
             "name": "Isolation Customer B",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
             "company_id": cls.company_b.id,
         })
         # Shared commercial partner (company_id cleared after create stamp).
         cls.partner_shared = cls.env["res.partner"].sudo().create({
             "name": "Isolation Shared Customer",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
         })
         cls.partner_shared.sudo().write({"company_id": False})
 
@@ -179,5 +182,5 @@ class TestPartnerCompanyIsolation(TransactionCase):
         )
         domain = info["a_company_party"].get("domain") or ""
         domain_str = domain if isinstance(domain, str) else str(domain)
-        self.assertIn("renter", domain_str)
+        self.assertIn("is_rental_customer", domain_str)
         self.assertIn("is_company", domain_str)

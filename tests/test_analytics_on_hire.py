@@ -13,7 +13,8 @@ class TestAnalyticsOnHire(TransactionCase):
         cls.customer = cls.env["res.partner"].create({
             "name": "Analytics Customer",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
             "company_id": company.id,
         })
         cls.customer_rep = cls.env["res.partner"].create({
@@ -187,7 +188,8 @@ class TestAnalyticsOnHire(TransactionCase):
         other_customer = self.env["res.partner"].create({
             "name": "Other Renter Co",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
             "company_id": self.env.company.id,
         })
         other_work = self.env["construction.work"].create({

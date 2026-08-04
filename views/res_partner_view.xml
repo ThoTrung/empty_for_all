@@ -7,29 +7,23 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//sheet/notebook" position="inside">
-                <page string="Cho thuê">
-                    <group>
-                        <field name="customer_type" invisible="1"/>
-                    </group>
-                </page>
-            </xpath>
              <xpath expr="//div[@class='oe_button_box']" position="attributes">
-                <attribute name="invisible">customer_type in ['driver', 'renter']</attribute>
+                <attribute name="invisible">customer_type in ['driver', 'company']</attribute>
             </xpath>
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="company_id" placeholder="Company_id"/>
-                <field name="customer_type"/>
+                <field name="customer_type" string="Kiểu form"
+                          invisible="customer_type in ['company', 'driver', 'my_company_profile']"/>
                 <field name="bank_account" invisible="customer_type in ['driver']"/>
                 <field name="id_number" invisible="customer_type not in ['driver']"/>
             </xpath>
 
              <xpath expr="//field[@name='type']" position="attributes">
-<!--                <attribute name="invisible">customer_type in ['driver', 'renter']</attribute>-->
+<!--                <attribute name="invisible">customer_type in ['driver', 'company']</attribute>-->
                 <attribute name="invisible">1</attribute>
             </xpath>
              <xpath expr="//field[@name='company_type']" position="attributes">
-<!--                <attribute name="invisible">customer_type in ['driver', 'renter']</attribute>-->
+<!--                <attribute name="invisible">customer_type in ['driver', 'company']</attribute>-->
                 <attribute name="invisible">1</attribute>
             </xpath>
              <xpath expr="//field[@name='parent_id']" position="attributes">
@@ -86,13 +80,13 @@
                 <attribute name="invisible">customer_type in ['driver']</attribute>
             </xpath>
             <xpath expr="//notebook" position="attributes">
-                <attribute name="invisible">customer_type in ['driver', 'renter']</attribute>
+                <attribute name="invisible">customer_type in ['driver', 'company']</attribute>
             </xpath>
 
 <!--            New way - Hide sheet instead of each field -->
             <!-- Hide the original sheet -->
             <xpath expr="//sheet" position="attributes">
-              <attribute name="invisible">customer_type in ['driver', 'renter', 'my_company_profile']</attribute>
+              <attribute name="invisible">customer_type in ['driver', 'company', 'my_company_profile']</attribute>
             </xpath>
 
             <!-- Add a new sheet with your custom fields Driver -->
@@ -126,7 +120,7 @@
             </xpath>
 
             <xpath expr="//sheet" position="after">
-                <sheet invisible="not (customer_type in ['renter', 'my_company_profile'] and is_company == True)">
+                <sheet invisible="not (customer_type in ['company', 'my_company_profile'] and is_company == True)">
                     <field name="image_1920" widget="image" class="oe_avatar" options="{&quot;preview_image&quot;: &quot;avatar_128&quot;}"/>
                     <div class="oe_title mb24">
                         <h1>
@@ -148,6 +142,10 @@
                             <field name="email" placeholder="locphat@gmail.com"/>
                             <field name="website" placeholder="rental.linhha.com"/>
                         </group>
+                    </group>
+                    <group string="Vai trò" invisible="customer_type != 'company'" col="2">
+                        <field name="is_rental_customer"/>
+                        <field name="is_rental_supplier"/>
                     </group>
 
                     <notebook colspan="4">
@@ -268,7 +266,8 @@
                         <page name="internal_notes" string="Ghi chú nội bộ">
                             <field name="comment" placeholder="Ghi chú..."/>
                         </page>
-                        <page name="company_rental_contract_ids" string="Hợp đồng thuê">
+                        <page name="company_rental_contract_ids" string="Hợp đồng thuê"
+                              invisible="not is_rental_customer">
                             <field name="rental_contract_ids"/>
                         </page>
                     </notebook>
@@ -286,7 +285,7 @@
         <field name="domain">
             [
                 ("is_company", "=", True),
-                ("customer_type", "=", "renter"),
+                ("is_rental_customer", "=", True),
                 ("company_id", "in", allowed_company_ids),
             ]
         </field>
@@ -294,7 +293,8 @@
         <field name="context">
             {
                 'default_is_company': True,
-                'default_customer_type': 'renter',
+                'default_customer_type': 'company',
+                'default_is_rental_customer': True,
             }
         </field>
     </record>

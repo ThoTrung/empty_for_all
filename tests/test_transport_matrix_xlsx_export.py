@@ -21,7 +21,8 @@ class TestTransportMatrixXlsxExport(TransactionCase):
         cls._a_company = cls.env["res.partner"].create({
             "name": "Matrix Export Renter",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
         })
         cls._a_party = cls.env["res.partner"].create({
             "name": "Matrix Export A rep",

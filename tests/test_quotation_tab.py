@@ -11,7 +11,8 @@ class TestQuotationTab(TransactionCase):
         cls._a_company = cls.env["res.partner"].create({
             "name": "Quote Tab Renter",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
         })
         cls._a_party = cls.env["res.partner"].create({
             "name": "Quote A rep",

@@ -33,15 +33,15 @@ const FALLBACK_DOMAINS_BY_PATH = {
         ["is_company", "=", false],
     ],
     "rental.contract|a_company_party": [
-        ["customer_type", "=", "renter"],
+        ["is_rental_customer", "=", true],
         ["is_company", "=", true],
     ],
     "rental.analytics.on.hire.line|partner_company_id": [
-        ["customer_type", "=", "renter"],
+        ["is_rental_customer", "=", true],
         ["is_company", "=", true],
     ],
     "account.move|rental_partner_company_id": [
-        ["customer_type", "=", "renter"],
+        ["is_rental_customer", "=", true],
         ["is_company", "=", true],
     ],
 };

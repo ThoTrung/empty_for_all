@@ -7,19 +7,19 @@
     </t>
 
     <t t-name="rental.AnalyticsDashboard">
-        <Layout display="display" className="'o_rental_analytics_dashboard'">
-            <div class="o_rental_analytics_dashboard_body p-3">
+        <div t-att-class="props.className">
+            <Layout display="display" className="'o_rental_analytics_dashboard'">
+                <div class="o_rental_analytics_dashboard_body p-3">
                 <div class="d-flex flex-wrap align-items-end gap-3 mb-3">
                     <div>
                         <label class="form-label mb-1" for="rental_analytics_as_of">
                             Ngày tra cứu
                         </label>
-                        <input
-                            id="rental_analytics_as_of"
-                            type="date"
-                            class="form-control"
-                            t-att-value="state.asOfDate"
-                            t-on-change="onAsOfDateChange"
+                        <DateTimeInput
+                            id="'rental_analytics_as_of'"
+                            type="'date'"
+                            value="asOfDateValue"
+                            onChange="(date) => this.onAsOfDateChange(date)"
                         />
                     </div>
                     <div class="o_rental_analytics_filter">
@@ -50,7 +50,7 @@
                     </div>
                     <div class="o_rental_analytics_filter">
                         <label class="form-label mb-1">
-                            Kho
+                            Kho (Áp dụng Tồn kho &amp; Xuất nhập tồn)
                         </label>
                         <MultiRecordSelector
                             resModel="'stock.warehouse'"
@@ -60,7 +60,6 @@
                             fieldString="'Kho'"
                             placeholder="'Tất cả kho…'"
                         />
-                        <div class="form-text">Áp dụng Tồn kho &amp; Xuất nhập tồn</div>
                     </div>
                     <button
                         type="button"
@@ -111,34 +110,6 @@
                                         </div>
                                     </div>
 
-                                    <t t-if="widget.totals_by_uom and widget.totals_by_uom.length">
-                                        <div class="o_rental_analytics_uom_totals mb-2">
-                                            <t t-foreach="widget.totals_by_uom" t-as="uomRow" t-key="uomRow.uom_id or uomRow.uom_name">
-                                                <div class="d-flex flex-wrap justify-content-between gap-2 small border-bottom py-1">
-                                                    <strong t-esc="uomRow.uom_name"/>
-                                                    <t t-if="this.isWarehouseWidget(widget)">
-                                                        <span>
-                                                            <span class="text-muted" t-esc="widget.metrics.onhand_label or 'Tồn kho'"/>:
-                                                            <t t-esc="this.formatNumber(uomRow.physical_qty)"/>
-                                                        </span>
-                                                    </t>
-                                                    <t t-else="">
-                                                        <span>
-                                                            <span class="text-muted" t-esc="widget.metrics.rented_label"/>:
-                                                            <t t-esc="this.formatNumber(uomRow.rented_qty)"/>
-                                                            <span class="mx-1">|</span>
-                                                            <span class="text-muted" t-esc="widget.metrics.excess_label"/>:
-                                                            <t t-esc="this.formatNumber(uomRow.excess_qty)"/>
-                                                            <span class="mx-1">|</span>
-                                                            Vật lý:
-                                                            <t t-esc="this.formatNumber(uomRow.physical_qty)"/>
-                                                        </span>
-                                                    </t>
-                                                </div>
-                                            </t>
-                                        </div>
-                                    </t>
-
                                     <t t-if="widget.chart and widget.chart.labels and widget.chart.labels.length">
                                         <RentalAnalyticsBarChart
                                             labels="widget.chart.labels"
@@ -183,22 +154,20 @@
                         <div class="d-flex flex-wrap align-items-end gap-3 mb-3">
                             <div>
                                 <label class="form-label mb-1" for="rental_xnt_from">Từ ngày</label>
-                                <input
-                                    id="rental_xnt_from"
-                                    type="date"
-                                    class="form-control"
-                                    t-att-value="state.xntDateFrom"
-                                    t-on-change="onXntDateFromChange"
+                                <DateTimeInput
+                                    id="'rental_xnt_from'"
+                                    type="'date'"
+                                    value="xntDateFromValue"
+                                    onChange="(date) => this.onXntDateFromChange(date)"
                                 />
                             </div>
                             <div>
                                 <label class="form-label mb-1" for="rental_xnt_to">Đến ngày</label>
-                                <input
-                                    id="rental_xnt_to"
-                                    type="date"
-                                    class="form-control"
-                                    t-att-value="state.xntDateTo"
-                                    t-on-change="onXntDateToChange"
+                                <DateTimeInput
+                                    id="'rental_xnt_to'"
+                                    type="'date'"
+                                    value="xntDateToValue"
+                                    onChange="(date) => this.onXntDateToChange(date)"
                                 />
                             </div>
                         </div>
@@ -232,7 +201,8 @@
                         </t>
                     </div>
                 </div>
-            </div>
-        </Layout>
+                </div>
+            </Layout>
+        </div>
     </t>
 </templates>

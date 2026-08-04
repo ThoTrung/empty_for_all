@@ -7,69 +7,71 @@ from dateutil.relativedelta import relativedelta
 from docxtpl import DocxTemplate
 
 
+def _blank(value):
+    """Odoo empty fields are False; never render as literal 'False' in Jinja."""
+    if value is False or value is None:
+        return ''
+    return value
+
+
 def render_rental_contract_docx(contract):
     # Load template and render (company upload or module default)
     template_stream = contract.env["rental.template"].get_template_path_or_stream(
         contract.company_id,
         "contract_docx",
     )
-    today = date.today()
     doc = DocxTemplate(template_stream)
+    d = contract.contract_date
+    date_month_year = (
+        f"ngày {d.day} tháng {d.month} năm {d.year}" if d else ''
+    )
     context = {
-        'contract_code': contract.code,
-        'contract_number': contract.contract_number or '',
-        'a_company_name': contract.a_party.parent_id.name,
-        'a_address': contract.a_address,
-        'a_name': contract.a_name,
-        'a_title': contract.a_party.title.name,
-        'a_function': contract.a_function,
-        'a_phone': contract.a_phone,
-        'a_bank_account': contract.a_bank_account,
-        'a_vat': contract.a_vat,
-        'a_fax': contract.a_company_party.fax,
-        'a_executor_name': contract.a_executor_name,
-        'a_executor_title': contract.a_executor_id.title.name,
-        'a_executor_function': contract.a_executor_function,
+        'contract_code': _blank(contract.code),
+        'contract_number': _blank(contract.contract_number),
+        'a_company_name': _blank(contract.a_party.parent_id.name),
+        'a_address': _blank(contract.a_address),
+        'a_name': _blank(contract.a_name),
+        'a_title': _blank(contract.a_party.title.name),
+        'a_function': _blank(contract.a_function),
+        'a_phone': _blank(contract.a_phone),
+        'a_bank_account': _blank(contract.a_bank_account),
+        'a_vat': _blank(contract.a_vat),
+        'a_fax': _blank(contract.a_company_party.fax),
+        'a_executor_name': _blank(contract.a_executor_name),
+        'a_executor_title': _blank(contract.a_executor_id.title.name),
+        'a_executor_function': _blank(contract.a_executor_function),
 
-        'b_company_name': contract.b_party.parent_id.name,
-        'b_address': contract.b_address,
-        'b_name': contract.b_name,
-        'b_title': contract.b_party.title.name,
-        'b_function': contract.b_function,
-        'b_phone': contract.b_phone,
-        'b_bank_account': contract.b_bank_account,
-        'b_vat': contract.b_vat,
-        'b_fax': contract.b_company_party.fax,
-        'b_executor_name': contract.b_executor_name,
-        'b_executor_title': contract.b_executor_id.title.name,
-        'b_executor_function': contract.b_executor_function,
+        'b_company_name': _blank(contract.b_party.parent_id.name),
+        'b_address': _blank(contract.b_address),
+        'b_name': _blank(contract.b_name),
+        'b_title': _blank(contract.b_party.title.name),
+        'b_function': _blank(contract.b_function),
+        'b_phone': _blank(contract.b_phone),
+        'b_bank_account': _blank(contract.b_bank_account),
+        'b_vat': _blank(contract.b_vat),
+        'b_fax': _blank(contract.b_company_party.fax),
+        'b_executor_name': _blank(contract.b_executor_name),
+        'b_executor_title': _blank(contract.b_executor_id.title.name),
+        'b_executor_function': _blank(contract.b_executor_function),
 
-        'construction_work_name': contract.construction_work_id.name,
-        'construction_work_project': contract.construction_work_project_id.name if contract.construction_work_project_id else '',
-        'construction_work_address': contract.construction_work_address,
-        # today is a datetime.date => use .day/.month/.year
-        'date_month_year': f"ngày {today.day} tháng {today.month} năm {today.year}",
+        'construction_work_name': _blank(contract.construction_work_id.name),
+        'construction_work_project': _blank(contract.construction_work_project_id.name),
+        'construction_work_address': _blank(contract.construction_work_address),
+        'date_month_year': date_month_year,
     }
     idx = 1
     lines = []
     for line in contract.rental_contract_line_ids:
-        # context[f'product_name_{idx}'] = line.product_tmpl_id.display_name
-        # context[f'uom_{idx}'] = line.uom_id.name
-        # # context[f'qty_{idx}'] = 1
-        # context[f'price_unit_{idx}'] = line.price_unit
-        # context[f'compensation_price_{idx}'] = line.compensation_price
-
         lines.append({
             'idx': idx,
-            'product_name': line.product_tmpl_id.display_name,
-            'uom': line.uom_id.name,
+            'product_name': _blank(line.product_tmpl_id.display_name),
+            'uom': _blank(line.uom_id.name),
             'price_unit': "{:,.0f}".format(line.price_unit).replace(",", ".") if line.price_unit else '',
             'compensation_price': "{:,.0f}".format(line.compensation_price).replace(",",
                                                                                     ".") if line.compensation_price else '',
         })
         idx += 1
     context['lines'] = lines
-    # pprint.pprint(context)
     doc.render(context)
 
     return doc

@@ -172,7 +172,7 @@ class RentalContract(models.Model):
     a_company_party = fields.Many2one(
         'res.partner',
         string='Công ty bên A',
-        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]",
+        domain="[('is_rental_customer', '=', True), ('is_company', '=', True)]",
         required=True,
         tracking=True,
     )
@@ -809,14 +809,20 @@ class RentalContract(models.Model):
             )
             ws.cell(r, 7).value = self._rental_days_excel_formula(r, include, holiday_days)
             if self.rental_billing_mode == "month" and month_day_dim:
-                ws.cell(r, 8).value = float(line.get("unit_price") or 0) * int(month_day_dim)
+                self._write_excel_unit_price(
+                    ws.cell(r, 8), float(line.get("unit_price") or 0) * int(month_day_dim)
+                )
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
             else:
-                ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
+                self._write_excel_unit_price(
+                    ws.cell(r, 8), line.get("display_unit_price", line["unit_price"])
+                )
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}"
         else:
             ws.cell(r, 7).value = line["rental_days"]
-            ws.cell(r, 8).value = line.get("display_unit_price", line["unit_price"])
+            self._write_excel_unit_price(
+                ws.cell(r, 8), line.get("display_unit_price", line["unit_price"])
+            )
             ws.cell(r, 9).value = line["total_amount"]
         return count + 1
 
@@ -850,14 +856,20 @@ class RentalContract(models.Model):
             )
             ws.cell(r, 7).value = self._rental_days_excel_formula(r, include, holiday_days)
             if self.rental_billing_mode == "month" and month_day_dim:
-                ws.cell(r, 8).value = float(agg.get("unit_price") or 0) * int(month_day_dim)
+                self._write_excel_unit_price(
+                    ws.cell(r, 8), float(agg.get("unit_price") or 0) * int(month_day_dim)
+                )
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
             else:
-                ws.cell(r, 8).value = agg.get("display_unit_price", agg["unit_price"])
+                self._write_excel_unit_price(
+                    ws.cell(r, 8), agg.get("display_unit_price", agg["unit_price"])
+                )
                 ws.cell(r, 9).value = f"=F{r}*G{r}*H{r}"
         else:
             ws.cell(r, 7).value = agg["rental_days"]
-            ws.cell(r, 8).value = agg.get("display_unit_price", agg["unit_price"])
+            self._write_excel_unit_price(
+                ws.cell(r, 8), agg.get("display_unit_price", agg["unit_price"])
+            )
             ws.cell(r, 9).value = agg["total_amount"]
         return count + 1
 
@@ -866,6 +878,12 @@ class RentalContract(models.Model):
         """Write a Python date as an Excel date with DD/MM/YYYY display format."""
         cell.value = value
         cell.number_format = "DD/MM/YYYY"
+
+    @staticmethod
+    def _write_excel_unit_price(cell, value):
+        """Write unit price without forced decimal (9200 → 9,200 not 9,200.0)."""
+        cell.value = value
+        cell.number_format = "#,##0"
 
     @staticmethod
     def _excel_sheet_ref(sheet_title):
@@ -1039,7 +1057,7 @@ class RentalContract(models.Model):
                 c6 = ws.cell(r, 6)
                 c6.value = rc["excess_return_qty"]
                 c8 = ws.cell(r, 8)
-                c8.value = block["display_unit_price"]
+                self._write_excel_unit_price(c8, block["display_unit_price"])
                 for c in (c2, c4, c5, c6, c8):
                     c.font = self._blue_font_like(c)
                 count += 1
@@ -1067,7 +1085,7 @@ class RentalContract(models.Model):
                     ws.cell(r, 4).value = block["product_name"]
                     ws.cell(r, 5).value = block["uom_name"]
                     ws.cell(r, 6).value = od["qty"]
-                    ws.cell(r, 8).value = block["display_unit_price"]
+                    self._write_excel_unit_price(ws.cell(r, 8), block["display_unit_price"])
                     count += 1
                 if rc.get("excess_return_qty") and mode != "credit":
                     r = start_row + count
@@ -1080,7 +1098,7 @@ class RentalContract(models.Model):
                     c6 = ws.cell(r, 6)
                     c6.value = rc["excess_return_qty"]
                     c8 = ws.cell(r, 8)
-                    c8.value = block["display_unit_price"]
+                    self._write_excel_unit_price(c8, block["display_unit_price"])
                     for c in (c2, c4, c5, c6, c8):
                         c.font = self._blue_font_like(c)
                     count += 1
@@ -1095,7 +1113,7 @@ class RentalContract(models.Model):
                     c_qty = ws.cell(r, 6)
                     c_qty.value = -ret["qty"]
                     c_price = ws.cell(r, 8)
-                    c_price.value = block["display_unit_price"]
+                    self._write_excel_unit_price(c_price, block["display_unit_price"])
                     for c in (c_date, c_name, c_uom, c_qty, c_price):
                         c.font = self._red_font_like(c)
                     count += 1
@@ -1206,14 +1224,20 @@ class RentalContract(models.Model):
             )
             c_days.value = self._rental_days_excel_formula(r, include, holiday_days)
             if self.rental_billing_mode == "month" and month_day_dim:
-                c_price.value = float(cred.get("unit_price") or 0) * int(month_day_dim)
+                self._write_excel_unit_price(
+                    c_price, float(cred.get("unit_price") or 0) * int(month_day_dim)
+                )
                 c_amt.value = f"=F{r}*G{r}*H{r}/{int(month_day_dim)}"
             else:
-                c_price.value = cred.get("display_unit_price", cred.get("unit_price"))
+                self._write_excel_unit_price(
+                    c_price, cred.get("display_unit_price", cred.get("unit_price"))
+                )
                 c_amt.value = f"=F{r}*G{r}*H{r}"
         else:
             c_days.value = cred["rental_days"]
-            c_price.value = cred.get("display_unit_price", cred.get("unit_price"))
+            self._write_excel_unit_price(
+                c_price, cred.get("display_unit_price", cred.get("unit_price"))
+            )
             c_amt.value = cred["total_amount"]
         for c in (ws.cell(r, 2), ws.cell(r, 3), c_name, c_uom, c_qty, c_days, c_price, c_amt):
             c.font = self._red_font_like(c)
@@ -1320,7 +1344,9 @@ class RentalContract(models.Model):
             qty = comp_line.get("qty") or 0
             amount = comp_line.get("amount") or 0.0
             ws.cell(r, 6).value = qty
-            ws.cell(r, 8).value = (amount / qty) if qty else amount
+            self._write_excel_unit_price(
+                ws.cell(r, 8), (amount / qty) if qty else amount
+            )
             ws.cell(r, 9).value = amount
             count += 1
 

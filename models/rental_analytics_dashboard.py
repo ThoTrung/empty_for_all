@@ -31,7 +31,7 @@ class RentalAnalyticsDashboard(models.AbstractModel):
         company_ids = self.env.companies.ids
         partners = self.env["res.partner"].search([
             ("is_company", "=", True),
-            ("customer_type", "=", "renter"),
+            ("is_rental_customer", "=", True),
             ("company_id", "in", company_ids),
         ], order="name")
         works = self.env["construction.work"].search([

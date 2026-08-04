@@ -58,7 +58,7 @@
             <field name="arch" type="xml">
                 <search string="SL đang thuê">
                     <field name="partner_company_id"
-                           domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]"/>
+                           domain="[('is_rental_customer', '=', True), ('is_company', '=', True)]"/>
                     <field name="construction_work_id"/>
                     <field name="construction_project_id"/>
                     <field name="rental_contract_id"/>
@@ -134,7 +134,7 @@ action = env['rental.analytics.on.hire.line'].action_open_on_hire_detail()
             <field name="arch" type="xml">
                 <xpath expr="//search" position="inside">
                     <field name="rental_partner_company_id"
-                           domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]"/>
+                           domain="[('is_rental_customer', '=', True), ('is_company', '=', True)]"/>
                     <field name="rental_construction_work_id"/>
                     <filter name="group_rental_partner"
                             string="Khách hàng thuê"

@@ -181,6 +181,7 @@ class TestStockXnt(TransactionCase):
             "date_to": "2026-04-30",
         })
         self.assertEqual(action["res_model"], "rental.stock.xnt.wizard")
+        self.assertTrue(action.get("views"))
         wizard = self.env["rental.stock.xnt.wizard"].browse(action["res_id"])
         self.assertTrue(wizard.line_ids)
         line = wizard.line_ids.filtered(lambda l: l.product_id == self.product)

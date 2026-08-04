@@ -25,6 +25,7 @@
 .o_rental_analytics_uom_totals {
     max-height: 140px;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .o_rental_analytics_filter {

@@ -29,5 +29,8 @@
 - DEC-25 — Tắt IAP Partner Autocomplete trên form `res.partner`: `_get_view` trả `name`→`text`, bỏ widget trên `vat` · `models/res_partner.py`
 - DEC-26 — Custom filter DomainSelector không truyền `field.domain`; SearchBar `Domain.toList()` không context. Vá: TreeEditor inject + RecordAutocomplete.getDomain fallback theo label «Tài xế» + Search More domain · `static/src/js/domain_selector_field_domain.js`
 - DEC-27 — Thống kê kho: tồn as-of + XNT kỳ từ `stock.move` done (internal locations; gồm rental/SO/PO/điều chỉnh), tách on-hire LIFO; UI Thống kê (card Tồn kho + khối XNT) + wizard/Excel · `services/rental_stock_xnt.py`, `models/rental_analytics_stock_onhand.py`, `wizard/rental_stock_xnt_wizard.py`, `static/src/analytics_dashboard/`
+- DEC-28 — Extension point `_rental_picking_locations()` trên `rr.transport` (src/dest picking); `rental_subrent` override theo nguồn owned/subrent · `models/transport.py`
+- DEC-29 — Partner multi-role: `customer_type` = form mode (`company`/`driver`/`my_company_profile`/`other`); vai trò `is_rental_customer` + `is_rental_supplier` (cùng lúc được — NCC↔NCC). Domain menu/HĐ theo flag. Giá NCC↔NCC = follow-up · `models/res_partner.py`
+- DEC-29b — Harden: auto-align `is_company`+`customer_type=company` khi bật role; constrain; soft warn (onchange + chatter) khi tắt role còn HĐ active; UI block «Vai trò»; label «Kiểu form» · DEBT-04/05
 
 **New ADR:** thêm 1 dòng `DEC-NN`.

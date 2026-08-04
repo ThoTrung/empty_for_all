@@ -2,6 +2,8 @@
 
 Odoo 17 · `custom_addons/odoo_modules/rental` · depends `base,web,stock,sale,sale_management` (runtime: `account`,`mail`)
 
+Thuê ngoài / cho thuê lại: sibling module `rental_subrent` (ledger + sổ lô; hook `_rental_picking_locations`).
+
 ## Rules
 
 1. Billing → `services/rental_contract_services.py` only
@@ -26,6 +28,7 @@ Odoo 17 · `custom_addons/odoo_modules/rental` · depends `base,web,stock,sale,s
 - `docs/DECISIONS.md` — quyết định kiến trúc
 - `docs/BUG_LOG.md` — bug / tech debt
 - `docs/WORKLOG.md` — 3 entry mới nhất
+- Sibling: `rental_subrent/docs/STATUS_NCC_UX.md` — hiện trạng UX NCC (A1+B1) + backlog chờ quyết
 
 ## Dev
 

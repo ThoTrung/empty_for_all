@@ -14,7 +14,8 @@ class TestRentedQtyAsOf(TransactionCase):
         cls.customer = cls.env["res.partner"].create({
             "name": "As-of Customer",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
             "company_id": company.id,
         })
         cls.customer_rep = cls.env["res.partner"].create({
@@ -194,7 +195,7 @@ class TestRentedQtyAsOf(TransactionCase):
         domain = self.env[
             "rental.rented.qty.wizard"
         ]._fields["partner_company_id"].domain
-        self.assertIn("('customer_type', '=', 'renter')", domain)
+        self.assertIn("('is_rental_customer', '=', True)", domain)
         self.assertIn("('company_id', '=', company_id)", domain)
 
         valid = self.env["rental.rented.qty.wizard"].create({
@@ -213,7 +214,8 @@ class TestRentedQtyAsOf(TransactionCase):
         other_company_renter = self.env["res.partner"].create({
             "name": "Other company renter",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
             "company_id": other_company.id,
         })
 

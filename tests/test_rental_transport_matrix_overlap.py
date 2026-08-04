@@ -19,7 +19,8 @@ class TestRentalTransportMatrixOverlap(TransactionCase):
             {
                 "name": "Test Renter Co (matrix overlap)",
                 "is_company": True,
-                "customer_type": "renter",
+                "customer_type": "company",
+                "is_rental_customer": True,
             }
         )
         cls._a_party = cls.env["res.partner"].create(

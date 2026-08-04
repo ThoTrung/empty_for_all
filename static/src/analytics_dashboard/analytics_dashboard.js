@@ -6,6 +6,9 @@ import { Layout } from "@web/search/layout";
 import { loadBundle } from "@web/core/assets";
 import { getColor } from "@web/core/colors/colors";
 import { MultiRecordSelector } from "@web/core/record_selectors/multi_record_selector";
+import { DateTimeInput } from "@web/core/datetime/datetime_input";
+import { serializeDate, deserializeDate } from "@web/core/l10n/dates";
+import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { Component, onWillStart, onWillUnmount, useEffect, useRef, useState } from "@odoo/owl";
 
 export class RentalAnalyticsBarChart extends Component {
@@ -151,7 +154,7 @@ export class RentalAnalyticsDashboard extends Component {
     get partnerDomain() {
         return [
             ["is_company", "=", true],
-            ["customer_type", "=", "renter"],
+            ["is_rental_customer", "=", true],
             ["company_id", "in", this.companyService.activeCompanyIds],
         ];
     }
@@ -166,6 +169,18 @@ export class RentalAnalyticsDashboard extends Component {
         return [
             ["company_id", "in", this.companyService.activeCompanyIds],
         ];
+    }
+
+    get asOfDateValue() {
+        return this.state.asOfDate ? deserializeDate(this.state.asOfDate) : false;
+    }
+
+    get xntDateFromValue() {
+        return this.state.xntDateFrom ? deserializeDate(this.state.xntDateFrom) : false;
+    }
+
+    get xntDateToValue() {
+        return this.state.xntDateTo ? deserializeDate(this.state.xntDateTo) : false;
     }
 
     async loadFilterOptions() {
@@ -258,8 +273,8 @@ export class RentalAnalyticsDashboard extends Component {
         }
     }
 
-    onAsOfDateChange(ev) {
-        this.state.asOfDate = ev.target.value;
+    onAsOfDateChange(date) {
+        this.state.asOfDate = date ? serializeDate(date) : "";
         this.loadDashboard();
     }
 
@@ -278,13 +293,13 @@ export class RentalAnalyticsDashboard extends Component {
         Promise.all([this.loadDashboard(), this.loadXnt()]);
     }
 
-    onXntDateFromChange(ev) {
-        this.state.xntDateFrom = ev.target.value;
+    onXntDateFromChange(date) {
+        this.state.xntDateFrom = date ? serializeDate(date) : "";
         this.loadXnt();
     }
 
-    onXntDateToChange(ev) {
-        this.state.xntDateTo = ev.target.value;
+    onXntDateToChange(date) {
+        this.state.xntDateTo = date ? serializeDate(date) : "";
         this.loadXnt();
     }
 
@@ -316,10 +331,6 @@ export class RentalAnalyticsDashboard extends Component {
         await this.action.doAction(action);
     }
 
-    isWarehouseWidget(widget) {
-        return widget?.key === "warehouse_stock" || widget?.widget_kind === "warehouse_stock";
-    }
-
     formatNumber(value) {
         const num = Number(value) || 0;
         return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -330,6 +341,8 @@ RentalAnalyticsDashboard.components = {
     Layout,
     RentalAnalyticsBarChart,
     MultiRecordSelector,
+    DateTimeInput,
 };
+RentalAnalyticsDashboard.props = { ...standardActionServiceProps };
 
 registry.category("actions").add("rental_analytics_dashboard", RentalAnalyticsDashboard);

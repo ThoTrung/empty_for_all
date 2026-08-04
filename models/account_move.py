@@ -21,7 +21,7 @@ class AccountMove(models.Model):
         string="Khách hàng thuê",
         store=True,
         index=True,
-        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]",
+        domain="[('is_rental_customer', '=', True), ('is_company', '=', True)]",
     )
     rental_construction_work_id = fields.Many2one(
         related="rental_contract_id.construction_work_id",

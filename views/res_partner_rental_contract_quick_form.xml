@@ -14,7 +14,7 @@
                 <attribute name="invisible">context.get('rental_contact_quick') or not same_company_registry_partner_id</attribute>
             </xpath>
             <xpath expr="//div[contains(@class,'oe_button_box')]" position="attributes">
-                <attribute name="invisible">context.get('rental_contact_quick') or customer_type in ['driver', 'renter']</attribute>
+                <attribute name="invisible">context.get('rental_contact_quick') or customer_type in ['driver', 'company']</attribute>
             </xpath>
             <xpath expr="//widget[@name='web_ribbon']" position="attributes">
                 <attribute name="invisible">context.get('rental_contact_quick') or active</attribute>

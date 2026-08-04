@@ -25,7 +25,7 @@ class RentalRentedQtyWizard(models.TransientModel):
         "res.partner",
         string="Khách hàng",
         domain="[('is_company', '=', True), "
-               "('customer_type', '=', 'renter'), "
+               "('is_rental_customer', '=', True), "
                "('company_id', '=', company_id)]",
     )
     rental_contract_id = fields.Many2one(
@@ -55,11 +55,11 @@ class RentalRentedQtyWizard(models.TransientModel):
             partner = wizard.partner_company_id
             if (
                 not partner.is_company
-                or partner.customer_type != "renter"
+                or not partner.is_rental_customer
                 or partner.company_id != wizard.company_id
             ):
                 raise ValidationError(_(
-                    "Khách hàng phải là công ty có loại Khách thuê và thuộc "
+                    "Khách hàng phải là công ty có vai trò Khách thuê và thuộc "
                     "đúng công ty hiện tại."
                 ))
 

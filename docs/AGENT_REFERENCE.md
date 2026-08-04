@@ -6,7 +6,7 @@
 
 **Owned:** `rental.contract`(line), `rr.transport`(line), `rental.transport.matrix`, `rental.invoice`(line, legacy), `construction.*`, `transport.truck`, `rental.template`, `rental.product.template.set`, `rental.holiday`, `mc.group.mixin`, `amount_to_text.vi`
 
-**Inherit:** `res.partner`(customer_type), `res.users`(leader), `product.*`(rental price/multiplier/uom), `stock.picking`→transport done, `account.move`(rental fields)
+**Inherit:** `res.partner`(`customer_type` form mode + `is_rental_customer` / `is_rental_supplier` roles), `res.users`(leader), `product.*`(rental price/multiplier/uom), `stock.picking`→transport done, `account.move`(rental fields)
 
 **Wizards:** `create.invoice`, `rental.reject.confirm`, `rental.transport.matrix.overlap`, `rental.transport.import`, `rental.link.child.contact`
 

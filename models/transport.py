@@ -427,6 +427,26 @@ class Transport(models.Model):
         ], limit=1)
         return pt.id if pt else False
 
+    def _rental_picking_locations(self):
+        """Return (src_location, dest_location) for this transport's stock picking.
+
+        Extension point for modules such as rental_subrent (owned vs WH/Subrent vs dropship).
+        Default: same rules as historical `_apply_picking_type_locations`.
+        """
+        self.ensure_one()
+        if not self.picking_type_id:
+            return False, False
+        pt_src = self.picking_type_id.default_location_src_id
+        pt_dst = self.picking_type_id.default_location_dest_id
+        partner_customer = self._get_partner_customer_location()
+        if self.type == 'delivery':
+            src = pt_src
+            dest = partner_customer or pt_dst
+        else:
+            src = partner_customer or pt_src
+            dest = pt_dst
+        return src, dest
+
     def _apply_picking_type_locations(self):
         """
         Set locations with the following rule:
@@ -435,26 +455,14 @@ class Transport(models.Model):
         Priority:
           1) Operation Type defaults if they exist and make sense
           2) Our enforced partner/internal defaults per type
+        Override location pair via `_rental_picking_locations` (DEC extension for subrent).
         """
         for rec in self:
             if not rec.picking_type_id:
                 rec.location_id = False
                 rec.location_dest_id = False
                 continue
-            pt_src = rec.picking_type_id.default_location_src_id
-            pt_dst = rec.picking_type_id.default_location_dest_id
-            partner_customer = rec._get_partner_customer_location()
-            # internal_stock = rec._get_internal_stock_location()
-
-            if rec.type == 'delivery':
-                # Source prefers PT src, else internal; Destination forced to Customer (partner/generic)
-                src = pt_src # or internal_stock
-                dest = partner_customer or pt_dst  # prefer partner/generic customer; fallback PT dest if somehow custom
-            else:  # 'return'
-                # Source forced to Customer (partner/generic); Destination prefers PT dest, else internal
-                src = partner_customer or pt_src
-                dest = pt_dst# or internal_stock
-
+            src, dest = rec._rental_picking_locations()
             rec.location_id = src.id if src else False
             rec.location_dest_id = dest.id if dest else False
 

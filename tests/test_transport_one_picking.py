@@ -15,7 +15,8 @@ class TestTransportOnePicking(TransactionCase):
         cls._a_company = cls.env["res.partner"].create({
             "name": "One Picking Renter",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
         })
         cls._a_party = cls.env["res.partner"].create({
             "name": "One Picking A rep",

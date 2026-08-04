@@ -14,7 +14,8 @@ class TestTransportFeeExport(TransactionCase):
         cls._a_company = cls.env["res.partner"].create({
             "name": "Fee Export Renter",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
             "company_id": company.id,
         })
         cls._a_party = cls.env["res.partner"].create({

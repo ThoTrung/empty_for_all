@@ -86,13 +86,11 @@ class RentalStockXntWizard(models.TransientModel):
             })
         if vals_list:
             self.env["rental.stock.xnt.wizard.line"].create(vals_list)
-        return {
-            "type": "ir.actions.act_window",
-            "res_model": self._name,
-            "res_id": self.id,
-            "view_mode": "form",
-            "target": "new",
-        }
+        action = self.env["ir.actions.act_window"]._for_xml_id(
+            "rental.action_rental_stock_xnt_wizard"
+        )
+        action["res_id"] = self.id
+        return action
 
     def action_export_excel(self):
         self.ensure_one()
@@ -158,15 +156,11 @@ class RentalStockXntWizard(models.TransientModel):
         if warehouse_ids:
             wizard.warehouse_ids = [(6, 0, list(warehouse_ids))]
         wizard.action_compute()
-        return {
-            "type": "ir.actions.act_window",
-            "name": _("Xuất nhập tồn"),
-            "res_model": self._name,
-            "res_id": wizard.id,
-            "view_mode": "form",
-            "target": "new",
-            "context": dict(self.env.context),
-        }
+        action = self.env["ir.actions.act_window"]._for_xml_id(
+            "rental.action_rental_stock_xnt_wizard"
+        )
+        action["res_id"] = wizard.id
+        return action
 
 
 class RentalStockXntWizardLine(models.TransientModel):

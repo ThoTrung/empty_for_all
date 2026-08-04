@@ -18,7 +18,8 @@ class TestKlctHsttCombinedExport(TransactionCase):
         cls._a_company = cls.env["res.partner"].create({
             "name": "KLCT HSTT Renter",
             "is_company": True,
-            "customer_type": "renter",
+            "customer_type": "company",
+            "is_rental_customer": True,
         })
         cls._a_party = cls.env["res.partner"].create({
             "name": "KLCT HSTT A rep",
@@ -113,6 +114,8 @@ class TestKlctHsttCombinedExport(TransactionCase):
         self.assertIn("KLCT 04-2026", str(qty_cell))
         self.assertEqual(days_cell, "=C13-B13")
         self.assertEqual(amount_cell, "=F13*G13*H13")
+        # Unit price: no forced decimal (template used to be #,##0.0 → 9,200.0).
+        self.assertEqual(hstt.cell(13, 8).number_format, "#,##0")
 
         # Dates must be real date values for C-B formulas.
         self.assertEqual(hstt.cell(13, 2).value.date(), date(2026, 4, 10))

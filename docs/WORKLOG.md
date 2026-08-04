@@ -1,19 +1,19 @@
 # Worklog (giữ ~3 entry mới; cũ hơn xoá bớt)
 
-## 2026-07-25 — Fix DomainSelector Tài xế (verified on DB rental)
+## 2026-08-01 — Pause UX NCC: đọc STATUS rồi quyết
 
-files: `static/src/js/domain_selector_field_domain.js`, `models/res_partner.py` name_search context, tests, `__manifest__.py` 17.0.1.0.71
-why: DB chứng minh name_search([]) = mọi partner; DomainSelector không truyền domain. Vá RecordAutocomplete.getDomain theo label «Tài xế» + fallback path + TreeEditor.
-validation: `TestPartnerCompanyIsolation`; hard-refresh; custom filter Tài xế chỉ còn driver.
+files: `rental_subrent/docs/STATUS_NCC_UX.md` + DECISIONS open backlog
+why: Phase 0–2 (A1+B1) xong; tạm dừng — backlog: ẩn create menu, tracked UI, unify `rr.transport`, hóa đơn NCC, DEBT-04/05.
+validation: docs; versions `rental` 17.0.1.0.81 · `rental_subrent` 17.0.1.0.7
 
-## 2026-07-25 — Thống kê: Tồn kho + Xuất nhập tồn
+## 2026-08-01 — Phase 2: embed Nhập/Trả trên HĐ NCC
 
-files: stock XNT / analytics, `__manifest__.py` 17.0.1.0.68–70, DEC-27
-why: Tồn kho as-of + XNT kỳ cạnh on-hire.
-validation: `TestStockXnt`.
+files: `rental_subrent` O2M receipt/return + tab + tests DEC-S12; `__manifest__` 17.0.1.0.7
+why: A1 — tạo/xem nhận-trả từ HĐ; menu list giữ; stock/policy không đổi.
+validation: `-u rental_subrent --test-tags=subrent_contract_moves`
 
-## 2026-07-25 — Partner domain trong search / custom filter
+## 2026-08-01 — Phase 1: form HĐ NCC (meta + đại diện)
 
-files: domain_selector patch, M2O domains, `__manifest__.py` 17.0.1.0.67
-why: DomainSelector bỏ field.domain; siết driver/renter.
-validation: `TestPartnerCompanyIsolation`.
+files: `rental_subrent` contract fields/view/tests DEC-S11; `__manifest__` subrent 17.0.1.0.6
+why: B1 parity tối thiểu — ngày/số HĐ giấy, đại diện NCC/ta, notebook Thông tin + SP/giá.
+validation: `-u rental_subrent --test-tags=subrent_contract_form`

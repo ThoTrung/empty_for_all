@@ -43,7 +43,7 @@ class RentalAnalyticsOnHireLine(models.Model):
         required=True,
         index=True,
         ondelete="cascade",
-        domain="[('customer_type', '=', 'renter'), ('is_company', '=', True)]",
+        domain="[('is_rental_customer', '=', True), ('is_company', '=', True)]",
     )
     construction_work_id = fields.Many2one(
         "construction.work",
