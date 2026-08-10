@@ -7,9 +7,12 @@ from openpyxl import Workbook, load_workbook
 
 from odoo.addons.rental.services import rental_contract_services as rcs
 from odoo.addons.rental.helper.xlsx_template_utils import find_transport_matrix_layout
+from odoo.exceptions import UserError
+from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
 
+@tagged("post_install", "-at_install")
 class TestKlctHsttCombinedExport(TransactionCase):
     @classmethod
     def setUpClass(cls):
@@ -78,7 +81,7 @@ class TestKlctHsttCombinedExport(TransactionCase):
         ]).write({"active": False, "is_default": False})
 
     def _create_transport(self, when, qty, transport_type="delivery"):
-        return self.env["rr.transport"].create({
+        vals = {
             "rental_contract_id": self._contract.id,
             "type": transport_type,
             "state": "done",
@@ -91,7 +94,56 @@ class TestKlctHsttCombinedExport(TransactionCase):
                 "product_id": self._product.id,
                 "qty": qty,
             })],
-        })
+        }
+        if "source_type" in self.env["rr.transport"]._fields:
+            vals["source_type"] = "owned"
+        return self.env["rr.transport"].create(vals)
+
+    def test_draft_only_transports_raise_user_error_not_merge_crash(self):
+        """No done product movements → UserError (RC00038-style), not openpyxl ValueError."""
+        start_date = date(2026, 7, 1)
+        end_date = date(2026, 7, 31)
+        vals = {
+            "rental_contract_id": self._contract.id,
+            "type": "delivery",
+            "state": "draft",
+            "start_rental_or_return_date": date(2026, 7, 11),
+            "driver_id": self._driver.id,
+            "transport_truck_id": self._truck.id,
+            "vehicle_start_time": date(2026, 7, 11),
+            "plate": "29H-91001",
+            "transport_line_ids": [(0, 0, {
+                "product_id": self._product.id,
+                "qty": 10,
+            })],
+        }
+        if "source_type" in self.env["rr.transport"]._fields:
+            vals["source_type"] = "owned"
+        self.env["rr.transport"].create(vals)
+
+        with self.assertRaises(UserError) as cm:
+            self._contract.action_export_klct_hstt_excel(start_date, end_date)
+        self.assertIn("hoàn thành", str(cm.exception).lower())
+
+        with self.assertRaises(UserError):
+            self._contract._build_klct_hstt_xlsx_buffer(start_date, end_date)
+
+        self.assertFalse(
+            self.env["rental.transport.matrix"].search_count([
+                ("rental_contract_id", "=", self._contract.id),
+                ("start_date", "=", start_date),
+                ("end_date", "=", end_date),
+            ]),
+            "must not create matrix when guard blocks export",
+        )
+        self.assertFalse(
+            self.env["account.move"].search_count([
+                ("rental_contract_id", "=", self._contract.id),
+                ("rental_start_date", "=", start_date),
+                ("rental_end_date", "=", end_date),
+            ]),
+            "must not create invoice when guard blocks export",
+        )
 
     def test_combined_workbook_has_two_named_sheets_with_formulas(self):
         start_date = date(2026, 4, 1)
@@ -199,7 +251,7 @@ class TestKlctHsttCombinedExport(TransactionCase):
         start_date = date(2026, 5, 1)
         end_date = date(2026, 5, 31)
         self._create_transport(date(2026, 4, 10), 232)  # done (helper default)
-        draft = self.env["rr.transport"].create({
+        draft_vals = {
             "rental_contract_id": self._contract.id,
             "type": "delivery",
             "state": "draft",
@@ -212,7 +264,10 @@ class TestKlctHsttCombinedExport(TransactionCase):
                 "product_id": self._product.id,
                 "qty": 1000,
             })],
-        })
+        }
+        if "source_type" in self.env["rr.transport"]._fields:
+            draft_vals["source_type"] = "owned"
+        draft = self.env["rr.transport"].create(draft_vals)
         self.assertEqual(draft.state, "draft")
 
         buffer, _subtotal = self._contract._build_klct_hstt_xlsx_buffer(
@@ -510,20 +565,44 @@ class TestKlctHsttCombinedExport(TransactionCase):
         move = t1.fee_invoice_id
         self.assertTrue(move)
 
-        buffer, subtotal = self._contract._build_klct_hstt_xlsx_buffer(
-            start_date, end_date, fee_invoice=move
-        )
-        wb = load_workbook(BytesIO(buffer.getvalue()))
+        action = move.action_regenerate_business_xlsx()
+        self.assertEqual(action["type"], "ir.actions.act_url")
+        att = move.business_xlsx_attachment_id
+        self.assertTrue(att)
+        wb = load_workbook(BytesIO(base64.b64decode(att.datas)))
         self.assertIn("Chi tiết phí VC", wb.sheetnames)
         detail = wb["Chi tiết phí VC"]
         self.assertEqual(detail.cell(2, 4).value, 800_000)
-        self.assertGreaterEqual(subtotal, 800_000)
 
         # Unbilled query must be empty for this trip after billing.
         self.assertEqual(
             self._contract._rental_unbilled_transport_fee_lines(end_date),
             [],
         )
+
+    def test_download_business_xlsx_uses_cached_attachment(self):
+        """«Tải» must not rebuild — attachment datas stay unchanged."""
+        start_date = date(2026, 5, 1)
+        end_date = date(2026, 5, 31)
+        self._create_transport(date(2026, 5, 10), 12)
+        self._contract.action_export_klct_hstt_excel(start_date, end_date)
+        move = self.env["account.move"].search([
+            ("rental_contract_id", "=", self._contract.id),
+            ("rental_start_date", "=", start_date),
+            ("rental_end_date", "=", end_date),
+        ], limit=1)
+        self.assertTrue(move.business_xlsx_attachment_id)
+        before = move.business_xlsx_attachment_id.datas
+        before_write_date = move.business_xlsx_attachment_id.write_date
+
+        action = move.action_download_business_xlsx()
+        self.assertEqual(action["type"], "ir.actions.act_url")
+        self.assertIn(
+            f"/web/content/{move.business_xlsx_attachment_id.id}",
+            action["url"],
+        )
+        self.assertEqual(move.business_xlsx_attachment_id.datas, before)
+        self.assertEqual(move.business_xlsx_attachment_id.write_date, before_write_date)
 
     def _make_hstt_template_bytes_start_row_15(self):
         """Minimal HSTT workbook: confirmation merge on row 13, header 14, data from 15."""
@@ -712,3 +791,144 @@ class TestKlctHsttCombinedExport(TransactionCase):
         self.assertAlmostEqual(
             float(dccn.cell(17, 8).value or 0), current.amount_total, places=2
         )
+
+    def test_md_cross_variant_return_bob_refs_klct_tong_md_and_invoice_matches(self):
+        """MD multi-variant: giao chỉ 2m, trả 1m+2m → HSTT BOB F→Tổng MD; HĐ = HSTT subtotal."""
+        from openpyxl.utils import get_column_letter
+
+        md_categ = self.env["uom.category"].create({"name": "KLCT HSTT MD"})
+        uom_md = self.env["uom.uom"].create({
+            "name": "Mét dài KLCT-HSTT",
+            "category_id": md_categ.id,
+            "uom_type": "reference",
+            "is_linear_meter_variant": True,
+        })
+        attr = self.env["product.attribute"].create({
+            "name": "Length KLCT-HSTT MD",
+            "create_variant": "always",
+        })
+        val_1 = self.env["product.attribute.value"].create({
+            "name": "1m",
+            "attribute_id": attr.id,
+            "default_price_multiplier": 1.0,
+        })
+        val_2 = self.env["product.attribute.value"].create({
+            "name": "2m",
+            "attribute_id": attr.id,
+            "default_price_multiplier": 2.0,
+        })
+        tmpl = self.env["product.template"].create({
+            "name": "Hộp MD KLCT-HSTT",
+            "type": "product",
+            "list_price": 2760.0,  # /30 → 92/day at factor 1 after variant scale
+            "uom_id": uom_md.id,
+            "uom_po_id": uom_md.id,
+            "rental_price_day": 92.0,
+            "attribute_line_ids": [
+                (0, 0, {"attribute_id": attr.id, "value_ids": [(6, 0, [val_1.id, val_2.id])]})
+            ],
+        })
+        by_mult = {
+            v.product_template_attribute_value_ids.price_multiplier: v
+            for v in tmpl.product_variant_ids
+        }
+        v1, v2 = by_mult[1.0], by_mult[2.0]
+        for v in (v1, v2):
+            v.rental_price_day = 92.0 * (
+                v.product_template_attribute_value_ids.price_multiplier or 1.0
+            )
+
+        contract = self.env["rental.contract"].create({
+            "a_company_party": self._a_company.id,
+            "a_party": self._a_party.id,
+            "b_company_party": self.env.company.partner_id.id,
+            "b_party": self._b_party.id,
+            "rental_billing_mode": "day",
+            "minimum_rental_months": 0,
+            "minimum_penalty_current_period_only": True,
+            "include_start_day_bob": True,
+            "include_start_day_current": False,
+        })
+        self.env["rental.contract.line"].create({
+            "contract_id": contract.id,
+            "product_tmpl_id": tmpl.id,
+            "price_unit": 2760.0,
+        })
+
+        def _tr(when, ttype, lines):
+            vals = {
+                "rental_contract_id": contract.id,
+                "type": ttype,
+                "state": "done",
+                "start_rental_or_return_date": when,
+                "driver_id": self._driver.id,
+                "transport_truck_id": self._truck.id,
+                "vehicle_start_time": when,
+                "plate": "29H-91001",
+                "transport_line_ids": [
+                    (0, 0, {"product_id": p.id, "qty": q}) for p, q in lines
+                ],
+            }
+            if "source_type" in self.env["rr.transport"]._fields:
+                vals["source_type"] = "owned"
+            return self.env["rr.transport"].create(vals)
+
+        # Opening: 146 cây × 2m = 292 MD. Return 12×1m + 65×2m = 142 MD on 11/02.
+        _tr(date(2026, 1, 10), "delivery", [(v2, 146)])
+        _tr(date(2026, 2, 11), "return", [(v1, 12), (v2, 65)])
+        start_date, end_date = date(2026, 2, 1), date(2026, 2, 28)
+        opening_md, returned_md = 292.0, 142.0
+
+        buffer, subtotal = contract._build_klct_hstt_xlsx_buffer(start_date, end_date)
+        wb = load_workbook(BytesIO(buffer.getvalue()))
+        klct = wb["KLCT 02-2026"]
+        hstt = wb["HSTT 02-2026"]
+        _t, _h2, header_third, start_row = find_transport_matrix_layout(klct)
+        md_col = next(
+            col
+            for col in range(4, 20)
+            if klct.cell(header_third, col).value == "Tổng MD"
+        )
+        letter = get_column_letter(md_col)
+        self.assertEqual(klct.cell(start_row, md_col).value, int(opening_md))
+        self.assertEqual(klct.cell(start_row + 1, md_col).value, -int(returned_md))
+
+        bob_qty = hstt.cell(13, 6).value
+        self.assertEqual(bob_qty, f"='KLCT 02-2026'!{letter}{start_row}")
+        credit_row = None
+        for row in range(13, 40):
+            if "trả hàng" in str(hstt.cell(row, 4).value or ""):
+                credit_row = row
+                break
+        self.assertIsNotNone(credit_row)
+        self.assertEqual(
+            hstt.cell(credit_row, 6).value,
+            f"='KLCT 02-2026'!{letter}{start_row + 1}",
+        )
+
+        bob_map, map_map = rcs.calc_rental_payment_table_grouped_by_template(
+            self.env, contract, start_date, end_date
+        )
+        hstt_subtotal = contract._payment_table_subtotal(bob_map, map_map)
+        self.assertAlmostEqual(subtotal, hstt_subtotal, places=2)
+
+        # Create invoice the same way as Xuất KLCT+HSTT (1 line = round HSTT subtotal).
+        self.env["rental.transport.matrix"].search([
+            ("rental_contract_id", "=", contract.id),
+        ]).unlink()
+        contract.action_export_klct_hstt_excel(start_date, end_date)
+        move = self.env["account.move"].search([
+            ("rental_contract_id", "=", contract.id),
+            ("rental_end_date", "=", end_date),
+        ], limit=1)
+        self.assertEqual(move.state, "posted")
+        inv_line = move.invoice_line_ids.filtered(lambda l: l.product_id)
+        self.assertEqual(len(inv_line), 1)
+        self.assertEqual(inv_line.price_unit, float(int(round(hstt_subtotal))))
+
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, contract, start_date, end_date
+        )
+        block = next(b for b in blocks if b["tmpl_id"] == tmpl.id)
+        self.assertEqual(sum(l["qty"] for l in block["normal_lines"]), opening_md)
+        self.assertEqual(block["present_total_qty"], opening_md - returned_md)

@@ -2,9 +2,11 @@
 from datetime import date
 
 from odoo.addons.rental.services import rental_contract_services as rcs
+from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
 
+@tagged("post_install", "-at_install")
 class TestRentalBillingScenarios(TransactionCase):
     @classmethod
     def setUpClass(cls):
@@ -51,7 +53,7 @@ class TestRentalBillingScenarios(TransactionCase):
 
     def _make_transport(self, ttype, when, lines):
         """lines: list of (product, qty, non_billable_qty)."""
-        return self.env["rr.transport"].create({
+        vals = {
             "rental_contract_id": self._contract.id,
             "type": ttype,
             "state": "done",
@@ -63,7 +65,11 @@ class TestRentalBillingScenarios(TransactionCase):
                 (0, 0, {"product_id": p.id, "qty": q, "non_billable_qty": nb})
                 for (p, q, nb) in lines
             ],
-        })
+        }
+        # rental_subrent: set when field is on the model (post_install).
+        if "source_type" in self.env["rr.transport"]._fields:
+            vals["source_type"] = "owned"
+        return self.env["rr.transport"].create(vals)
 
     # ----- Scenario 1: effective-dated price -----
     def test_effective_price_changes_over_time(self):
@@ -481,7 +487,7 @@ class TestRentalBillingScenarios(TransactionCase):
         return contract, tmpl, v1, v2
 
     def _make_transport_for(self, contract, ttype, when, lines):
-        return self.env["rr.transport"].create({
+        vals = {
             "rental_contract_id": contract.id,
             "type": ttype,
             "state": "done",
@@ -493,7 +499,10 @@ class TestRentalBillingScenarios(TransactionCase):
                 (0, 0, {"product_id": p.id, "qty": q, "non_billable_qty": nb})
                 for (p, q, nb) in lines
             ],
-        })
+        }
+        if "source_type" in self.env["rr.transport"]._fields:
+            vals["source_type"] = "owned"
+        return self.env["rr.transport"].create(vals)
 
     def test_pooled_return_attributes_to_latest_lot_across_variants(self):
         # Như RC00083: lô mới nhất (10/07) gồm nhiều biến thể; biến thể V2 trả vượt phần
@@ -539,6 +548,36 @@ class TestRentalBillingScenarios(TransactionCase):
         self.assertEqual(penalty, 60)
         self.assertEqual(returned, 140)
         self.assertEqual(rc.get("display_mode"), "mixed")
+
+    def test_pooled_cross_variant_return_reduces_present_meters(self):
+        """Trả biến thể chưa giao (2m) trừ pool mét lô 3m → present không còn phantom.
+
+        Như INV/2026/00006 Hộp 5*5: tồn đầu 438 MD (146×3m), trả 12×2m+65×3m = 219 MD
+        → credit layout BOB present = 438 (khớp KLCT), remaining = 219 — không phải 462.
+        """
+        contract, tmpl, v1, v2 = self._make_multivariant_meter_contract()
+        contract.minimum_rental_months = 0
+        contract.minimum_penalty_current_period_only = True
+        contract.rental_billing_mode = "day"
+        # Giao chỉ V2 (2m): 146 cây = 292 mét; đơn giản hoá tỷ lệ case thật (3m).
+        # Dùng 73×2m = 146 MD tồn đầu để số nhỏ hơn; vẫn ra cùng class bug.
+        self._make_transport_for(contract, "delivery", date(2026, 1, 10), [(v2, 146, 0)])
+        # Trả mix: 12×1m (chưa giao) + 65×2m = 12+130 = 142 MD
+        self._make_transport_for(
+            contract, "return", date(2026, 2, 11), [(v1, 12, 0), (v2, 65, 0)]
+        )
+        blocks = rcs.calc_rental_payment_blocks_by_template(
+            self.env, contract, date(2026, 2, 1), date(2026, 2, 28)
+        )
+        block = next(b for b in blocks if b["tmpl_id"] == tmpl.id)
+        # Credit layout: full opening meters + credit for return.
+        opening_md = 146 * 2.0  # 292
+        returned_md = 12 * 1.0 + 65 * 2.0  # 142
+        self.assertEqual(sum(l["qty"] for l in block["normal_lines"]), opening_md)
+        rc = block["return_calc"]
+        self.assertEqual(rc.get("display_mode"), "credit")
+        self.assertEqual(sum(c["qty"] for c in rc["credit_returns"]), returned_md)
+        self.assertEqual(block["present_total_qty"], opening_md - returned_md)
 
     def test_credit_display_for_return_after_minimum(self):
         # Trả sau kỳ tối thiểu → layout trừ tiền: dư đầu kỳ FULL + credit âm.

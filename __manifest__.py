@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Rental',
-    'version': '17.0.1.0.81',
+    'version': '17.0.1.0.84',
     'category': 'Rental',
     'summary': 'Rental service module.',
     'author': "Nguyễn Trung Thọ",

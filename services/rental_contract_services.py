@@ -505,12 +505,12 @@ def _build_map_upfront(env, contract, start_date, end_date):
 
 
 def _apply_pooled_returns_by_template(env, contract, start_date, end_date, ratios, map_lines, seq):
-    """Thay phần KHỚP TRẢ (minimum/returned + trả vượt) của mẫu nhiều biến thể mét dài.
+    """Thay TOÀN BỘ dòng billing của mẫu nhiều biến thể mét dài theo POOL mét dài.
 
-    Phần "đang thuê" (kind=present, qty>=0) giữ nguyên từ khớp theo biến thể (tổng tồn
-    bất biến, gộp hiển thị về 1 dòng). Chỉ phần trả được quy đổi sang mét dài và khớp
-    LIFO trên POOL gộp toàn mẫu, rồi phát lại theo đúng biến thể được trả (số cây =
-    mét/hệ số) để hàng gộp + đơn giá/mét vẫn chính xác.
+    Trả/phạt khớp LIFO trên pool gộp toàn mẫu (không theo từng biến thể). Present còn
+    lại cũng lấy từ mét còn mở trên pool — nếu chỉ thay returned mà giữ present theo
+    biến thể thì trả cross-variant (vd trả 2m trừ lô 3m) để lại phantom mét, lệch
+    KLCT Tổng MD và mất F→KLCT (DEC-16).
     """
     from odoo.addons.rental.models.rental_transport_matrix import (
         _linear_meter_factor_for_product,
@@ -530,14 +530,12 @@ def _apply_pooled_returns_by_template(env, contract, start_date, end_date, ratio
         pooled = _pooled_return_lines_for_template(
             env, contract, tmpl, start_date, end_date, ratios, _linear_meter_factor_for_product
         )
-        if pooled is None:
-            continue
-        # Bỏ các dòng trả cũ (khớp theo biến thể) của mẫu này; giữ lại "đang thuê".
+        # Replace every line of this template (present + returns), including when pooled
+        # is empty (fully returned before period → no HSTT rows for the template).
         to_del = [
             k
             for k, v in map_lines.items()
             if Product.browse(v["product_id"]).product_tmpl_id.id == tmpl_id
-            and (v["kind"] in ("minimum", "returned") or (v["kind"] == "present" and v["qty"] < 0))
         ]
         for k in to_del:
             del map_lines[k]
@@ -547,12 +545,14 @@ def _apply_pooled_returns_by_template(env, contract, start_date, end_date, ratio
 
 
 def _pooled_return_lines_for_template(env, contract, tmpl, start_date, end_date, ratios, factor_fn):
-    """Khớp trả LIFO trên POOL mét dài gộp toàn mẫu; phát dòng trả theo từng lần trả.
+    """Khớp trả LIFO trên POOL mét dài gộp toàn mẫu; phát returned/minimum + present còn mở.
 
-    POOL = các "lô" giao (ngày giao, mét còn mở, ngày cuối kỳ tối thiểu) gộp mọi biến thể.
-    Mỗi lần trả (biến thể V, q cây) → m = q×hệ_số mét, trừ chuyển thừa trước, rồi LIFO
-    lấy mét từ lô giao mới nhất. Mỗi mảnh lấy được phát thành 1 dòng theo biến thể V
-    (số cây = mét/hệ_số) với ngày giao = ngày của lô (có thể là lô của biến thể khác).
+    POOL = các "lô" giao (ngày giao, mét còn mở, ngày cuối kỳ tối thiểu, SP giao) gộp
+    mọi biến thể. Mỗi lần trả (biến thể V, q cây) → m = q×hệ_số mét, trừ chuyển thừa
+    trước, rồi LIFO lấy mét từ lô giao mới nhất. Mỗi mảnh lấy được phát thành 1 dòng
+    theo biến thể V (số cây = mét/hệ_số) với ngày giao = ngày của lô (có thể khác biến
+    thể). Cuối cùng phát present từ mét còn mở trên từng lô (theo SP giao của lô) để
+    tổng mét present + returned khớp tồn/KLCT Tổng MD.
     """
     min_months = _minimum_rental_months(contract, tmpl.product_variant_ids[:1])
     lines = _transport_lines_for_billing(
@@ -562,7 +562,8 @@ def _pooled_return_lines_for_template(env, contract, tmpl, start_date, end_date,
         extra_domain=[("product_tmpl_id", "=", tmpl.id)],
     )
     EPS = 1e-9
-    slots = []  # list of [deliver_date, meters_open, min_end_lastday]
+    # [deliver_date, meters_open, min_end_lastday, deliver_product]
+    slots = []
     excess = 0.0
     out = []
 
@@ -632,7 +633,29 @@ def _pooled_return_lines_for_template(env, contract, tmpl, start_date, end_date,
                 if min_months
                 else r
             )
-            slots.append([r, billable, min_end])
+            slots.append([r, billable, min_end, product])
+
+    # Present còn thuê trong kỳ = mét còn mở trên pool (khớp KLCT Tổng MD sau trả).
+    for slot in slots:
+        d, meters_open, _min_end, deliver_product = slot
+        if meters_open <= EPS or d > end_date:
+            continue
+        factor = factor_fn(deliver_product) or 1.0
+        if not factor:
+            continue
+        line_start = max(d, start_date)
+        if line_start > end_date:
+            continue
+        out.append(
+            _build_billing_line_dict(
+                env, contract, ratios, deliver_product,
+                line_start, end_date, meters_open / factor, d,
+                start_date, end_date,
+                kind="present",
+                return_date=None,
+                min_months=min_months,
+            )
+        )
     return out
 
 
@@ -774,47 +797,57 @@ def _merge_variant_lines_to_template_row(env, contract, tmpl, variant_lines):
     }
 
 
-def calc_rental_payment_table_grouped_by_template(env, contract, start_date, end_date):
-    """
-    Giống cấu trúc calc_rental_contract_invoice nhưng mỗi khối theo product.template:
-    - Nhiều biến thể: gộp theo (mẫu, ngày bắt đầu), SL = Σ(qty_i × mét_i), ĐVT = uom mẫu.
-    - Một biến thể: giữ một dòng theo mẫu + kỳ.
-    """
-    map_product_and_date_to_line = _build_map_product_and_date_to_line(env, contract, start_date, end_date)
+def _template_bucket_key(line, tmpl_id):
+    """Bucket key: one HSTT row per template lot / period / kind / return date."""
+    return (
+        tmpl_id,
+        line["deliver_date"],
+        line["start_date"],
+        line["end_date"],
+        line["is_bob"],
+        line["kind"],
+        line.get("return_date"),
+    )
+
+
+def _bucket_sort_key(k):
+    (_tid, deliver_date, sdate, edate, is_bob, kind, return_date) = k
+    kind_order = {"present": 0, "returned": 1, "minimum": 2}.get(kind, 9)
+    return (
+        _tid,
+        deliver_date.toordinal(),
+        kind_order,
+        (return_date or sdate).toordinal(),
+        edate.toordinal(),
+        is_bob,
+    )
+
+
+def _bucket_variant_lines_by_template(env, map_product_and_date_to_line):
+    """Group variant billing lines by template bucket; prefetch product→template."""
+    product_ids = {line["product_id"] for line in map_product_and_date_to_line.values()}
+    tmpl_by_pid = {
+        p.id: p.product_tmpl_id.id
+        for p in env["product.product"].browse(list(product_ids))
+    }
     buckets = defaultdict(list)
     for _k, line in map_product_and_date_to_line.items():
-        tmpl_id = env["product.product"].browse(line["product_id"]).product_tmpl_id.id
-        # Gộp theo (mẫu, lô giao, kỳ tính tiền, phân khúc, loại dòng, ngày trả): mỗi lần
-        # giao/trả tách dòng riêng để nhân viên đối chiếu được với phiếu giao/nhận.
-        buckets[(
-            tmpl_id,
-            line["deliver_date"],
-            line["start_date"],
-            line["end_date"],
-            line["is_bob"],
-            line["kind"],
-            line.get("return_date"),
-        )].append(line)
+        tmpl_id = tmpl_by_pid[line["product_id"]]
+        buckets[_template_bucket_key(line, tmpl_id)].append(line)
+    return buckets
 
-    def _bucket_sort_key(k):
-        (_tid, deliver_date, sdate, edate, is_bob, kind, return_date) = k
-        kind_order = {"present": 0, "returned": 1, "minimum": 2}.get(kind, 9)
-        return (
-            _tid,
-            deliver_date.toordinal(),
-            kind_order,
-            (return_date or sdate).toordinal(),
-            edate.toordinal(),
-            is_bob,
-        )
 
+def _merged_template_rows_from_buckets(env, contract, buckets):
+    """Merge each bucket into one template row; return (bob_map, map_map, lines_by_tmpl)."""
     map_tmpl_id_2_line = {}
     bob_map_tmpl_id_2_line = {}
+    lines_by_tmpl = defaultdict(list)
     for key in sorted(buckets.keys(), key=_bucket_sort_key):
         (tmpl_id, _deliver_date, _sdate, _edate, is_bob, _kind, _rdate) = key
         tmpl = env["product.template"].browse(tmpl_id)
         mline = _merge_variant_lines_to_template_row(env, contract, tmpl, buckets[key])
         tid = mline["tmpl_id"]
+        lines_by_tmpl[tid].append(mline)
         if is_bob:
             map_tmp = bob_map_tmpl_id_2_line
         else:
@@ -831,7 +864,19 @@ def calc_rental_payment_table_grouped_by_template(env, contract, start_date, end
             map_tmp[tid]["total_qty"] += mline["qty"]
             map_tmp[tid]["invoice_qty"] += mline["qty"] * mline["rental_days"]
             map_tmp[tid]["lines"].append(mline)
-    return bob_map_tmpl_id_2_line, map_tmpl_id_2_line
+    return bob_map_tmpl_id_2_line, map_tmpl_id_2_line, lines_by_tmpl
+
+
+def calc_rental_payment_table_grouped_by_template(env, contract, start_date, end_date):
+    """
+    Giống cấu trúc calc_rental_contract_invoice nhưng mỗi khối theo product.template:
+    - Nhiều biến thể: gộp theo (mẫu, ngày bắt đầu), SL = Σ(qty_i × mét_i), ĐVT = uom mẫu.
+    - Một biến thể: giữ một dòng theo mẫu + kỳ.
+    """
+    bob_map, map_map, _blocks = calc_rental_payment_table_and_blocks_by_template(
+        env, contract, start_date, end_date
+    )
+    return bob_map, map_map
 
 
 def _excess_info_by_template(env, contract, start_date, end_date):
@@ -907,41 +952,10 @@ def _merge_display_lines(lines):
     return [merged[k] for k in order]
 
 
-def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
-    """Khối thanh toán theo TỪNG product.template (layout: 1 sản phẩm = 1 khối).
-
-    Mỗi khối:
-    - normal_lines: thuê bình thường. Với phần trả *không phạt*, SL trả được gộp vào
-      dòng present (tính đủ tới cuối kỳ) — layout trừ tiền (ảnh 2).
-    - return_calc (khi có trả / chuyển thừa trong kỳ):
-        + display_mode: "credit" | "legacy" | "mixed"
-        + credit_returns: dòng trừ tiền từ ngày trả → cuối kỳ (qty dương trong dict,
-          writer ghi âm); chỉ phần kind=returned.
-        + offset_deliveries / returns / leftover_present / penalty_rows: layout đối ứng
-          cũ cho phần kind=minimum (và excess-only).
-        + returned_rows: luôn [] (giữ key tương thích test cũ).
-    - present_total_qty: SL đang thuê cuối kỳ (dòng "Cộng").
-    """
-    map_product_and_date_to_line = _build_map_product_and_date_to_line(env, contract, start_date, end_date)
-    buckets = defaultdict(list)
-    for _k, line in map_product_and_date_to_line.items():
-        tmpl_id = env["product.product"].browse(line["product_id"]).product_tmpl_id.id
-        buckets[(
-            tmpl_id,
-            line["deliver_date"],
-            line["start_date"],
-            line["end_date"],
-            line["is_bob"],
-            line["kind"],
-            line.get("return_date"),
-        )].append(line)
-
-    lines_by_tmpl = defaultdict(list)
-    for key, blines in buckets.items():
-        tmpl = env["product.template"].browse(key[0])
-        mline = _merge_variant_lines_to_template_row(env, contract, tmpl, blines)
-        lines_by_tmpl[mline["tmpl_id"]].append(mline)
-
+def _payment_blocks_from_lines_by_tmpl(
+    env, contract, start_date, end_date, lines_by_tmpl
+):
+    """Build HSTT layout blocks from already-merged template lines."""
     excess_info = _excess_info_by_template(env, contract, start_date, end_date)
 
     blocks = []
@@ -1118,6 +1132,42 @@ def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
             "present_total_qty": present_total,
             "excess_qty": exc["on_hand"],
         })
+    return blocks
+
+
+def calc_rental_payment_table_and_blocks_by_template(env, contract, start_date, end_date):
+    """One billing map pass → (bob_map, map_map, blocks) for HSTT export."""
+    map_product_and_date_to_line = _build_map_product_and_date_to_line(
+        env, contract, start_date, end_date
+    )
+    buckets = _bucket_variant_lines_by_template(env, map_product_and_date_to_line)
+    bob_map, map_map, lines_by_tmpl = _merged_template_rows_from_buckets(
+        env, contract, buckets
+    )
+    blocks = _payment_blocks_from_lines_by_tmpl(
+        env, contract, start_date, end_date, lines_by_tmpl
+    )
+    return bob_map, map_map, blocks
+
+
+def calc_rental_payment_blocks_by_template(env, contract, start_date, end_date):
+    """Khối thanh toán theo TỪNG product.template (layout: 1 sản phẩm = 1 khối).
+
+    Mỗi khối:
+    - normal_lines: thuê bình thường. Với phần trả *không phạt*, SL trả được gộp vào
+      dòng present (tính đủ tới cuối kỳ) — layout trừ tiền (ảnh 2).
+    - return_calc (khi có trả / chuyển thừa trong kỳ):
+        + display_mode: "credit" | "legacy" | "mixed"
+        + credit_returns: dòng trừ tiền từ ngày trả → cuối kỳ (qty dương trong dict,
+          writer ghi âm); chỉ phần kind=returned.
+        + offset_deliveries / returns / leftover_present / penalty_rows: layout đối ứng
+          cũ cho phần kind=minimum (và excess-only).
+        + returned_rows: luôn [] (giữ key tương thích test cũ).
+    - present_total_qty: SL đang thuê cuối kỳ (dòng "Cộng").
+    """
+    _bob_map, _map_map, blocks = calc_rental_payment_table_and_blocks_by_template(
+        env, contract, start_date, end_date
+    )
     return blocks
 
 

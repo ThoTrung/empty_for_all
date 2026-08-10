@@ -94,25 +94,37 @@ class AccountMove(models.Model):
         return res
 
     def action_download_business_xlsx(self):
-        """Regenerate KLCT+HSTT(+ĐCCN) workbook from current templates, then download."""
+        """Download the existing KLCT+HSTT attachment (no rebuild).
+
+        Sheet ĐCCN may be stale after payments — use «Tạo lại» to refresh.
+        """
+        self.ensure_one()
+        att = self.business_xlsx_attachment_id
+        if not att:
+            raise UserError(
+                _(
+                    "Chưa có file bảng thanh toán. Hãy tạo hóa đơn thuê với kỳ ngày trước."
+                )
+            )
+        return {
+            "type": "ir.actions.act_url",
+            "url": f"/web/content/{att.id}?download=1",
+            "target": "self",
+        }
+
+    def action_regenerate_business_xlsx(self):
+        """Rebuild KLCT+HSTT(+ĐCCN) from current data/templates, then download."""
         self.ensure_one()
         if not (
             self.rental_contract_id
             and self.rental_start_date
             and self.rental_end_date
         ):
-            att = self.business_xlsx_attachment_id
-            if not att:
-                raise UserError(
-                    _(
-                        "Chưa có file bảng thanh toán. Hãy tạo hóa đơn thuê với kỳ ngày trước."
-                    )
+            raise UserError(
+                _(
+                    "Chỉ tạo lại được với hóa đơn thuê đã gắn hợp đồng và kỳ ngày."
                 )
-            return {
-                "type": "ir.actions.act_url",
-                "url": f"/web/content/{att.id}?download=1",
-                "target": "self",
-            }
+            )
         buffer, _subtotal = self.rental_contract_id._build_klct_hstt_xlsx_buffer(
             self.rental_start_date,
             self.rental_end_date,

@@ -10,7 +10,7 @@
 - DEC-06 — Matrix model + non-overlap constraint · `models/rental_transport_matrix.py`
 - DEC-07 — Multi-company via `mc.group.mixin` · `models/models.py`, `security/ir_rule.xml`
 - DEC-08 — Excel import transport (col C=plate, neg qty=return) · `helper/import_transport_matrix.py`, `wizard/rental_transport_import_wizard.py`
-- DEC-09 — Mẫu nhiều biến thể mét dài: khớp trả/phạt theo POOL mét dài gộp toàn mẫu (LIFO theo ngày giao), KHÔNG theo từng biến thể · `services/rental_contract_services.py` (`_apply_pooled_returns_by_template`)
+- DEC-09 — Mẫu nhiều biến thể mét dài: khớp trả/phạt/present theo POOL mét dài gộp toàn mẫu (LIFO theo ngày giao), KHÔNG theo từng biến thể; present = mét còn mở trên pool (= KLCT Tổng MD) · `services/rental_contract_services.py` (`_apply_pooled_returns_by_template`, `_pooled_return_lines_for_template`)
 - DEC-10 — Phí VC tách kỳ thuê: cutoff `transport_fee_until_date` + đánh dấu `fee_billed_date`/`fee_invoice_id` trên `rr.transport`; HSTT gộp 1 dòng + sheet Chi tiết phí VC · `models/rental_contract.py`, `wizard/create_invoice_wizard.py`
 - DEC-11 — `rental.contract.line.price_unit` = đơn giá thuê **theo tháng** (cùng `list_price`); export báo giá: cột tháng = `price_unit`, cột ngày = `/30`; PDF nhãn «/ tháng» · `controllers/rental_contract_controller.py`, `reports/quotation_price_report.xml`
 - DEC-12 — `transport_fee_share_min_months` / `prices_include_tax`: điều khoản + placeholders xuất báo giá; **chưa** đổi logic chia phí VC trên hóa đơn · `models/rental_contract.py`

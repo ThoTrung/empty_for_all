@@ -6,6 +6,9 @@ from collections import OrderedDict, defaultdict
 from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill
 
+from odoo import _
+from odoo.exceptions import UserError
+
 from odoo.addons.rental.models import rental_transport_matrix as rtm
 
 from .xlsx_template_utils import (
@@ -42,6 +45,8 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
         ('state', '=', 'done'),
         ('start_rental_or_return_date', '<', start_date),
     ])
+    # Prefetch lines + products for cell aggregation / MD factors.
+    (rr_transport_ids | rr_transport_ids_before).mapped('transport_line_ids.product_id')
 
     def _cells_from_transports(transport_set):
         cell_qty = {}
@@ -115,6 +120,12 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
             qty_col_by_tmpl_id[p_tmpl_id] = col_idx
             col_idx += 1
     last_product_col = col_idx - 1
+    start_product_col = 4
+    if last_product_col < start_product_col:
+        raise UserError(_(
+            "Không có vận chuyển đã hoàn thành (done) để tính tiền cho kỳ này. "
+            "Vui lòng hoàn thành phiếu vận chuyển rồi xuất lại."
+        ))
 
     total_cells = _cells_from_transports(rr_transport_ids_before | rr_transport_ids)
 
@@ -144,12 +155,15 @@ def build_transport_matrix_into_workbook(env, contract, start_date, end_date, wb
     start_product_col = 4
     cur_product_col = start_product_col
     md_fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+    length_by_prod_id = {}
 
     def _xlsx_md_sum(cell_qty_map, tmpl_id, p_tmpl):
         total = 0.0
         for prod_id in p_tmpl['products']:
-            prod_rec = env['product.product'].browse(prod_id)
-            length = rtm._linear_meter_factor_for_product(prod_rec)
+            if prod_id not in length_by_prod_id:
+                prod_rec = env['product.product'].browse(prod_id)
+                length_by_prod_id[prod_id] = rtm._linear_meter_factor_for_product(prod_rec)
+            length = length_by_prod_id[prod_id]
             if length is None:
                 continue
             q = cell_qty_map.get((tmpl_id, prod_id), 0) or 0

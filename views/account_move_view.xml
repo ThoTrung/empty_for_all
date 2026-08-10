@@ -25,10 +25,18 @@
                         class="oe_stat_button"
                         icon="fa-download"
                         string="Tải KLCT + HSTT"
+                        title="Tải file đã gắn (ĐCCN có thể cũ sau khi thu tiền — dùng Tạo lại để làm mới)"
                         invisible="business_xlsx_attachment_id==False"
                 >
                   <field name="business_xlsx_attachment_id" widget="statinfo" invisible="1"/>
                 </button>
+                <button name="action_regenerate_business_xlsx"
+                        type="object"
+                        class="btn-secondary"
+                        string="Tạo lại KLCT + HSTT"
+                        title="Tính lại KLCT+HSTT+ĐCCN từ dữ liệu và mẫu hiện tại"
+                        invisible="not rental_contract_id or not rental_start_date or not rental_end_date"
+                />
                 <button name="action_download_rental_payment_table_grouped"
                         type="object"
                         string="Tải bảng thanh toán (gộp mẫu SP)"

@@ -1379,10 +1379,7 @@ class RentalContract(models.Model):
     ):
         """Bảng thanh toán gộp theo mẫu SP (cùng file gắn Business XLSX trên hóa đơn)."""
         self.ensure_one()
-        bob_map, map_map = rcs.calc_rental_payment_table_grouped_by_template(
-            self.env, self, start_date, end_date
-        )
-        blocks = rcs.calc_rental_payment_blocks_by_template(
+        bob_map, map_map, blocks = rcs.calc_rental_payment_table_and_blocks_by_template(
             self.env, self, start_date, end_date
         )
         fee_lines = self._rental_period_transport_fee_lines(
@@ -1441,12 +1438,20 @@ class RentalContract(models.Model):
         }
 
     def _build_klct_hstt_xlsx_buffer(
-        self, start_date, end_date, transport_fee_until_date=None, fee_invoice=None
+        self,
+        start_date,
+        end_date,
+        transport_fee_until_date=None,
+        fee_invoice=None,
+        payment_table=None,
     ):
         """One workbook: KLCT + HSTT (+ optional sheets) + ĐCCN with Excel formulas.
 
         Returns (buffer, hstt_subtotal) where hstt_subtotal matches the HSTT sheet
         footer (rent + transport fees, before VAT; excludes compensation sheet).
+
+        ``payment_table`` optional ``(bob_map, map_map, blocks)`` skips a second
+        billing pass when the caller already computed them (e.g. export invoice).
         """
         self.ensure_one()
         from ..helper.transport_matrix_export import build_transport_matrix_into_workbook
@@ -1465,12 +1470,12 @@ class RentalContract(models.Model):
             if sheet.title != klct_title:
                 wb.remove(sheet)
 
-        bob_map, map_map = rcs.calc_rental_payment_table_grouped_by_template(
-            self.env, self, start_date, end_date
-        )
-        blocks = rcs.calc_rental_payment_blocks_by_template(
-            self.env, self, start_date, end_date
-        )
+        if payment_table is None:
+            bob_map, map_map, blocks = rcs.calc_rental_payment_table_and_blocks_by_template(
+                self.env, self, start_date, end_date
+            )
+        else:
+            bob_map, map_map, blocks = payment_table
         fee_lines = self._rental_period_transport_fee_lines(
             start_date,
             end_date,
@@ -1592,6 +1597,25 @@ class RentalContract(models.Model):
             ("rental_end_date", "=", end_date),
         ])
 
+    def _rental_has_done_transport_products_until(self, end_date):
+        """True if any done transport has product lines on or before end_date (KLCT columns)."""
+        self.ensure_one()
+        return bool(self.env["rr.transport.line"].search_count([
+            ("transport_id.rental_contract_id", "=", self.id),
+            ("transport_id.state", "=", "done"),
+            ("transport_id.start_rental_or_return_date", "<=", end_date),
+            ("product_id", "!=", False),
+        ]))
+
+    def _raise_if_no_done_transport_for_klct(self, end_date):
+        """Block KLCT/HSTT export when there are no done product movements to bill."""
+        self.ensure_one()
+        if not self._rental_has_done_transport_products_until(end_date):
+            raise UserError(_(
+                "Không có vận chuyển đã hoàn thành (done) để tính tiền cho kỳ này. "
+                "Vui lòng hoàn thành phiếu vận chuyển rồi xuất lại."
+            ))
+
     def _attach_business_xlsx_to_move(self, move, excel_buffer, file_name):
         """Create/replace business XLSX attachment on a rental invoice."""
         self.ensure_one()
@@ -1685,6 +1709,8 @@ class RentalContract(models.Model):
     def action_export_klct_hstt_excel(self, start_date, end_date, transport_fee_until_date=None):
         """Create volume matrix + posted invoice (1 line = HSTT total) + download combined XLSX."""
         self.ensure_one()
+        # Before Matrix.create / invoice post — empty done set crashes openpyxl merge.
+        self._raise_if_no_done_transport_for_klct(end_date)
         Matrix = self.env["rental.transport.matrix"]
         overlap_domain = [
             ("rental_contract_id", "=", self.id),
@@ -1728,7 +1754,7 @@ class RentalContract(models.Model):
         fee_lines = self._rental_period_transport_fee_lines(
             start_date, end_date, transport_fee_until_date=transport_fee_until_date
         )
-        bob_map, map_map = rcs.calc_rental_payment_table_grouped_by_template(
+        bob_map, map_map, blocks = rcs.calc_rental_payment_table_and_blocks_by_template(
             self.env, self, start_date, end_date
         )
         hstt_subtotal = self._payment_table_subtotal(bob_map, map_map, fee_lines)
@@ -1742,11 +1768,13 @@ class RentalContract(models.Model):
             post=True,
         )
         # Build after post so ĐCCN sheet includes this period's residual.
+        # Reuse the same billing pass used for the invoice line amount.
         buffer, _subtotal = self._build_klct_hstt_xlsx_buffer(
             start_date,
             end_date,
             transport_fee_until_date=transport_fee_until_date,
             fee_invoice=move,
+            payment_table=(bob_map, map_map, blocks),
         )
         filename = f"KLCT-HSTT {end_date.strftime('%m-%Y')} - {self.code}"
         att_id = self._attach_business_xlsx_to_move(move, buffer, filename)
