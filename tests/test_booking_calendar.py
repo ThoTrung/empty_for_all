@@ -1926,6 +1926,42 @@ class TestBookingCalendar(TransactionCase):
         self.assertIn('name="draft_special_hex_color"', view.arch_db)
         self.assertIn('name="draft_special_hex_text_color"', view.arch_db)
 
+    def test_tree_view_default_order_and_optional_columns(self):
+        view = self.env.ref("booking_calendar.view_spa_service_booking_tree")
+        arch = view.arch_db
+        self.assertIn('default_order="start_datetime desc, id desc"', arch)
+        self.assertIn('name="name" optional="hide"', arch)
+        self.assertIn('name="end_datetime" optional="hide"', arch)
+        code_pos = arch.find('name="partner_customer_code"')
+        partner_pos = arch.find('name="partner_id"')
+        phone_pos = arch.find('name="partner_phone"')
+        self.assertTrue(0 <= code_pos < partner_pos < phone_pos)
+        op_view = self.env.ref("booking_calendar.view_spa_service_booking_tree_operator")
+        op_arch = self.env["spa.service.booking"].get_view(
+            view_id=op_view.id, view_type="tree"
+        )["arch"]
+        self.assertIn("start_datetime desc", op_arch)
+        self.assertIn('name="partner_customer_code"', op_arch)
+        self.assertIn('name="partner_phone"', op_arch)
+
+    def test_partner_customer_code_and_phone_related(self):
+        self.partner.customer_code = "KH-TREE-01"
+        self.partner.phone = "0912345678"
+        start = datetime.now() + timedelta(days=1)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+        })
+        self.assertEqual(booking.partner_customer_code, "KH-TREE-01")
+        self.assertEqual(booking.partner_phone, "0912345678")
+
     def test_draft_special_color_non_session_priority(self):
         ICP = self.env["ir.config_parameter"].sudo()
         ICP.set_param("spa.booking_calendar_hex_color_draft_non_session", "#D71629")

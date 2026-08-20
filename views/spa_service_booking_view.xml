@@ -66,15 +66,18 @@
             <field name="name">spa.service.booking.tree</field>
             <field name="model">spa.service.booking</field>
             <field name="arch" type="xml">
-                <tree decoration-muted="state == 'cancel'"
+                <tree default_order="start_datetime desc, id desc"
+                      decoration-muted="state == 'cancel'"
                       decoration-success="state == 'done'"
                       decoration-info="state == 'confirmed'">
-                    <field name="name"/>
+                    <field name="name" optional="hide"/>
                     <field name="booking_kind" optional="show"/>
+                    <field name="partner_customer_code" optional="show"/>
                     <field name="partner_id"/>
+                    <field name="partner_phone" optional="show"/>
                     <field name="product_internal_ref"/>
                     <field name="start_datetime"/>
-                    <field name="end_datetime"/>
+                    <field name="end_datetime" optional="hide"/>
                     <field name="display_end_datetime" optional="hide"/>
                     <field name="staff_ids" widget="many2many_tags"/>
                     <field name="bed_id"/>
@@ -307,10 +310,15 @@
             <field name="mode">primary</field>
             <field name="priority">99</field>
             <field name="arch" type="xml">
-                <calendar position="attributes">
-                    <attribute name="create">0</attribute>
-                    <attribute name="delete">0</attribute>
-                </calendar>
+                <data>
+                    <calendar position="attributes">
+                        <attribute name="create">0</attribute>
+                        <attribute name="delete">0</attribute>
+                    </calendar>
+                    <xpath expr="//field[@name='display_start_datetime']" position="attributes">
+                        <attribute name="readonly">1</attribute>
+                    </xpath>
+                </data>
             </field>
         </record>
         <record id="view_spa_service_booking_tree_operator" model="ir.ui.view">
@@ -334,11 +342,86 @@
             <field name="mode">primary</field>
             <field name="priority">99</field>
             <field name="arch" type="xml">
+                <data>
                 <form position="attributes">
                     <attribute name="create">0</attribute>
-                    <attribute name="edit">0</attribute>
+                    <attribute name="edit">1</attribute>
                     <attribute name="delete">0</attribute>
                 </form>
+                <xpath expr="//field[@name='partner_id']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='booking_kind']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='card_id']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='non_session_offering_id']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='start_datetime']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='duration']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='bed_id']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='session_id']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='note']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='calendar_note']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='recurring_mon']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='recurring_tue']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='recurring_wed']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='recurring_thu']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='recurring_fri']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='recurring_sat']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='recurring_sun']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='booking_line_ids']/tree" position="attributes">
+                    <attribute name="create">false</attribute>
+                    <attribute name="delete">false</attribute>
+                </xpath>
+                <xpath expr="//field[@name='booking_line_ids']/tree/field[@name='sequence']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='booking_line_ids']/tree/field[@name='product_id']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='booking_line_ids']/tree/field[@name='start_datetime']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='booking_line_ids']/tree/field[@name='duration_minutes']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='booking_line_ids']/tree/field[@name='end_datetime']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//button[@name='action_open_assign_staff_modal']" position="attributes">
+                    <attribute name="groups">spa.group_spa_staff,spa.group_spa_booking_operator</attribute>
+                </xpath>
+                </data>
             </field>
         </record>
         <record id="action_spa_service_booking_operator" model="ir.actions.act_window">

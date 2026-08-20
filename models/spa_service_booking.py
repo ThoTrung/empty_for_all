@@ -72,6 +72,16 @@ class SpaServiceBooking(models.Model):
         required=True,
         tracking=True,
     )
+    partner_customer_code = fields.Char(
+        string="Mã KH",
+        related="partner_id.customer_code",
+        readonly=True,
+    )
+    partner_phone = fields.Char(
+        string="sdt",
+        related="partner_id.phone",
+        readonly=True,
+    )
     # Một dropdown cho nhân viên: mỗi giá trị ánh xạ tới completion_res_* (cách B).
     # Thêm loại mới: bổ sung key trong Selection + nhánh trong _compute_completion_pointer
     # + model triển khai spa_complete_booking (inherit spa.booking.completion.mixin).
@@ -1697,17 +1707,78 @@ class SpaServiceBooking(models.Model):
             )
         return result
 
+    def _spa_operator_staff_write_access_error(self):
+        return AccessError(
+            _(
+                "Spa Booking Operator can only change Nhân viên thực hiện. "
+                "Use Phục vụ / Hoàn thành for status changes."
+            )
+        )
+
+    def _spa_sanitize_operator_booking_line_commands(self, commands):
+        """Allow One2many updates of line staff_id only (no create/unlink)."""
+        sanitized = []
+        for cmd in commands or []:
+            if not cmd:
+                continue
+            code = cmd[0]
+            if code in (3, 4):
+                continue
+            if code != 1 or len(cmd) < 3:
+                raise self._spa_operator_staff_write_access_error()
+            line_id = cmd[1]
+            line_vals = cmd[2] or {}
+            extra = set(line_vals) - {"staff_id"}
+            if extra:
+                raise self._spa_operator_staff_write_access_error()
+            if "staff_id" not in line_vals:
+                continue
+            sanitized.append((1, line_id, {"staff_id": line_vals["staff_id"]}))
+        return sanitized
+
+    def _spa_filter_operator_booking_write_vals(self, vals):
+        """Operator-only: keep performing-staff fields; drop form noise; reject the rest."""
+        drop_keys = {
+            "display_start_datetime",
+            "display_end_datetime",
+            "message_ids",
+            "message_follower_ids",
+            "activity_ids",
+        }
+        cleaned = {}
+        extra = []
+        for key, value in vals.items():
+            if key in drop_keys:
+                continue
+            if key == "staff_ids":
+                cleaned[key] = value
+                continue
+            if key == "booking_line_ids":
+                cleaned[key] = self._spa_sanitize_operator_booking_line_commands(value)
+                continue
+            extra.append(key)
+        if extra:
+            raise self._spa_operator_staff_write_access_error()
+        return cleaned
+
     def write(self, vals):
         if (
             self.env.user.spa_staff_is_booking_operator_only()
             and not self.env.context.get("spa_booking_operator_transition")
         ):
-            raise AccessError(
-                _(
-                    "Spa Booking Operator cannot edit bookings. "
-                    "Use Phục vụ / Hoàn thành on Lịch phục vụ."
-                )
+            vals = self._spa_filter_operator_booking_write_vals(vals)
+            if not vals:
+                return True
+            locked = self.filtered(
+                lambda b: b.is_locked or b.state in ("done", "cancel")
             )
+            if locked:
+                raise AccessError(
+                    _(
+                        "Spa Booking Operator cannot change Nhân viên thực hiện "
+                        "on completed or cancelled bookings."
+                    )
+                )
         if self.env.context.get("skip_composite_duration_sync"):
             return super().write(vals)
 

@@ -16,14 +16,23 @@ Track architecture and implementation decisions so future agents keep consistenc
 
 ## Decisions
 
+### [BC-DEC-2026-08-19-01] Tree list: default_order desc + Mã KH/sdt
+- Date: 2026-08-19
+- Status: accepted
+- Context: List Đặt lịch / Lịch phục vụ cần lịch mới lên đầu; ẩn mã đặt lịch và giờ kết thúc; hiện Mã KH trước tên KH và sdt sau tên.
+- Decision: `default_order="start_datetime desc, id desc"` trên tree chung (không đổi `_order` model). Related readonly `partner_customer_code` / `partner_phone`. `name` và `end_datetime` `optional="hide"`.
+- Consequences: operator tree (primary inherit) nhận cùng arch. Browser có thể nhớ cột optional cũ cho đến khi user reset.
+- Alternatives considered: đổi `_order` model (rejected — ảnh hưởng search/RPC khác); chỉ xpath operator tree (rejected — cùng bộ cột trên Đặt lịch).
+- Related files/modules: `models/spa_service_booking.py`, `views/spa_service_booking_view.xml`, `tests/test_booking_calendar.py`
+
 ### [BC-DEC-2026-07-26-02] Lịch phục vụ cho Spa Booking Operator
 - Date: 2026-07-26
-- Status: accepted
-- Context: Cần màn nhân viên nhận việc: chỉ confirmed/doing/done; Phục vụ/Hoàn thành; bắt buộc có Nhân viên thực hiện (`staff_ids` hoặc line `staff_id`); không CRUD; máy chung một login.
-- Decision: record rule gate theo state khi có `group_spa_booking_operator` và không có `group_spa_staff`; ACL read booking/line/offering; `action_doing`/`action_done` dùng sudo+`spa_booking_operator_transition` cho operator-only; chặn create/write/unlink/confirm/cancel/draft; menu/action **Lịch phục vụ** với view primary create/edit/delete=0; popover chỉ Phục vụ/Hoàn thành cho operator.
-- Consequences: `action_doing` bắt buộc NV thực hiện với **mọi** user; legacy `staff_id` alone không đủ.
-- Alternatives considered: acting-staff session (rejected); lọc done theo env.user (rejected trên máy chung).
-- Related files/modules: `security/staff_booking_operator_security.xml`, `models/spa_service_booking.py`, views/menu, popover JS/XML, `tests/test_booking_operator.py`.
+- Status: accepted (amended 2026-08-19)
+- Context: Cần màn nhân viên nhận việc: chỉ confirmed/doing/done; Phục vụ/Hoàn thành; bắt buộc có Nhân viên thực hiện (`staff_ids` hoặc line `staff_id`); không CRUD lịch; máy chung một login. 2026-08-19: operator cần gán/đổi NV trên form chi tiết.
+- Decision: record rule gate theo state khi có `group_spa_booking_operator` và không có `group_spa_staff`; ACL read+write booking/line (write whitelist `staff_ids` / line `staff_id`); `action_doing`/`action_done` dùng sudo+`spa_booking_operator_transition` cho operator-only; chặn create/unlink/confirm/cancel/draft; menu/action **Lịch phục vụ**; form operator `edit=1` với field khác readonly; calendar `display_start_datetime` readonly (không kéo giờ); popover chỉ Phục vụ/Hoàn thành cho operator.
+- Consequences: `action_doing` bắt buộc NV thực hiện với **mọi** user; legacy `staff_id` alone không đủ. Operator đổi NV trên confirmed/doing; không đổi khi done/cancel/`is_locked`.
+- Alternatives considered: acting-staff session (rejected); lọc done theo env.user (rejected trên máy chung); mở CRUD form (rejected — whitelist field).
+- Related files/modules: `security/staff_booking_operator_security.xml`, `models/spa_service_booking.py`, `spa_service_booking_line.py`, views/menu, popover JS/XML, `spa_staff_payroll` operator form inherit, `tests/test_booking_operator.py`.
 
 ### [BC-DEC-2026-07-26-01] Calendar menus split by booking_board selection
 - Date: 2026-07-26

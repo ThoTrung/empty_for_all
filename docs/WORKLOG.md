@@ -19,6 +19,90 @@ Use this file for short session-level handoff notes.
 
 ## Entries
 
+### 2026-08-20 - Prod ZNS whitelist 1–2 SĐT (runbook)
+- Goal: Cron/enqueue/send tôn trọng whitelist khi smoke production.
+- Changes made: none in booking_calendar source.
+- Files touched: none in this module.
+- Validation done: `--test-tags=/spa_zalo_oa` trên `drlai` → **0 failed / 25 tests**.
+- Dependency impact check:
+  - Dependents reviewed: `spa.service.booking._cron_send_zalo_reminders` không đổi chữ ký; whitelist vẫn lọc trước enqueue.
+  - Contract compatibility result: no booking_calendar XML/field change.
+  - Regression tests/manual checks run: TestZaloOa 25 tests, 0 failed.
+- Open risks: B8 tắt whitelist chỉ sau khi B7.3 ổn — không làm lúc deploy.
+- Next suggested steps: `-u spa_zalo_oa` trên prod; checklist ACTIVATION.md B7.
+
+### 2026-08-20 - Zalo OA ZNS go-live hardening (spa_zalo_oa)
+- Goal: Nhắc lịch ZNS chỉ `confirmed`; hủy/đổi giờ hủy tin queued; hiện `zalo_reminder_sent` trên form.
+- Changes made: none in booking_calendar source; inherit form từ `spa_zalo_oa`.
+- Files touched: none in this module.
+- Validation done: `--test-tags=/spa_zalo_oa` trên `drlai` → **0 failed / 23 tests** (2026-08-20).
+- Dependency impact check:
+  - Dependents reviewed: `view_spa_service_booking_form` xpath `partner_id`; `write()`/`state=cancel`/`start_datetime` — additive hook trong `spa_zalo_oa`.
+  - Contract compatibility result: không đổi XML id / field booking_calendar; `reminder_sent` (NV) không đụng.
+  - Regression tests/manual checks run: TestZaloOa 23 tests, 0 failed.
+- Open risks: `write({state: confirmed})` trong test không qua UI Xác nhận.
+- Next suggested steps: `-u spa_zalo_oa`; checklist ACTIVATION.md.
+
+### 2026-08-19 - Tree Lịch phục vụ: sort desc + Mã KH/sdt
+- Goal: Tree booking sắp xếp giảm dần theo giờ bắt đầu; ẩn mặc định Mã đặt lịch và Kết thúc; hiện Mã KH trước / sdt sau cột Khách hàng.
+- Changes made: related `partner_customer_code` / `partner_phone`; tree `default_order="start_datetime desc, id desc"`; `name`/`end_datetime` optional hide.
+- Files touched: `models/spa_service_booking.py`, `views/spa_service_booking_view.xml`, `tests/test_booking_calendar.py`, docs.
+- Validation done: `--test-tags=/booking_calendar:TestBookingCalendar.test_tree_view_default_order_and_optional_columns,/booking_calendar:TestBookingCalendar.test_partner_customer_code_and_phone_related` trên DB `drlai`.
+- Dependency impact check:
+  - Dependents reviewed: operator tree primary inherit; `spa_staff_payroll` không inherit tree; operator write whitelist không đụng related readonly.
+  - Contract compatibility result: additive fields + view attrs; XML ids / `_order` model không đổi.
+  - Regression tests/manual checks run: TestBookingCalendar tree + related methods.
+- Open risks: browser localStorage có thể giữ cột optional cũ — hard refresh / ẩn danh nếu UI chưa đổi.
+- Next suggested steps: `-u booking_calendar` trên `drlai`; mở Lịch phục vụ list (cửa sổ ẩn danh nếu cột cũ còn hiện).
+
+### 2026-08-19 - Operator được sửa Nhân viên thực hiện
+- Goal: Spa Booking Operator mở form chi tiết và sửa NV thực hiện (đơn + gộp), không CRUD/Xác nhận.
+- Changes made: ACL write booking/line; write whitelist `staff_ids` / line `staff_id`; tách sync duration vs staff trên line; form operator `edit=1` + field khác readonly; calendar date_start readonly; ACL đọc `booking.shift.config` cho Staff + Operator (constraint ca khi đổi NV).
+- Files touched: `security/ir.model.access.xml`, `models/spa_service_booking.py`, `models/spa_service_booking_line.py`, `views/spa_service_booking_view.xml`, `tests/test_booking_operator.py`, docs.
+- Validation done: `--test-tags=/booking_calendar:TestBookingOperator` trên DB `drlai`.
+- Dependency impact check:
+  - Dependents reviewed: `spa_staff_payroll` inherit form operator (readonly flag lương); `action_doing`/`action_done` sudo không đổi; readonly observer không đổi.
+  - Contract compatibility result: additive write whitelist; create/unlink/confirm/cancel vẫn chặn.
+  - Regression tests/manual checks run: TestBookingOperator.
+- Open risks: gán Operator+Staff vẫn full Staff (by design).
+- Next suggested steps: `-u spa,booking_calendar,spa_staff_payroll`; UI Lịch phục vụ đổi NV rồi Lưu, rồi Phục vụ.
+
+### 2026-08-03 - Note: spa loyalty pre-deploy check (no code change)
+- Goal: Confirm no booking impact before spa loyalty cancel prod deploy.
+- Changes made: none
+- Files touched: none
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: booking không gọi spa loyalty cancel hooks.
+  - Contract compatibility result: no impact.
+  - Regression tests/manual checks run: none
+- Open risks: none
+- Next suggested steps: none
+
+### 2026-08-02 - Note: spa loyalty residual risk register (no code change)
+- Goal: Mirror spa docs — residual risk register for loyalty cancel.
+- Changes made: none in this module.
+- Files touched: none (spa docs only).
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: không đọc spa.loyalty.ledger cancel hooks.
+  - Contract compatibility result: no impact.
+  - Regression tests/manual checks run: none
+- Open risks: none for this module
+- Next suggested steps: none
+
+### 2026-08-02 - Note: spa loyalty cancel cleanup (no code change)
+- Goal: Ghi nhận task spa dọn `spa.loyalty.ledger` khi hủy SO/HĐ.
+- Changes made: none in this module.
+- Files touched: none
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: không phụ thuộc ledger loyalty spa.
+  - Contract compatibility result: no impact.
+  - Regression tests/manual checks run: none
+- Open risks: none
+- Next suggested steps: none
+
 ### 2026-07-26 - Spa Booking Operator + Lịch phục vụ
 - Goal: Nhóm/màn nhân viên nhận lịch: confirmed/doing/done; Phục vụ/Hoàn thành; bắt buộc Nhân viên thực hiện; không CRUD.
 - Changes made: group + ACL + record rule; sudo transitions; menu/action/views operator; popover JS; tests.

@@ -4,7 +4,7 @@
 
 ## 1) Business Scope
 - Purpose: manage spa booking operations separated from core SPA module (calendar planning, staff capacity, recurring/composite bookings, reminder activities).
-- Main roles: spa staff (daily scheduling), spa booking operator (serve/complete only), spa manager (configuration and catalog), spa customer (limited self-visibility via record rules).
+- Main roles: spa staff (daily scheduling), spa booking operator (assign performing staff + serve/complete), spa manager (configuration and catalog), spa customer (limited self-visibility via record rules).
 - Expected outcomes: conflict-aware scheduling, predictable staff rotation, accurate booking completion linkage.
 
 ## 2) Technical Scope
@@ -22,6 +22,7 @@
 ## 3) Data Model Notes
 - Important fields:
   - chain display: `parent_booking_id`, `child_booking_ids`, `display_is_calendar_parent`, `display_start_datetime`, `display_end_datetime`
+  - list display: `partner_customer_code` / `partner_phone` (related `res.partner.customer_code` / `phone`, not stored)
   - staffing/capacity: `staff_ids`, `staff_level_filter`, capacity percent checks
   - menu calendar board: `booking_board` (`specialist` | `doctor`) — Selection ẩn trên UI; domain menu Doctor/Specialist; default từ context `default_booking_board` khi tạo từ menu tương ứng (model default = `specialist`)
   - completion delegation: `completion_res_model_id`, `completion_res_id`
@@ -37,6 +38,7 @@
 ## 4) View Architecture
 - Main views:
   - `views/spa_service_booking_view.xml` (search/calendar/tree/form/actions)
+  - tree `view_spa_service_booking_tree` (`default_order="start_datetime desc, id desc"`; `name` + `end_datetime` optional hide; `partner_customer_code` before `partner_id`, `partner_phone` after). Operator tree primary-inherits this arch (Lịch phục vụ).
   - `views/spa_service_booking_line_view.xml` (line-level assign-staff modal action)
   - `views/booking_shift_config_views.xml` (shift setup modal)
 - Inherited xpaths:
@@ -54,7 +56,7 @@
   - `spa.group_spa_staff`: CRUD booking + booking lines + recurring wizard, read offerings.
   - `spa.group_spa_manager`: CRUD shift config and offering management.
   - `spa.group_spa_customer`: read-only booking/line/offering views.
-  - `spa.group_spa_booking_operator`: read booking/line/offering; menu **Lịch phục vụ**; serve/complete via sudo transitions (no booking CRUD).
+  - `spa.group_spa_booking_operator`: read+write booking/line (write whitelist: performing staff only); read offering; menu **Lịch phục vụ**; serve/complete via sudo transitions (no create/unlink, no confirm/cancel).
 - Record rules:
   - customer can only see own/commercial-partner booking tree and related lines; offerings must be active.
   - booking operator (without spa staff): `state in (confirmed, doing, done)` on booking + lines.
@@ -85,7 +87,7 @@
 - Declared in `__manifest__.py`: `spa`, `mail`, `web`.
 - Optional downstream: `spa_staff_payroll` (depends `booking_calendar`) extends calendar colors + constrains staff khi «Khách chủ động đặt NV».
 - Read-only staff: `spa.group_spa_staff_readonly` nhận ACL đọc trên `spa.service.booking` / line / non-session offering (mirror staff), không có quyền wizard recurring; nút chuyển trạng thái trên form gắn `groups=\"spa.group_spa_staff\"`; `set_calendar_display_config` chặn user chỉ đọc.
-- Booking operator: `spa.group_spa_booking_operator` — menu Lịch phục vụ; form nút Phục vụ/Hoàn thành; không CRUD; record rule state confirmed/doing/done; không dùng chung Read-only.
+- Booking operator: `spa.group_spa_booking_operator` — menu Lịch phục vụ; form `edit=1` chỉ NV thực hiện; nút Phục vụ/Hoàn thành; không create/unlink; record rule state confirmed/doing/done; không dùng chung Read-only.
 - Cross-module assumptions:
   - relies heavily on `spa` models/fields (`spa.treatment.card`, staff levels, beds, partner/service structures).
 - Hidden dependency caution:
@@ -94,10 +96,10 @@
 ## 8) Tests
 - Existing tests:
   - `tests/test_booking_calendar.py` (large TransactionCase suite)
-  - `tests/test_booking_operator.py` (Spa Booking Operator ACL/serve/complete)
+  - `tests/test_booking_operator.py` (Spa Booking Operator ACL/serve/complete + performing-staff write)
   - `static/tests/booking_calendar_color_tests.js` (frontend color logic)
 - Covered scenarios:
-  - recurring wizard basics, capacity handling, shift availability, staff rotation, composite line sync, non-session completion, color behavior.
+  - recurring wizard basics, capacity handling, shift availability, staff rotation, composite line sync, non-session completion, color behavior, tree default_order + Mã KH/sdt columns.
 - Missing high-risk coverage:
   - recurring inline action (`action_confirm_recurring`) edge cases
   - record-rule regression tests for customer visibility

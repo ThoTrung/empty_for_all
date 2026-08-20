@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from odoo import api, fields, models, _
 from markupsafe import Markup, escape
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 from .booking_schedule_sanitize import (
     CTX_SCHEDULE_END_ONLY_WRITE,
@@ -182,8 +182,36 @@ class SpaServiceBookingLine(models.Model):
             if rec.booking_id:
                 rec.booking_id._sync_staff_ids_from_lines()
 
+    def _spa_filter_operator_line_write_vals(self, vals):
+        """Operator-only: keep staff_id; drop form noise; reject other mutations."""
+        drop_keys = {"end_datetime"}
+        cleaned = {}
+        extra = []
+        for key, value in vals.items():
+            if key in drop_keys:
+                continue
+            if key == "staff_id":
+                cleaned[key] = value
+                continue
+            extra.append(key)
+        if extra:
+            raise AccessError(
+                _(
+                    "Spa Booking Operator can only change Nhân viên thực hiện "
+                    "on booking lines."
+                )
+            )
+        return cleaned
+
     @api.model_create_multi
     def create(self, vals_list):
+        if self.env.user.spa_staff_is_booking_operator_only():
+            raise AccessError(
+                _(
+                    "Spa Booking Operator cannot create booking lines. "
+                    "Change Nhân viên thực hiện on existing steps only."
+                )
+            )
         vals_list = [sanitize_line_write_vals(vals, is_create=True) for vals in vals_list]
         records = super().create(vals_list)
         for rec in records:
@@ -193,6 +221,27 @@ class SpaServiceBookingLine(models.Model):
         return records
 
     def write(self, vals):
+        if (
+            self.env.user.spa_staff_is_booking_operator_only()
+            and not self.env.context.get("spa_booking_operator_transition")
+        ):
+            vals = self._spa_filter_operator_line_write_vals(vals)
+            if not vals:
+                return True
+            locked = self.filtered(
+                lambda l: l.booking_id
+                and (
+                    l.booking_id.is_locked
+                    or l.booking_id.state in ("done", "cancel")
+                )
+            )
+            if locked:
+                raise AccessError(
+                    _(
+                        "Spa Booking Operator cannot change Nhân viên thực hiện "
+                        "on completed or cancelled bookings."
+                    )
+                )
         vals = sanitize_line_write_vals(vals)
         records = self
         if set(vals.keys()) == {"end_datetime"}:
@@ -212,7 +261,11 @@ class SpaServiceBookingLine(models.Model):
             else:
                 vals.pop("end_datetime", None)
         res = super(SpaServiceBookingLine, records).write(vals)
-        if "staff_id" in vals or "duration_minutes" in vals:
+        if "staff_id" in vals:
+            for rec in self:
+                if rec.booking_id:
+                    rec.booking_id._sync_staff_ids_from_lines()
+        if "duration_minutes" in vals:
             for rec in self:
                 if rec.booking_id:
                     rec.booking_id._sync_duration_from_lines()
@@ -220,6 +273,13 @@ class SpaServiceBookingLine(models.Model):
         return res
 
     def unlink(self):
+        if self.env.user.spa_staff_is_booking_operator_only():
+            raise AccessError(
+                _(
+                    "Spa Booking Operator cannot delete booking lines. "
+                    "Change Nhân viên thực hiện on existing steps only."
+                )
+            )
         bookings = self.mapped("booking_id")
         res = super().unlink()
         for b in bookings:
