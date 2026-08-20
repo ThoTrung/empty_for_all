@@ -2,4 +2,5 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_spa_zalo_oa_account_admin,spa.zalo.oa.account clic admin,model_spa_zalo_oa_account,spa.group_clic_admin,1,1,1,1
 access_spa_zalo_oa_account_system_read,spa.zalo.oa.account system read,model_spa_zalo_oa_account,base.group_system,1,0,0,0
 access_spa_zalo_message_user,spa.zalo.message user,model_spa_zalo_message,base.group_user,1,0,0,0
+access_spa_zalo_message_admin,spa.zalo.message clic admin,model_spa_zalo_message,spa.group_clic_admin,1,1,1,1
 access_spa_zalo_message_system,spa.zalo.message system,model_spa_zalo_message,base.group_system,1,1,1,1

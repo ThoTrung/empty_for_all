@@ -60,6 +60,29 @@
         </field>
     </record>
 
+    <record id="view_spa_zalo_message_search" model="ir.ui.view">
+        <field name="name">spa.zalo.message.search</field>
+        <field name="model">spa.zalo.message</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="phone"/>
+                <field name="template_id"/>
+                <filter string="Chờ gửi" name="queued" domain="[('state', '=', 'queued')]"/>
+                <filter string="Đã gửi" name="sent" domain="[('state', '=', 'sent')]"/>
+                <filter string="Thất bại" name="failed" domain="[('state', '=', 'failed')]"/>
+                <filter string="Đã hủy" name="cancel" domain="[('state', '=', 'cancel')]"/>
+                <separator/>
+                <filter string="Nhắc lịch" name="booking_reminder" domain="[('event_type', '=', 'booking_reminder')]"/>
+                <group expand="0" string="Nhóm theo">
+                    <filter string="Trạng thái" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Loại sự kiện" name="group_event" context="{'group_by': 'event_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="action_spa_zalo_message" model="ir.actions.act_window">
         <field name="name">Tin Zalo (ZNS)</field>
         <field name="res_model">spa.zalo.message</field>

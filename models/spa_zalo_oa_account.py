@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """Tài khoản Zalo OA: lưu thông tin app + token và tự làm mới access_token.
 
-Access token OA hết hạn ~25h; refresh_token xoay vòng mỗi lần làm mới
-(hạn ~3 tháng). Vì vậy cần cron làm mới định kỳ, nếu không kênh gửi sẽ chết.
+Access token OA hết hạn theo `expires_in` (thường ~25h); refresh_token xoay vòng
+mỗi lần làm mới (hạn ~3 tháng, dùng 1 lần). Cron + lúc gửi đều có thể refresh:
+phải khóa hàng (FOR UPDATE) rồi đọc lại token, nếu không hai tiến trình dùng
+cùng refresh_token sẽ làm chết kênh.
 """
 import logging
 from datetime import timedelta
@@ -46,13 +48,31 @@ class SpaZaloOaAccount(models.Model):
         skew = timedelta(seconds=TOKEN_REFRESH_SKEW_SECONDS)
         return fields.Datetime.now() + skew < self.token_expiry
 
-    def _do_refresh(self):
-        """Gọi Zalo đổi token mới; lưu access/refresh/expiry. Trả về error|None."""
+    def _lock_and_reload(self):
+        """Khóa hàng Postgres rồi invalidate để đọc refresh_token mới nhất."""
         self.ensure_one()
+        self.env.cr.execute(
+            "SELECT id FROM spa_zalo_oa_account WHERE id = %s FOR UPDATE",
+            [self.id],
+        )
+        self.invalidate_recordset()
+
+    def _do_refresh(self, locked=False, force=False):
+        """Gọi Zalo đổi token mới; lưu access/refresh/expiry. Trả về error|None.
+
+        :param locked: True nếu caller đã FOR UPDATE.
+        :param force: True = gọi API dù token còn hạn (nút thủ công).
+        """
+        self.ensure_one()
+        if not locked:
+            self._lock_and_reload()
+        if not force and self._token_is_valid():
+            return None
         result, err = zalo_oapi.refresh_access_token(
             self.app_id, self.secret_key, self.refresh_token
         )
         if err:
+            # Không xóa token cũ: request refresh có thể chưa consume refresh_token.
             self.sudo().write({"last_error": err})
             _logger.warning("Zalo OA %s refresh lỗi: %s", self.id, err)
             return err
@@ -74,9 +94,10 @@ class SpaZaloOaAccount(models.Model):
     def get_valid_access_token(self):
         """Trả về access_token còn hạn (tự làm mới nếu cần). Raise nếu không lấy được."""
         self.ensure_one()
+        self._lock_and_reload()
         if self._token_is_valid():
             return self.access_token
-        err = self._do_refresh()
+        err = self._do_refresh(locked=True)
         if err:
             raise UserError(_("Không lấy được access token Zalo OA: %s") % err)
         return self.access_token
@@ -84,13 +105,16 @@ class SpaZaloOaAccount(models.Model):
     def action_refresh_token(self):
         """Nút làm mới token thủ công."""
         self.ensure_one()
-        err = self._do_refresh()
+        err = self._do_refresh(force=True)
         if err:
             raise UserError(_("Làm mới token thất bại: %s") % err)
         return True
 
     @api.model
     def _cron_refresh_tokens(self):
-        """Cron: làm mới access_token cho mọi tài khoản OA đang dùng."""
+        """Cron: làm mới access_token sắp hết hạn (bỏ qua nếu còn hạn)."""
         for account in self.search([("active", "=", True), ("refresh_token", "!=", False)]):
-            account._do_refresh()
+            account._lock_and_reload()
+            if account._token_is_valid():
+                continue
+            account._do_refresh(locked=True)

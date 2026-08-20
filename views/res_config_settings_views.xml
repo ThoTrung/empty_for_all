@@ -9,12 +9,30 @@
                 <xpath expr="//block[@id='spa_setting']" position="inside">
                     <setting string="Zalo ZNS: Nhắc lịch hẹn khách hàng"
                              groups="spa.group_clic_admin"
-                             help="Tự động gửi tin nhắc lịch cho khách hàng qua Zalo OA (ZNS).">
+                             help="Tự động gửi tin nhắc lịch (lịch đã xác nhận) qua Zalo OA (ZNS).">
                         <field name="spa_zalo_reminder_enabled"/>
                         <div class="content-group mt16" invisible="not spa_zalo_reminder_enabled">
+                            <div class="alert alert-warning" role="alert"
+                                 invisible="not spa_zalo_development_mode">
+                                Đang bật gửi thử (development): chỉ SĐT admin OA/App nhận được tin.
+                                Tắt chế độ này trên production khi smoke SĐT khách (không phải admin OA).
+                            </div>
+                            <div class="alert alert-danger" role="alert"
+                                 invisible="spa_zalo_whitelist_enabled">
+                                Whitelist đang tắt: cron sẽ nhắc mọi lịch Đã xác nhận trong cửa sổ.
+                                Trên production hãy bật whitelist với 1–2 SĐT trước, chỉ tắt khi đã ổn.
+                            </div>
+                            <div class="alert alert-warning" role="alert"
+                                 invisible="not spa_zalo_whitelist_enabled or spa_zalo_whitelist_phones">
+                                Whitelist đang bật nhưng danh sách SĐT trống: không gửi tin nào.
+                            </div>
                             <div class="row mt8">
                                 <label for="spa_zalo_reminder_template_id" string="Template ID nhắc lịch" class="col-lg-4 o_light_label"/>
                                 <field name="spa_zalo_reminder_template_id" style="width: 14rem;"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="spa_zalo_reminder_template_keys" string="Map khóa template (JSON)" class="col-lg-4 o_light_label"/>
+                                <field name="spa_zalo_reminder_template_keys" style="width: 24rem;" placeholder='{"name":"name","date":"date","time":"time","service":"service"}'/>
                             </div>
                             <div class="row mt8">
                                 <label for="spa_zalo_reminder_offset_value" string="Nhắc trước" class="col-lg-4 o_light_label"/>
@@ -30,7 +48,11 @@
                                 <field name="spa_zalo_max_retry" class="text-right" style="width: 5rem;"/>
                             </div>
                             <div class="row mt8">
-                                <label for="spa_zalo_whitelist_enabled" string="Chế độ whitelist (test)" class="col-lg-4 o_light_label"/>
+                                <label for="spa_zalo_development_mode" string="Gửi thử (development)" class="col-lg-4 o_light_label"/>
+                                <field name="spa_zalo_development_mode"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="spa_zalo_whitelist_enabled" string="Chế độ whitelist (chỉ 1–2 SĐT)" class="col-lg-4 o_light_label"/>
                                 <field name="spa_zalo_whitelist_enabled"/>
                             </div>
                             <div class="row mt8" invisible="not spa_zalo_whitelist_enabled">
@@ -44,6 +66,7 @@
                             <div class="text-muted mt8">
                                 Cấu hình App ID / Secret / Refresh Token tại menu
                                 <b>Zalo OA &gt; Tài khoản Zalo OA</b>.
+                                Zalo không gửi ZNS 22:00–06:00 giờ VN.
                             </div>
                         </div>
                     </setting>

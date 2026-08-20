@@ -32,6 +32,14 @@
         <field name="key">spa_zalo_oa.whitelist_phones</field>
         <field name="value"></field>
     </record>
+    <record id="config_development_mode" model="ir.config_parameter">
+        <field name="key">spa_zalo_oa.development_mode</field>
+        <field name="value">1</field>
+    </record>
+    <record id="config_reminder_template_keys" model="ir.config_parameter">
+        <field name="key">spa_zalo_oa.reminder_template_keys</field>
+        <field name="value"></field>
+    </record>
     <record id="seq_spa_zalo_message" model="ir.sequence">
         <field name="name">Spa Zalo Message</field>
         <field name="code">spa.zalo.message</field>

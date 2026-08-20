@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_service_booking_form_zalo_oa" model="ir.ui.view">
+        <field name="name">spa.service.booking.form.zalo.oa</field>
+        <field name="model">spa.service.booking</field>
+        <field name="inherit_id" ref="booking_calendar.view_spa_service_booking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="zalo_reminder_sent" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

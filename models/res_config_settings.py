@@ -34,6 +34,12 @@ class ResConfigSettings(models.TransientModel):
         default=3,
         config_parameter="spa_zalo_oa.max_retry",
     )
+    spa_zalo_development_mode = fields.Boolean(
+        string="Chế độ gửi thử Zalo (development)",
+        config_parameter="spa_zalo_oa.development_mode",
+        help="Gửi với mode=development: chỉ admin OA/App nhận được, không tính phí. "
+        "Tắt trên production khi smoke SĐT khách (không phải admin OA).",
+    )
     spa_zalo_whitelist_enabled = fields.Boolean(
         string="Chế độ whitelist (chỉ gửi cho SĐT trong danh sách)",
         config_parameter="spa_zalo_oa.whitelist_enabled",
@@ -41,9 +47,15 @@ class ResConfigSettings(models.TransientModel):
     spa_zalo_whitelist_phones = fields.Char(
         string="Danh sách SĐT whitelist",
         config_parameter="spa_zalo_oa.whitelist_phones",
-        help="Phân tách bằng dấu phẩy. Khi bật chế độ whitelist, cron nhắc lịch chỉ "
-        "gửi cho các số này; khách ngoài danh sách không bị đánh dấu nên vẫn được "
-        "nhắc bình thường khi tắt chế độ này.",
+        help="Phân tách bằng dấu phẩy. Production: bật whitelist 1–2 số trước khi "
+        "bật nhắc lịch; chỉ tắt whitelist khi đã ổn. Ngoài danh sách không bị "
+        "đánh dấu đã nhắc. Khi bật development, các số này phải là admin OA/App.",
+    )
+    spa_zalo_reminder_template_keys = fields.Char(
+        string="Map khóa template ZNS (JSON)",
+        config_parameter="spa_zalo_oa.reminder_template_keys",
+        help='Đổi tên khóa nội bộ name/date/time/service sang khóa mẫu Zalo. '
+        'Ví dụ: {"name": "customer_name"}. Để trống = dùng đúng 4 khóa mặc định.',
     )
     spa_zalo_oa_account_id = fields.Many2one(
         "spa.zalo.oa.account",

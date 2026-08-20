@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_spa_zalo_oa" model="ir.ui.view">
+        <field name="name">res.partner.form.spa.zalo.oa</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="spa.view_partner_form_spa"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='phone']" position="after">
+                <field name="zalo_optout"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

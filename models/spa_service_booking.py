@@ -4,14 +4,23 @@
 Tách biệt với nhắc nhân viên (mail.activity, cờ `reminder_sent`) trong
 booking_calendar: dùng cờ riêng `zalo_reminder_sent` để không xung đột.
 """
+import json
 import logging
 from datetime import timedelta
 
 from odoo import api, fields, models
 
 from odoo.addons.spa.helper.duplicate_utils import normalize_phone
+from odoo.addons.spa_zalo_oa.models.spa_zalo_message import _icp_is_true
 
 _logger = logging.getLogger(__name__)
+
+DEFAULT_TEMPLATE_KEY_MAP = {
+    "name": "name",
+    "date": "date",
+    "time": "time",
+    "service": "service",
+}
 
 
 class SpaServiceBooking(models.Model):
@@ -23,6 +32,33 @@ class SpaServiceBooking(models.Model):
         copy=False,
         index=True,
     )
+
+    def write(self, vals):
+        reschedule = self.browse()
+        if "start_datetime" in vals:
+            new_dt = fields.Datetime.to_datetime(vals["start_datetime"])
+            reschedule = self.filtered(lambda b: b.start_datetime != new_dt)
+        cancel = self if vals.get("state") == "cancel" else self.browse()
+        res = super().write(vals)
+        to_drop = reschedule | cancel
+        if to_drop:
+            to_drop._zalo_cancel_queued_messages()
+        if reschedule:
+            super(SpaServiceBooking, reschedule).write({"zalo_reminder_sent": False})
+        return res
+
+    def _zalo_cancel_queued_messages(self):
+        Message = self.env["spa.zalo.message"].sudo()
+        for rec in self:
+            msgs = Message.search(
+                [
+                    ("source_ref", "=", "%s,%s" % (rec._name, rec.id)),
+                    ("event_type", "=", "booking_reminder"),
+                    ("state", "in", ("queued", "failed")),
+                ]
+            )
+            if msgs:
+                msgs.action_cancel()
 
     def _zalo_reminder_offset(self):
         """Khoảng thời gian nhắc trước giờ hẹn, theo cấu hình (đơn vị giờ/ngày)."""
@@ -37,11 +73,32 @@ class SpaServiceBooking(models.Model):
             return timedelta(days=value)
         return timedelta(hours=value)
 
-    def _zalo_reminder_template_data(self):
-        """Tham số mặc định cho template ZNS nhắc lịch.
+    def _zalo_template_key_map(self):
+        raw = (
+            self.env["ir.config_parameter"].sudo().get_param(
+                "spa_zalo_oa.reminder_template_keys", ""
+            )
+            or ""
+        ).strip()
+        if not raw:
+            return dict(DEFAULT_TEMPLATE_KEY_MAP)
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return dict(DEFAULT_TEMPLATE_KEY_MAP)
+        if not isinstance(parsed, dict) or not parsed:
+            return dict(DEFAULT_TEMPLATE_KEY_MAP)
+        return {
+            str(src): str(dest)
+            for src, dest in parsed.items()
+            if src and dest
+        }
 
-        Tên tham số phải khớp template đã duyệt trên Zalo. Mặc định dùng
-        các khóa phổ biến; điều chỉnh theo template thực tế của bạn.
+    def _zalo_reminder_template_data(self):
+        """Tham số template ZNS nhắc lịch.
+
+        Khóa nội bộ: name, date (dd/mm/YYYY), time (HH:MM), service.
+        ICP spa_zalo_oa.reminder_template_keys đổi tên 1-1; chỉ gửi khóa đã map.
         """
         self.ensure_one()
         start = self.start_datetime
@@ -52,11 +109,17 @@ class SpaServiceBooking(models.Model):
             service = product.display_name
         elif self.non_session_offering_id:
             service = self.non_session_offering_id.display_name
-        return {
+        internal = {
             "name": self.partner_id.name or "",
             "date": local.strftime("%d/%m/%Y") if local else "",
             "time": local.strftime("%H:%M") if local else "",
             "service": service or "",
+        }
+        mapping = self._zalo_template_key_map()
+        return {
+            dest: internal[src]
+            for src, dest in mapping.items()
+            if src in internal
         }
 
     def _enqueue_zalo_reminder(self):
@@ -93,7 +156,7 @@ class SpaServiceBooking(models.Model):
         Trả về `None` khi chế độ whitelist tắt (nghĩa là không giới hạn người nhận).
         """
         ICP = self.env["ir.config_parameter"].sudo()
-        if ICP.get_param("spa_zalo_oa.whitelist_enabled", "0") != "1":
+        if not _icp_is_true(ICP.get_param("spa_zalo_oa.whitelist_enabled", "0")):
             return None
         raw = ICP.get_param("spa_zalo_oa.whitelist_phones", "") or ""
         phones = set()
@@ -107,19 +170,19 @@ class SpaServiceBooking(models.Model):
     def _cron_send_zalo_reminders(self):
         """Cron: nhắc lịch KH qua Zalo khi lịch đã vào khoảng "trước N giờ/ngày"."""
         ICP = self.env["ir.config_parameter"].sudo()
-        if ICP.get_param("spa_zalo_oa.reminder_enabled", "0") != "1":
+        if not _icp_is_true(ICP.get_param("spa_zalo_oa.reminder_enabled", "0")):
             return
         now = fields.Datetime.now()
         threshold = now + self._zalo_reminder_offset()
         domain = [
             ("zalo_reminder_sent", "=", False),
-            ("state", "in", ["draft", "confirmed"]),
+            ("state", "=", "confirmed"),
             ("start_datetime", ">", now),
             ("start_datetime", "<=", threshold),
         ]
         bookings = self.search(domain)
-        # Chế độ whitelist (test trên production): chỉ gửi cho các SĐT trong danh
-        # sách; booking ngoài danh sách KHÔNG được đánh dấu để vẫn nhắc khi chạy thật.
+        # Chế độ whitelist (test): chỉ gửi SĐT trong danh sách; ngoài danh sách
+        # KHÔNG đánh dấu để vẫn nhắc khi chạy thật.
         whitelist = self._zalo_whitelist_phones()
         if whitelist is not None:
             bookings = bookings.filtered(
