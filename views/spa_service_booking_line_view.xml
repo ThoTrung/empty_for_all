@@ -19,6 +19,7 @@
                                      ('share', '=', False),
                                      ('spa_staff_level_id.level_group', 'in', context.get('spa_allowed_staff_levels', ['regular','spec_b','spec_a','senior','expert','doctor']))
                                    ]"/>
+                            <field name="staff_outside_shift"/>
                             <field name="suggested_staff_html"
                                    readonly="1"
                                    class="o_spa_suggested_staff_field"/>

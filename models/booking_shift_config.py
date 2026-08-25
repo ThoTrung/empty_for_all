@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime, timedelta
+
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
@@ -54,6 +56,65 @@ class BookingShiftConfig(models.Model):
             for uid in line.user_ids.ids:
                 mapping[uid] = (st, dur)
         return mapping
+
+    @api.model
+    def shift_config_applies_for_date(self, shift_date):
+        """True when shift_date has booking.shift.config with at least one line."""
+        if not shift_date:
+            return False
+        if isinstance(shift_date, str):
+            shift_date = fields.Date.from_string(shift_date)
+        cfg = self.search([("shift_date", "=", shift_date)], limit=1)
+        return bool(cfg and cfg.line_ids)
+
+    @api.model
+    def user_slot_within_shift(self, user, start_dt, end_dt):
+        """
+        True if slot fits configured shift windows, or no published shift applies
+        for the booking's local day(s). False when a published day config exists
+        and the user is off (duration=0), unlisted, or outside the window.
+        """
+        start_dt = fields.Datetime.to_datetime(start_dt) if start_dt else start_dt
+        end_dt = fields.Datetime.to_datetime(end_dt) if end_dt else end_dt
+        if not start_dt or not end_dt or not user:
+            return True
+        local_start = fields.Datetime.context_timestamp(self, start_dt) or start_dt
+        local_end = fields.Datetime.context_timestamp(self, end_dt) or end_dt
+        if getattr(local_start, "tzinfo", None):
+            local_start = local_start.replace(tzinfo=None)
+        if getattr(local_end, "tzinfo", None):
+            local_end = local_end.replace(tzinfo=None)
+
+        day_local = local_start.date()
+        prev_day = day_local - timedelta(days=1)
+        applies_today = self.shift_config_applies_for_date(day_local)
+        applies_prev = self.shift_config_applies_for_date(prev_day)
+        if not applies_today and not applies_prev:
+            return True
+
+        map_today = self.get_user_shift_map_for_date(day_local) if applies_today else {}
+        map_prev = self.get_user_shift_map_for_date(prev_day) if applies_prev else {}
+
+        def _check_for_day(shift_day, shift_map):
+            st_hours, duration_hours = shift_map.get(user.id, (None, None))
+            if st_hours is None or duration_hours is None:
+                return False
+            if duration_hours <= 0:
+                return False
+            if st_hours < 0 or st_hours >= 24:
+                return False
+            shift_start = datetime.combine(
+                shift_day, datetime.min.time()
+            ) + timedelta(hours=st_hours)
+            shift_end = shift_start + timedelta(hours=duration_hours)
+            return local_start >= shift_start and local_end <= shift_end
+
+        checks = []
+        if applies_today:
+            checks.append(_check_for_day(day_local, map_today))
+        if applies_prev:
+            checks.append(_check_for_day(prev_day, map_prev))
+        return any(checks)
 
     def _fill_lines_from_nearest_previous_day_if_empty(self):
         """

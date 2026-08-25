@@ -19,6 +19,56 @@ Use this file for short session-level handoff notes.
 
 ## Entries
 
+### 2026-08-24 - Fix web_save create crash (Datetime instance expected)
+- Goal: Sửa RPC_ERROR khi tạo đặt lịch từ UI (`web_save` gửi datetime dạng chuỗi).
+- Changes made:
+  - `user_slot_within_shift` coerce `start_dt`/`end_dt` qua `fields.Datetime.to_datetime` trước `context_timestamp`.
+  - `_spa_prepare_outside_shift_create_vals` chuẩn hóa start/end trước khi lọc NV ngoài ca.
+  - Tests: create với string datetime (giống web_save); parity string vs datetime cho helper ca.
+- Files touched: `models/booking_shift_config.py`, `models/spa_service_booking.py`, `tests/test_booking_calendar.py`, `docs/BUG_LOG.md`, `docs/WORKLOG.md`, `docs/AGENT_REFERENCE.md`.
+- Validation done: `./venv/bin/python3 ./odoo/odoo-bin -c ./conf/odoo_dev.conf -d drlai --http-port=8091 --test-enable --stop-after-init --test-tags=.test_create_booking_with_string_datetimes_like_web_save,.test_user_slot_within_shift_string_matches_datetime` → **0 failed, 0 error(s) of 2 tests**.
+- Dependency impact check:
+  - Dependents reviewed: `_spa_staff_outside_shift_users`, shift constraint, `get_available_staff_ids`, line onchange `user_slot_within_shift`; không đụng `spa` / `spa_staff_payroll`.
+  - Contract compatibility result: cùng chữ ký `user_slot_within_shift(user, start_dt, end_dt)`; nhận string an toàn hơn; luật ca không đổi.
+  - Regression tests/manual checks run: 2 targeted tests, 0 failed / 0 errors on `drlai`.
+- Open risks: none for this crash; UI smoke trên form/calendar vẫn nên xác nhận sau reload.
+- Next suggested steps: tạo lịch từ calendar/form trên `drlai`, chọn NV trong ca, Lưu — không RPC_ERROR, không bắt tick ngoài ca.
+
+### 2026-08-22 - Phase 1.1 + Phase 2a/2b (critique plan)
+- Goal: Close Phase 1 gaps (per-user outside-shift audit, write sync, availability refactor); add week shift template materialize; recurring staff copy with fallback.
+- Changes made:
+  - `staff_outside_shift_user_ids` M2M + `_spa_sync_staff_outside_shift_flags` on write; create auto-fills M2M when boolean set.
+  - `get_available_staff_ids` uses `user_slot_within_shift` (no duplicate inline logic).
+  - `booking.shift.week.template` + lines + apply wizard (skip existing default, optional overwrite).
+  - `recurring_copy_staff` + `_create_recurring_child_booking` savepoint fallback without staff on ValidationError.
+  - Form: M2M audit field, composite tree `staff_outside_shift`, menu «Mẫu ca tuần».
+  - Tests: multi-staff mixed, composite line flag, write reschedule, template skip/overwrite, recurring copy; fixed 5 pre-existing suite failures.
+- Files touched: `models/spa_service_booking.py`, `models/booking_shift_week_template.py`, views, security, `tests/test_booking_calendar.py`, docs.
+- Validation done: `-u booking_calendar --test-enable` on `drlai` → **118 booking_calendar tests, 0 failed / 0 errors** (189 total with dependents).
+- Dependency impact check:
+  - Dependents reviewed: operator write whitelist extended for M2M; bundled form save strips placeholder lines before INSERT.
+  - Contract compatibility result: additive fields; template wizard manager-only write.
+  - Regression tests/manual checks run: full suite green.
+- Open risks: apply template default skips manual days — operators must tick overwrite intentionally; recurring staff copy drops staff silently on conflict (chatter summary for skipped dates).
+- Next suggested steps: optional calendar button «Áp dụng mẫu ca»; Phase 2b wizard summary UI for skipped staff dates.
+
+### 2026-08-22 - Phase 1: shift gate vs staff assignment
+- Goal: Fix OT / future booking blocked when no daily shift config; allow controlled outside-shift assignment.
+- Changes made:
+  - `booking.shift.config`: `shift_config_applies_for_date`, `user_slot_within_shift`.
+  - `spa.service.booking`: `staff_outside_shift`; constraint only when day roster published; operator may set flag.
+  - `spa.service.booking.line`: `staff_outside_shift` per step.
+  - `get_available_staff_ids`: skip shift filter when no published roster for day/prev day.
+  - Form views + 5 tests.
+- Files touched: `models/booking_shift_config.py`, `models/spa_service_booking.py`, `models/spa_service_booking_line.py`, views, `tests/test_booking_calendar.py`, `docs/DECISIONS.md`, `docs/WORKLOG.md`, `docs/AGENT_REFERENCE.md`.
+- Validation done: `-u booking_calendar --test-enable` on `drlai` — 5 new tests run clean; 3 pre-existing failures unrelated (draft color, list view column, senior filter).
+- Dependency impact check:
+  - Dependents reviewed: operator write whitelist, composite line modal, payroll (no coupling), recurring (unchanged).
+  - Contract compatibility result: additive field + relaxed constraint when no roster; stricter message when roster exists.
+  - Regression tests/manual checks run: full booking_calendar suite (111 tests).
+- Open risks: days without roster allow any internal staff (level/capacity only); operator can tick outside-shift flag.
+- Next suggested steps: Phase 2 week template materialize; optional online-booking channel hard gate.
+
 ### 2026-08-20 - Prod ZNS whitelist 1–2 SĐT (runbook)
 - Goal: Cron/enqueue/send tôn trọng whitelist khi smoke production.
 - Changes made: none in booking_calendar source.

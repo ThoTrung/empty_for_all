@@ -31,5 +31,11 @@
                   parent="spa.menu_booking_master"
                   groups="spa.group_spa_manager"
                   sequence="8"/>
+        <menuitem name="Mẫu ca tuần"
+                  id="menu_booking_shift_week_template"
+                  action="action_booking_shift_week_template"
+                  parent="spa.menu_booking_master"
+                  groups="spa.group_spa_manager"
+                  sequence="9"/>
     </data>
 </odoo>

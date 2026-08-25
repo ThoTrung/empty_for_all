@@ -378,6 +378,44 @@ class TestBookingOperator(TransactionCase):
                 pixels_per_hour=72
             )
 
+    def test_operator_can_write_staff_outside_shift_user_ids(self):
+        """Operator được ghi M2M NV ngoài ca trên booking đơn."""
+        op = self._operator_user("outside_m2m")
+        start = datetime.now() + timedelta(days=5)
+        start = start.replace(hour=19, minute=0, second=0, microsecond=0)
+        d = fields.Datetime.context_timestamp(self.env.user, start).date()
+        cfg = self.env["booking.shift.config"].search([("shift_date", "=", d)], limit=1)
+        if cfg:
+            cfg.line_ids.unlink()
+        else:
+            cfg = self.env["booking.shift.config"].create(
+                {"name": "Op ca ngoài giờ", "shift_date": d}
+            )
+        self.env["booking.shift.config.line"].create({
+            "config_id": cfg.id,
+            "name": "Ca ngắn",
+            "shift_start_time_hours": 8.0,
+            "shift_duration_hours": 2.0,
+            "user_ids": [(6, 0, [self.staff_user.id, self.staff_b.id])],
+        })
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product.id,
+            "start_datetime": start,
+            "duration": 60,
+            "state": "confirmed",
+            "staff_ids": [(6, 0, [self.staff_user.id])],
+            "staff_outside_shift": True,
+            "staff_outside_shift_user_ids": [(6, 0, [self.staff_user.id])],
+        })
+        booking.with_user(op).write({
+            "staff_ids": [(6, 0, [self.staff_user.id, self.staff_b.id])],
+            "staff_outside_shift_user_ids": [(6, 0, [self.staff_user.id, self.staff_b.id])],
+        })
+        self.assertIn(self.staff_b, booking.staff_outside_shift_user_ids)
+        self.assertIn(self.staff_user, booking.staff_outside_shift_user_ids)
+
     def test_operator_spa_only_app_roots(self):
         op = self._operator_user("roots")
         roots = self.env["ir.ui.menu"].with_user(op).get_user_roots()

@@ -20,6 +20,20 @@ Use one section per bug. Keep entries short and reproducible.
 
 ## Active Bugs
 
+### [BC-BUG-2026-08-24-01] Create booking RPC crash: Datetime instance expected
+- Date: 2026-08-24
+- Reporter: user runtime
+- Context (screen/model/action): form/calendar `web_save` tạo `spa.service.booking` có `staff_ids`
+- Symptom: RPC_ERROR `AssertionError: Datetime instance expected` trong `user_slot_within_shift` → `fields.Datetime.context_timestamp`
+- Reproduction steps: tạo đặt lịch từ UI, chọn NV, Lưu (vals `start_datetime`/`end_datetime` là chuỗi)
+- Root cause: `web_save` gửi datetime dạng string; `_spa_prepare_outside_shift_create_vals` truyền raw string vào `user_slot_within_shift`, trong khi `context_timestamp` bắt buộc `datetime`
+- Fix summary: coerce `start_dt`/`end_dt` bằng `fields.Datetime.to_datetime` trong `user_slot_within_shift`; chuẩn hóa luôn trong `_spa_prepare_outside_shift_create_vals`
+- Files changed: `models/booking_shift_config.py`, `models/spa_service_booking.py`, `tests/test_booking_calendar.py`
+- Test coverage: `test_create_booking_with_string_datetimes_like_web_save`, `test_user_slot_within_shift_string_matches_datetime`
+- Regression risk: low (chỉ coerce kiểu; luật ca không đổi)
+- Follow-up TODO: none
+- Status: **fixed**
+
 ### [BC-BUG-2026-05-19-01] Single booking vanishes after moving start to next day (stale display_end)
 - Date: 2026-05-19
 - Reporter: user UAT

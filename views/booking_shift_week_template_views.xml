@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_booking_shift_week_template_tree" model="ir.ui.view">
+            <field name="name">booking.shift.week.template.tree</field>
+            <field name="model">booking.shift.week.template</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="active"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_booking_shift_week_template_form" model="ir.ui.view">
+            <field name="name">booking.shift.week.template.form</field>
+            <field name="model">booking.shift.week.template</field>
+            <field name="arch" type="xml">
+                <form string="Mẫu ca tuần">
+                    <header>
+                        <button name="action_open_apply_wizard"
+                                type="object"
+                                string="Áp dụng mẫu ca"
+                                class="btn-primary"
+                                groups="spa.group_spa_manager"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <field name="line_ids">
+                            <tree editable="bottom">
+                                <field name="weekday"/>
+                                <field name="shift_start_time_hours"/>
+                                <field name="shift_duration_hours"/>
+                                <field name="user_ids" widget="many2many_tags"/>
+                            </tree>
+                        </field>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_booking_shift_template_apply_wizard_form" model="ir.ui.view">
+            <field name="name">booking.shift.template.apply.wizard.form</field>
+            <field name="model">booking.shift.template.apply.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Áp dụng mẫu ca">
+                    <group>
+                        <field name="template_id"/>
+                        <field name="date_start"/>
+                        <field name="date_end"/>
+                        <field name="overwrite_existing"/>
+                    </group>
+                    <footer>
+                        <button name="action_apply" type="object" string="Áp dụng" class="btn-primary"/>
+                        <button string="Huỷ" special="cancel" class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_booking_shift_week_template" model="ir.actions.act_window">
+            <field name="name">Mẫu ca tuần</field>
+            <field name="res_model">booking.shift.week.template</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+    </data>
+</odoo>

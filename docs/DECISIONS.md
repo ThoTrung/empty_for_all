@@ -70,6 +70,33 @@ Track architecture and implementation decisions so future agents keep consistenc
 - Alternatives considered: only XML-level customization with limited behavior control.
 - Related files/modules: `static/src/js/spa_booking_calendar_view.js`, `static/src/js/spa_booking_calendar_renderer.js`
 
+### [BC-DEC-2026-08-22-01] Shift gate only when day roster is published (Phase 1)
+- Date: 2026-08-22
+- Status: accepted
+- Context: Hard shift check blocked OT and future bookings when `booking.shift.config` missing for the day. Industry practice (Mindbody off-day booking) allows front-desk override when roster exists but slot is outside window.
+- Decision: If no `booking.shift.config` with lines for the booking's local day(s), skip shift constraint (still enforce level + capacity). When day roster is published, slot must fit shift window unless `staff_outside_shift` is set on booking (or line for composite). Suggestions still prefer in-shift staff when roster applies.
+- Consequences: amends operational effect of BC-DEC-2026-05-08-04 (day config is SoT **when published**, not “missing config = nobody assignable”). Phase 2 week template materialize remains separate.
+- Alternatives considered: virtual week template resolve (rejected — dual SoT); manager-only flag (rejected — blocks front desk OT).
+- Related files/modules: `models/booking_shift_config.py`, `models/spa_service_booking.py`, `models/spa_service_booking_line.py`, `tests/test_booking_calendar.py`
+
+### [BC-DEC-2026-08-22-02] Week shift template materialize-only (Phase 2a)
+- Date: 2026-08-22
+- Status: accepted
+- Context: Phase 1 leaves future days “open” without roster; operators need Mindbody-style weekly pattern → daily `booking.shift.config` records without virtual resolve.
+- Decision: `booking.shift.week.template` (weekday lines) + apply wizard with date range. Default **skip** days that already have shift lines; optional `overwrite_existing`. One SoT remains `booking.shift.config`.
+- Consequences: no dual SoT; manual holiday edits preserved unless overwrite ticked. Default apply range in wizard UI: ~4 weeks from today.
+- Alternatives considered: merge union policy (deferred); virtual template resolve (rejected).
+- Related files/modules: `models/booking_shift_week_template.py`, `views/booking_shift_week_template_views.xml`
+
+### [BC-DEC-2026-08-22-03] Recurring staff copy with per-child validation (Phase 2b)
+- Date: 2026-08-22
+- Status: accepted
+- Context: Recurring children previously had no staff; copying staff blindly risks shift/capacity violations across dates.
+- Decision: Optional `recurring_copy_staff` on parent. Each child created with staff + outside-shift flags when needed; on ValidationError, retry child without staff and post chatter listing skipped dates.
+- Consequences: no mass auto-tick outside-shift; some children may lack staff until operator assigns.
+- Alternatives considered: always copy staff (rejected); block entire recurring on first failure (rejected).
+- Related files/modules: `models/spa_service_booking.py` (`action_confirm_recurring`, `_create_recurring_child_booking`)
+
 ### [BC-DEC-2026-05-08-04] Day-based shift config as staff availability source of truth
 - Date: 2026-05-08
 - Status: accepted (existing)

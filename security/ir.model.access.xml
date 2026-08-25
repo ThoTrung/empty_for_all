@@ -88,6 +88,45 @@
             <field name="group_id" ref="spa.group_spa_booking_operator"/>
             <field name="perm_read" eval="1"/>
         </record>
+        <record id="access_booking_shift_week_template_manager" model="ir.model.access">
+            <field name="name">booking_calendar.booking_shift_week_template_manager</field>
+            <field name="model_id" ref="booking_calendar.model_booking_shift_week_template"/>
+            <field name="group_id" ref="spa.group_spa_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_booking_shift_week_template_line_manager" model="ir.model.access">
+            <field name="name">booking_calendar.booking_shift_week_template_line_manager</field>
+            <field name="model_id" ref="booking_calendar.model_booking_shift_week_template_line"/>
+            <field name="group_id" ref="spa.group_spa_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_booking_shift_template_apply_wizard_manager" model="ir.model.access">
+            <field name="name">booking_calendar.booking_shift_template_apply_wizard_manager</field>
+            <field name="model_id" ref="booking_calendar.model_booking_shift_template_apply_wizard"/>
+            <field name="group_id" ref="spa.group_spa_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_booking_shift_week_template_staff_read" model="ir.model.access">
+            <field name="name">booking_calendar.booking_shift_week_template_staff_read</field>
+            <field name="model_id" ref="booking_calendar.model_booking_shift_week_template"/>
+            <field name="group_id" ref="spa.group_spa_staff"/>
+            <field name="perm_read" eval="1"/>
+        </record>
+        <record id="access_booking_shift_week_template_line_staff_read" model="ir.model.access">
+            <field name="name">booking_calendar.booking_shift_week_template_line_staff_read</field>
+            <field name="model_id" ref="booking_calendar.model_booking_shift_week_template_line"/>
+            <field name="group_id" ref="spa.group_spa_staff"/>
+            <field name="perm_read" eval="1"/>
+        </record>
 
         <!-- Mirror spa staff access: read-only observer (no recurring wizard – no transient create) -->
         <record id="access_spa_service_booking_staff_readonly" model="ir.model.access">

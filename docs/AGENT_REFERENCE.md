@@ -10,10 +10,11 @@
 ## 2) Technical Scope
 - Main models:
   - core: `spa.service.booking`, `spa.service.booking.line`
-  - supporting: `spa.booking.non_session_offering`, `booking.shift.config`, `booking.shift.config.line`
+  - supporting: `spa.booking.non_session_offering`, `booking.shift.config`, `booking.shift.config.line`, `booking.shift.week.template`, `booking.shift.week.template.line`
   - extensions: `spa.treatment.card` booking availability fields, `spa.treatment.session` booking link, `res.config.settings`, `product.template`
 - Main wizards:
   - `spa.recurring.booking.wizard` for weekday-driven recurring booking generation.
+  - `booking.shift.template.apply.wizard` for materializing week template → daily shift configs.
 - Main controllers:
   - none in Python HTTP layer.
 - Calendar frontend behavior:
@@ -23,15 +24,15 @@
 - Important fields:
   - chain display: `parent_booking_id`, `child_booking_ids`, `display_is_calendar_parent`, `display_start_datetime`, `display_end_datetime`
   - list display: `partner_customer_code` / `partner_phone` (related `res.partner.customer_code` / `phone`, not stored)
-  - staffing/capacity: `staff_ids`, `staff_level_filter`, capacity percent checks
+  - staffing/capacity: `staff_ids`, `staff_outside_shift`, `staff_outside_shift_user_ids` (per-NV audit khi multi-staff), `staff_level_filter`, capacity percent checks
   - menu calendar board: `booking_board` (`specialist` | `doctor`) — Selection ẩn trên UI; domain menu Doctor/Specialist; default từ context `default_booking_board` khi tạo từ menu tương ứng (model default = `specialist`)
   - completion delegation: `completion_res_model_id`, `completion_res_id`
-  - recurring setup: `recurring_*` fields and parent-child recurring links
+  - recurring setup: `recurring_*` fields, `recurring_copy_staff`, parent-child recurring links
 - Compute/store design:
   - numerous computed fields for calendar rendering and booking aggregation; some are stored for fast search/filter.
   - Menu Doctor/Specialist **không** còn dựa trên cấp độ NV/product (`is_doctor_route` đã gỡ); lọc thẻ/NV khi tạo vẫn dùng context `spa_allowed_staff_levels`.
 - Constraints:
-  - datetime ordering, staff capacity, shift windows, completion target validity, bed conflict prevention.
+  - datetime ordering, staff capacity, shift windows **when day roster published** (`booking.shift.config` with lines), `staff_outside_shift` override, completion target validity, bed conflict prevention.
 - Side-effect points:
   - booking create/write/unlink invalidates treatment card booking availability cache fields.
 
@@ -99,7 +100,7 @@
   - `tests/test_booking_operator.py` (Spa Booking Operator ACL/serve/complete + performing-staff write)
   - `static/tests/booking_calendar_color_tests.js` (frontend color logic)
 - Covered scenarios:
-  - recurring wizard basics, capacity handling, shift availability, staff rotation, composite line sync, non-session completion, color behavior, tree default_order + Mã KH/sdt columns.
+  - shift availability + outside-shift flag (Phase 1 2026-08-22), RPC string datetime create (`web_save`), staff rotation, composite line sync, non-session completion, color behavior, tree default_order + Mã KH/sdt columns.
 - Missing high-risk coverage:
   - recurring inline action (`action_confirm_recurring`) edge cases
   - record-rule regression tests for customer visibility
@@ -121,6 +122,10 @@
   - symptom: hidden runtime issues with incomplete diagnosis.
   - root cause: broad `except Exception` with fallback behavior.
   - safe fix pattern: narrow exception types and add logging context.
+- RPC datetime strings vs `context_timestamp`:
+  - symptom: `AssertionError: Datetime instance expected` when creating a booking from form/calendar with staff assigned.
+  - root cause: `web_save` sends `start_datetime`/`end_datetime` as `"YYYY-mm-dd HH:MM:SS"`; `fields.Datetime.context_timestamp` requires a `datetime`.
+  - safe fix pattern: coerce with `fields.Datetime.to_datetime` in `user_slot_within_shift` (and any create/write helper that forwards vals datetimes into that API).
 
 ## 10) Change Protocol For New Agents
 0. Follow repo-wide session contract in `docs/AGENT_SESSION_DEFAULTS.md` (read order, skill, dependency check, worklog updates).

@@ -41,6 +41,10 @@ class SpaServiceBookingLine(models.Model):
         readonly=True,
     )
     staff_id = fields.Many2one("res.users", string="Nhân viên", domain=[("share", "=", False)])
+    staff_outside_shift = fields.Boolean(
+        string="Ngoài ca đã cấu hình",
+        help="Bật khi gán nhân viên ngoài khung ca làm đã cấu hình cho ngày này.",
+    )
     suggested_staff_html = fields.Html(
         string="Nhân viên gợi ý (luân ca)",
         compute="_compute_suggested_staff_html",
@@ -175,6 +179,22 @@ class SpaServiceBookingLine(models.Model):
             "context": dict(self.env.context),
         }
 
+    @api.onchange("staff_id", "start_datetime", "end_datetime", "duration_minutes")
+    def _onchange_staff_id_outside_shift(self):
+        ShiftCfg = self.env["booking.shift.config"]
+        for rec in self:
+            if not rec.staff_id or not rec.start_datetime:
+                rec.staff_outside_shift = False
+                continue
+            end_dt = rec.end_datetime
+            if not end_dt:
+                dm = int(rec.duration_minutes or 0)
+                dm = max(1, dm) if dm else 60
+                end_dt = rec.start_datetime + timedelta(minutes=dm)
+            rec.staff_outside_shift = not ShiftCfg.user_slot_within_shift(
+                rec.staff_id, rec.start_datetime, end_dt
+            )
+
     @api.onchange("staff_id")
     def _onchange_staff_id_sync_booking_staff_ids(self):
         """UI helper: chọn NV cho bước -> sync booking.staff_ids (many2many) theo toàn bộ lines."""
@@ -191,6 +211,9 @@ class SpaServiceBookingLine(models.Model):
             if key in drop_keys:
                 continue
             if key == "staff_id":
+                cleaned[key] = value
+                continue
+            if key == "staff_outside_shift":
                 cleaned[key] = value
                 continue
             extra.append(key)

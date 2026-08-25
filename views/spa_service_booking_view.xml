@@ -76,6 +76,7 @@
                     <field name="partner_id"/>
                     <field name="partner_phone" optional="show"/>
                     <field name="product_internal_ref"/>
+                    <field name="display_calendar_service_id" optional="hide"/>
                     <field name="start_datetime"/>
                     <field name="end_datetime" optional="hide"/>
                     <field name="display_end_datetime" optional="hide"/>
@@ -164,6 +165,7 @@
                                 <field name="card_total_sessions" optional="show" readonly="1" invisible="booking_kind != 'card'"/>
                                 <field name="card_available_for_booking" optional="show" readonly="1" invisible="booking_kind != 'card'"/>
                                 <field name="product_id" invisible="1"/>
+                                <field name="display_calendar_service_id" invisible="1"/>
                                 <field name="start_datetime" required="1" readonly="is_locked"/>
                                 <field name="duration" required="1" readonly="is_locked or is_composite_booking"/>
                                 <field name="display_end_datetime" readonly="1" force_save="1"/>
@@ -176,6 +178,18 @@
                                        ]"
                                        readonly="is_locked"
                                        invisible="is_composite_booking"/>
+                                <field name="staff_outside_shift"
+                                       readonly="is_locked"
+                                       invisible="is_composite_booking"/>
+                                <field name="staff_outside_shift_warning_html"
+                                       readonly="1"
+                                       invisible="is_composite_booking or not staff_outside_shift_warning_html"
+                                       colspan="2"/>
+                                <field name="staff_outside_shift_user_ids"
+                                       widget="many2many_tags"
+                                       readonly="is_locked"
+                                       invisible="is_composite_booking"
+                                       optional="hide"/>
                                 <field name="display_composite_staff_ids"
                                        widget="many2many_tags"
                                        readonly="1"
@@ -204,6 +218,8 @@
                                 <field name="recurring_fri" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
                                 <field name="recurring_sat" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
                                 <field name="recurring_sun" invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
+                                <field name="recurring_copy_staff"
+                                       invisible="is_recurring_child or not recurring_enabled or booking_kind != 'card'"/>
                                 <button name="action_confirm_recurring"
                                         colspan="4"
                                         string="Xác nhận đặt lịch theo tuần"
@@ -259,6 +275,7 @@
                                             icon="fa-user"/>
                                     <field name="staff_id"
                                            domain="[('share', '=', False)]"/>
+                                    <field name="staff_outside_shift" optional="show"/>
                                     <field name="start_datetime"/>
                                     <field name="duration_minutes"/>
                                     <field name="end_datetime"/>

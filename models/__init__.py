@@ -5,6 +5,7 @@ from . import spa_booking_non_session_offering
 from . import spa_service_booking_line
 from . import spa_service_booking
 from . import booking_shift_config
+from . import booking_shift_week_template
 from . import product_template
 from . import spa_treatment_card_booking
 from . import spa_treatment_session_booking

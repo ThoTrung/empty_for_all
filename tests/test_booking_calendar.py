@@ -115,6 +115,13 @@ class TestBookingCalendar(TransactionCase):
             "total_sessions": 10,
             "duration_minutes": 60,
         })
+        cls.card2 = cls.env["spa.treatment.card"].create({
+            "name": "Card Test 2",
+            "partner_id": cls.partner.id,
+            "product_id": cls.product_svc.id,
+            "total_sessions": 10,
+            "duration_minutes": 60,
+        })
 
     def _ensure_shift_lines(self, start_dt, line_specs):
         """Tạo/ghi booking.shift.config cho ngày local của start_dt. line_specs: [(user_ids, start_h, dur_h), ...]."""
@@ -604,6 +611,7 @@ class TestBookingCalendar(TransactionCase):
             }
         )
         product = tmpl.product_variant_id
+        product.spa_required_staff_level_id = senior.id
         no_level = self.env["res.users"].create(
             {
                 "name": "No Level Staff",
@@ -2012,12 +2020,18 @@ class TestBookingCalendar(TransactionCase):
             "spa_duration_minutes": 60,
             "categ_id": cat.id,
         }).product_variant_id
+        hair_card = self.env["spa.treatment.card"].create({
+            "name": "Hair Card",
+            "partner_id": self.partner.id,
+            "product_id": hair.id,
+            "total_sessions": 5,
+            "duration_minutes": 60,
+        })
         start = datetime.now() + timedelta(days=1)
         start = start.replace(hour=10, minute=0, second=0, microsecond=0)
         booking = self.env["spa.service.booking"].create({
             "partner_id": self.partner.id,
-            "card_id": self.card.id,
-            "product_id": hair.id,
+            "card_id": hair_card.id,
             "start_datetime": start,
             "duration": 60,
         })
@@ -2034,14 +2048,20 @@ class TestBookingCalendar(TransactionCase):
             "list_price": 100,
             "spa_sessions_per_unit": 1,
             "spa_duration_minutes": 60,
-            "spa_required_staff_level_id": ex_lvl.id if ex_lvl else False,
         }).product_variant_id
+        expert.spa_required_staff_level_id = ex_lvl.id if ex_lvl else False
+        expert_card = self.env["spa.treatment.card"].create({
+            "name": "Expert Card",
+            "partner_id": self.partner.id,
+            "product_id": expert.id,
+            "total_sessions": 5,
+            "duration_minutes": 60,
+        })
         start = datetime.now() + timedelta(days=1)
         start = start.replace(hour=10, minute=0, second=0, microsecond=0)
         booking = self.env["spa.service.booking"].create({
             "partner_id": self.partner.id,
-            "card_id": self.card.id,
-            "product_id": expert.id,
+            "card_id": expert_card.id,
             "start_datetime": start,
             "duration": 60,
         })
@@ -2095,3 +2115,445 @@ class TestBookingCalendar(TransactionCase):
         booking.invalidate_recordset(["create_date"])
         booking._compute_draft_special_colors()
         self.assertEqual(booking.draft_special_hex_color, "#33B577")
+
+    def _future_start_no_shift(self, days=90, hour=10):
+        """Ngày local tương lai chưa có booking.shift.config."""
+        start = datetime.now() + timedelta(days=days)
+        start = start.replace(hour=hour, minute=0, second=0, microsecond=0)
+        local = fields.Datetime.context_timestamp(self.env.user, start)
+        if getattr(local, "tzinfo", None):
+            local = local.replace(tzinfo=None)
+        self.env["booking.shift.config"].search([("shift_date", "=", local.date())]).unlink()
+        return start
+
+    def test_assign_staff_without_shift_config_allowed(self):
+        """Ngày chưa cấu hình ca: vẫn gán được NV (level + capacity)."""
+        start = self._future_start_no_shift(days=90)
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+        })
+        self.assertIn(self.user_a, booking.staff_ids)
+        self.assertFalse(booking.staff_outside_shift)
+
+    def test_assign_staff_outside_shift_blocked_without_flag(self):
+        """Có ca ngày + ngoài khung: chặn nếu chưa tick Ngoài ca."""
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=19, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        with self.assertRaises(ValidationError):
+            self.env["spa.service.booking"].create({
+                "partner_id": self.partner.id,
+                "card_id": self.card.id,
+                "product_id": self.product_svc.id,
+                "start_datetime": start,
+                "duration": 60,
+                "staff_ids": [(6, 0, [self.user_a.id])],
+                "bed_id": self.bed.id,
+            })
+
+    def test_assign_staff_outside_shift_allowed_with_flag(self):
+        """Có ca ngày + ngoài khung + cờ Ngoài ca: cho lưu."""
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=19, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "staff_outside_shift": True,
+            "bed_id": self.bed.id,
+        })
+        self.assertTrue(booking.staff_outside_shift)
+        self.assertIn(self.user_a, booking.staff_outside_shift_user_ids)
+        self.assertIn(self.user_a, booking.staff_ids)
+
+    def test_create_booking_with_string_datetimes_like_web_save(self):
+        """web_save gửi start/end dạng chuỗi: create có staff_ids không crash; trong ca không bật cờ ngoài ca."""
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        end = start + timedelta(hours=1)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": fields.Datetime.to_string(start),
+            "end_datetime": fields.Datetime.to_string(end),
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+        })
+        self.assertIn(self.user_a, booking.staff_ids)
+        self.assertFalse(booking.staff_outside_shift)
+        self.assertFalse(booking.staff_outside_shift_user_ids)
+
+    def test_user_slot_within_shift_string_matches_datetime(self):
+        """user_slot_within_shift: chuỗi RPC cùng kết quả với datetime (trong ca và ngoài ca)."""
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        end = start + timedelta(hours=1)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        ShiftCfg = self.env["booking.shift.config"]
+        naive_in = ShiftCfg.user_slot_within_shift(self.user_a, start, end)
+        str_in = ShiftCfg.user_slot_within_shift(
+            self.user_a,
+            fields.Datetime.to_string(start),
+            fields.Datetime.to_string(end),
+        )
+        self.assertTrue(naive_in)
+        self.assertEqual(naive_in, str_in)
+
+        start_out = start.replace(hour=19)
+        end_out = start_out + timedelta(hours=1)
+        naive_out = ShiftCfg.user_slot_within_shift(self.user_a, start_out, end_out)
+        str_out = ShiftCfg.user_slot_within_shift(
+            self.user_a,
+            fields.Datetime.to_string(start_out),
+            fields.Datetime.to_string(end_out),
+        )
+        self.assertFalse(naive_out)
+        self.assertEqual(naive_out, str_out)
+
+    def test_get_available_staff_without_shift_config(self):
+        """get_available_staff_ids: ngày chưa có ca vẫn trả NV đủ cấp + capacity."""
+        start = self._future_start_no_shift(days=91)
+        end = start + timedelta(hours=1)
+        ids = self.env["spa.service.booking"].get_available_staff_ids(
+            self.product_svc.id, start, end
+        )
+        self.assertIn(self.user_a.id, ids.ids)
+
+    def test_shift_off_day_requires_outside_shift_flag(self):
+        """duration=0 trên ca ngày = nghỉ: cần cờ Ngoài ca để gán."""
+        start = datetime.now() + timedelta(days=3)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 0.0)])
+        with self.assertRaises(ValidationError):
+            self.env["spa.service.booking"].create({
+                "partner_id": self.partner.id,
+                "card_id": self.card.id,
+                "product_id": self.product_svc.id,
+                "start_datetime": start,
+                "duration": 60,
+                "staff_ids": [(6, 0, [self.user_a.id])],
+                "bed_id": self.bed.id,
+            })
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "staff_outside_shift": True,
+            "bed_id": self.bed.id,
+        })
+        self.assertIn(self.user_a, booking.staff_outside_shift_user_ids)
+        self.assertIn(self.user_a, booking.staff_ids)
+
+    def test_multi_staff_mixed_shift_only_flags_outside_users(self):
+        """2 NV: A trong ca, B ngoài ca — M2M chỉ ghi B, không gộp A."""
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [
+            ([self.user_a.id], 8.0, 12.0),
+            ([self.user_b.id], 8.0, 2.0),
+        ])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id, self.user_b.id])],
+            "staff_outside_shift": True,
+            "staff_outside_shift_user_ids": [(6, 0, [self.user_b.id])],
+            "bed_id": self.bed.id,
+        })
+        self.assertIn(self.user_b, booking.staff_outside_shift_user_ids)
+        self.assertNotIn(self.user_a, booking.staff_outside_shift_user_ids)
+
+    def test_write_reschedule_clears_stale_outside_shift_flag(self):
+        """Đổi giờ từ ngoài ca → trong ca: write sync bỏ cờ/M2M."""
+        start_out = datetime.now() + timedelta(days=2)
+        start_out = start_out.replace(hour=19, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start_out, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start_out,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "staff_outside_shift": True,
+            "bed_id": self.bed.id,
+        })
+        self.assertTrue(booking.staff_outside_shift)
+        start_in = start_out.replace(hour=9, minute=0)
+        booking.write({"start_datetime": start_in})
+        self.assertFalse(booking.staff_outside_shift)
+        self.assertFalse(booking.staff_outside_shift_user_ids)
+
+    def test_composite_line_outside_shift_flag(self):
+        """Booking gộp: cờ ngoài ca theo từng line."""
+        parent_tmpl = self.env["product.template"].create({
+            "name": "Gói Outside Shift",
+            "detailed_type": "service",
+            "list_price": 200,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 60,
+        })
+        child_tmpl = self.env["product.template"].create({
+            "name": "Child Outside",
+            "detailed_type": "service",
+            "list_price": 50,
+            "spa_sessions_per_unit": 1,
+            "spa_duration_minutes": 60,
+        })
+        self.env["spa.product.sub.service"].create({
+            "product_tmpl_id": parent_tmpl.id,
+            "sub_product_tmpl_id": child_tmpl.id,
+            "sequence": 1,
+        })
+        card = self.env["spa.treatment.card"].create({
+            "name": "Card composite outside",
+            "partner_id": self.partner.id,
+            "product_id": parent_tmpl.product_variant_id.id,
+            "total_sessions": 5,
+            "duration_minutes": 60,
+        })
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=19, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "booking_kind": "card",
+            "card_id": card.id,
+            "start_datetime": start,
+            "duration": 60,
+        })
+        booking.action_generate_bundle_steps()
+        line = booking.booking_line_ids[:1]
+        self.assertTrue(line)
+        with self.assertRaises(ValidationError):
+            line.write({"staff_id": self.user_a.id})
+        line.write({"staff_id": self.user_a.id, "staff_outside_shift": True})
+        self.assertTrue(line.staff_outside_shift)
+
+    def test_recurring_copy_staff_copies_in_shift(self):
+        """recurring_copy_staff: copy NV sang lịch con khi còn trong ca."""
+        start = datetime.now() + timedelta(days=5)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        parent = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+            "recurring_enabled": True,
+            "recurring_mon": True,
+            "recurring_tue": True,
+            "recurring_wed": True,
+            "recurring_thu": True,
+            "recurring_fri": True,
+            "recurring_sat": True,
+            "recurring_sun": True,
+            "recurring_copy_staff": True,
+        })
+        parent.action_confirm_recurring()
+        children = parent.recurring_child_ids
+        self.assertTrue(children)
+        self.assertTrue(all(self.user_a in c.staff_ids for c in children))
+
+    def test_recurring_copy_staff_fallback_without_staff_on_conflict(self):
+        """recurring_copy_staff: capacity conflict → tạo lịch con không NV."""
+        start = datetime.now() + timedelta(days=6)
+        start = start.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        child_day = start.date() + timedelta(days=7)
+        child_start = datetime.combine(child_day, start.time())
+        self._ensure_shift_lines(child_start, [([self.user_a.id], 8.0, 10.0)])
+        self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card2.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": child_start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+        })
+        parent = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+            "recurring_enabled": True,
+            "recurring_mon": True,
+            "recurring_tue": True,
+            "recurring_wed": True,
+            "recurring_thu": True,
+            "recurring_fri": True,
+            "recurring_sat": True,
+            "recurring_sun": True,
+            "recurring_copy_staff": True,
+        })
+        parent.action_confirm_recurring()
+        child = parent.recurring_child_ids.filtered(
+            lambda b: b.start_datetime.date() == child_day
+        )
+        self.assertEqual(len(child), 1)
+        self.assertFalse(child.staff_ids)
+
+    def test_shift_week_template_apply_skip_existing(self):
+        """Apply template: skip ngày đã có ca (default)."""
+        Template = self.env["booking.shift.week.template"]
+        tmpl = Template.create({"name": "Test Week Template"})
+        self.env["booking.shift.week.template.line"].create({
+            "template_id": tmpl.id,
+            "weekday": "0",
+            "shift_start_time_hours": 8.0,
+            "shift_duration_hours": 10.0,
+            "user_ids": [(6, 0, [self.user_a.id])],
+        })
+        today = fields.Date.context_today(self.env.user)
+        # find next Monday
+        day = today
+        while day.weekday() != 0:
+            day += timedelta(days=1)
+        self._ensure_shift_lines(
+            datetime.combine(day, datetime.min.time()).replace(hour=10),
+            [([self.user_b.id], 9.0, 8.0)],
+        )
+        end = day + timedelta(days=6)
+        wizard = self.env["booking.shift.template.apply.wizard"].create({
+            "template_id": tmpl.id,
+            "date_start": day,
+            "date_end": end,
+            "overwrite_existing": False,
+        })
+        wizard.action_apply()
+        cfg = self.env["booking.shift.config"].search([("shift_date", "=", day)], limit=1)
+        self.assertTrue(cfg.line_ids)
+        self.assertIn(self.user_b, cfg.line_ids.user_ids)
+        self.assertNotIn(self.user_a, cfg.line_ids.user_ids)
+
+    def test_shift_week_template_apply_overwrite(self):
+        """Apply template với overwrite: thay ca ngày đã cấu hình."""
+        Template = self.env["booking.shift.week.template"]
+        tmpl = Template.create({"name": "Overwrite Template"})
+        self.env["booking.shift.week.template.line"].create({
+            "template_id": tmpl.id,
+            "weekday": "0",
+            "shift_start_time_hours": 8.0,
+            "shift_duration_hours": 10.0,
+            "user_ids": [(6, 0, [self.user_a.id])],
+        })
+        today = fields.Date.context_today(self.env.user)
+        day = today
+        while day.weekday() != 0:
+            day += timedelta(days=1)
+        self._ensure_shift_lines(
+            datetime.combine(day, datetime.min.time()).replace(hour=10),
+            [([self.user_b.id], 9.0, 8.0)],
+        )
+        wizard = self.env["booking.shift.template.apply.wizard"].create({
+            "template_id": tmpl.id,
+            "date_start": day,
+            "date_end": day,
+            "overwrite_existing": True,
+        })
+        wizard.action_apply()
+        cfg = self.env["booking.shift.config"].search([("shift_date", "=", day)], limit=1)
+        self.assertIn(self.user_a, cfg.line_ids.user_ids)
+        self.assertNotIn(self.user_b, cfg.line_ids.user_ids)
+
+    def test_outside_shift_error_lists_all_missing_staff(self):
+        """Constraint liệt kê tất cả NV ngoài ca chưa có trong M2M."""
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=19, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [
+            ([self.user_a.id], 8.0, 2.0),
+            ([self.user_b.id], 8.0, 2.0),
+        ])
+        with self.assertRaises(ValidationError) as cm:
+            self.env["spa.service.booking"].create({
+                "partner_id": self.partner.id,
+                "card_id": self.card.id,
+                "product_id": self.product_svc.id,
+                "start_datetime": start,
+                "duration": 60,
+                "staff_ids": [(6, 0, [self.user_a.id, self.user_b.id])],
+                "bed_id": self.bed.id,
+            })
+        msg = str(cm.exception)
+        self.assertIn(self.user_a.name, msg)
+        self.assertIn(self.user_b.name, msg)
+
+    def test_write_reschedule_outside_shift_requires_m2m_via_api(self):
+        """RPC write đổi giờ ngoài ca: constraint chặn nếu chưa có M2M (không qua onchange)."""
+        start_in = datetime.now() + timedelta(days=2)
+        start_in = start_in.replace(hour=10, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start_in, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].create({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start_in,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+            "bed_id": self.bed.id,
+        })
+        start_out = start_in.replace(hour=19, minute=0)
+        with self.assertRaises(ValidationError):
+            booking.write({"start_datetime": start_out})
+
+    def test_outside_shift_warning_html_shows_missing_staff(self):
+        """Banner computed hiển thị NV ngoài ca chưa tick M2M."""
+        start = datetime.now() + timedelta(days=2)
+        start = start.replace(hour=19, minute=0, second=0, microsecond=0)
+        self._ensure_shift_lines(start, [([self.user_a.id], 8.0, 10.0)])
+        booking = self.env["spa.service.booking"].new({
+            "partner_id": self.partner.id,
+            "card_id": self.card.id,
+            "product_id": self.product_svc.id,
+            "start_datetime": start,
+            "duration": 60,
+            "staff_ids": [(6, 0, [self.user_a.id])],
+        })
+        booking._compute_staff_outside_shift_warning_html()
+        self.assertTrue(booking.staff_outside_shift_warning_html)
+        self.assertIn(self.user_a.name, booking.staff_outside_shift_warning_html)
+
+    def test_shift_template_wizard_default_active_template(self):
+        Template = self.env["booking.shift.week.template"]
+        Template.search([]).write({"active": False})
+        tmpl = Template.create({"name": "Default active tmpl", "active": True})
+        defaults = self.env["booking.shift.template.apply.wizard"].default_get(
+            ["template_id", "date_start", "date_end"]
+        )
+        self.assertEqual(defaults.get("template_id"), tmpl.id)
+
+    def test_shift_template_wizard_rejects_long_date_range(self):
+        tmpl = self.env["booking.shift.week.template"].create({"name": "Range cap"})
+        today = fields.Date.context_today(self.env.user)
+        with self.assertRaises(ValidationError):
+            self.env["booking.shift.template.apply.wizard"].create({
+                "template_id": tmpl.id,
+                "date_start": today,
+                "date_end": today + timedelta(days=91),
+            })

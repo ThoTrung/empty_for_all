@@ -167,6 +167,28 @@ class SpaServiceBooking(models.Model):
         tracking=True,
         help="Nhiều nhân viên có thể cùng thực hiện dịch vụ. Khi chỉ có 1 người, hệ thống vẫn tương thích với staff_id cũ.",
     )
+    staff_outside_shift = fields.Boolean(
+        string="Ngoài ca đã cấu hình",
+        tracking=True,
+        help="Bật khi gán nhân viên ngoài khung ca làm đã cấu hình cho ngày này (OT, KH chỉ định, v.v.). "
+        "Không cần khi ngày chưa có cấu hình ca.",
+    )
+    staff_outside_shift_user_ids = fields.Many2many(
+        "res.users",
+        "spa_booking_outside_shift_user_rel",
+        "booking_id",
+        "user_id",
+        string="NV ngoài ca (chi tiết)",
+        domain=[("share", "=", False)],
+        tracking=True,
+        help="Nhân viên thực hiện ngoài khung ca đã cấu hình — dùng cho audit khi booking có nhiều NV.",
+    )
+    staff_outside_shift_warning_html = fields.Html(
+        string="Cảnh báo ngoài ca",
+        compute="_compute_staff_outside_shift_warning_html",
+        store=False,
+        sanitize=False,
+    )
     display_composite_staff_ids = fields.Many2many(
         "res.users",
         string="Nhân viên thực hiện (từ dịch vụ con)",
@@ -883,16 +905,9 @@ class SpaServiceBooking(models.Model):
 
     def _spa_get_product_template_for_draft_color(self):
         self.ensure_one()
-        # Prefer product_id; fallback to card/non_session offering when product_id is missing.
-        product_variant = self.product_id
-        if not product_variant and self.card_id and getattr(self.card_id, "product_id", False):
-            product_variant = self.card_id.product_id
-        elif (
-            not product_variant
-            and self.non_session_offering_id
-            and getattr(self.non_session_offering_id, "product_id", False)
-        ):
-            product_variant = self.non_session_offering_id.product_id
+        product_variant = self._spa_effective_service_product()
+        if not product_variant and self.product_id:
+            product_variant = self.product_id
         return product_variant.product_tmpl_id if product_variant and product_variant.product_tmpl_id else False
 
     @api.depends("state")
@@ -984,7 +999,11 @@ class SpaServiceBooking(models.Model):
                     chosen = norm(cfg["hair"])
                     chosen_key = "hair"
                 # 4) expert only
-                elif rec.product_id and rec.product_id.spa_required_staff_level_id and rec.product_id.spa_required_staff_level_id.level_group == "expert":
+                elif (
+                    pt
+                    and pt.spa_required_staff_level_id
+                    and pt.spa_required_staff_level_id.level_group == "expert"
+                ):
                     chosen = norm(cfg["expert"])
                     chosen_key = "expert"
                 else:
@@ -1050,6 +1069,13 @@ class SpaServiceBooking(models.Model):
     recurring_fri = fields.Boolean(string="Thứ 6", default=False, copy=False)
     recurring_sat = fields.Boolean(string="Thứ 7", default=False, copy=False)
     recurring_sun = fields.Boolean(string="CN", default=False, copy=False)
+    recurring_copy_staff = fields.Boolean(
+        string="Nhân bản NV sang lịch con",
+        default=False,
+        copy=False,
+        help="Khi xác nhận đặt lịch theo tuần: copy Nhân viên thực hiện từ booking này sang các lịch con "
+        "(bỏ qua ngày không gán được do ca/capacity).",
+    )
     is_recurring_child = fields.Boolean(
         string="Là lịch con theo tuần",
         compute="_compute_is_recurring_child",
@@ -1396,6 +1422,7 @@ class SpaServiceBooking(models.Model):
         duration = self.card_id.duration_minutes or self.duration or 60
         Booking = self.env["spa.service.booking"]
         created = 0
+        skipped_staff_dates = []
         current = fields.Datetime.to_datetime(self.start_datetime).date()
         # bắt đầu từ ngày tiếp theo để tránh trùng với booking hiện tại
         current += timedelta(days=1)
@@ -1404,21 +1431,63 @@ class SpaServiceBooking(models.Model):
                 break
             if current.weekday() in weekdays:
                 start_dt = datetime.combine(current, start_time)
-                Booking.create({
-                    "partner_id": self.partner_id.id,
-                    "booking_kind": "card",
-                    "card_id": self.card_id.id,
-                    "product_id": self.card_id.product_id.id if self.card_id.product_id else self.product_id.id,
-                    "start_datetime": start_dt,
-                    "duration": duration,
-                    "bed_id": False,
-                    "recurring_parent_id": self.id,
-                    "booking_board": self.booking_board,
-                })
+                child, skipped = self._create_recurring_child_booking(start_dt, duration)
+                if skipped:
+                    skipped_staff_dates.append(current)
                 created += 1
             current += timedelta(days=1)
 
-        self.write({"recurring_enabled": True, "recurring_is_active": True})
+        write_vals = {"recurring_enabled": True, "recurring_is_active": True}
+        self.write(write_vals)
+        if skipped_staff_dates and self.recurring_copy_staff:
+            dates_txt = ", ".join(fields.Date.to_string(d) for d in skipped_staff_dates)
+            self.message_post(
+                body=_(
+                    "Đã tạo lịch con nhưng không nhân bản NV cho các ngày: %s "
+                    "(ca/capacity không cho phép).",
+                    dates_txt,
+                )
+            )
+
+    def _prepare_recurring_child_vals(self, start_dt, duration):
+        self.ensure_one()
+        vals = {
+            "partner_id": self.partner_id.id,
+            "booking_kind": "card",
+            "card_id": self.card_id.id,
+            "product_id": self.card_id.product_id.id if self.card_id.product_id else self.product_id.id,
+            "start_datetime": start_dt,
+            "duration": duration,
+            "bed_id": False,
+            "recurring_parent_id": self.id,
+            "booking_board": self.booking_board,
+        }
+        if self.recurring_copy_staff and self.staff_ids:
+            end_dt = start_dt + timedelta(minutes=duration)
+            outside = self._spa_staff_outside_shift_users(
+                self.staff_ids, start_dt, end_dt
+            )
+            vals["staff_ids"] = [(6, 0, self.staff_ids.ids)]
+            if outside:
+                vals["staff_outside_shift_user_ids"] = [(6, 0, outside.ids)]
+                vals["staff_outside_shift"] = True
+        return vals
+
+    def _create_recurring_child_booking(self, start_dt, duration):
+        """Tạo booking con; nếu copy NV fail thì tạo lại không NV."""
+        Booking = self.env["spa.service.booking"]
+        vals = self._prepare_recurring_child_vals(start_dt, duration)
+        if not vals.get("staff_ids"):
+            return Booking.create(vals), False
+        try:
+            with self.env.cr.savepoint():
+                return Booking.create(vals), False
+        except ValidationError:
+            base = dict(vals)
+            base.pop("staff_ids", None)
+            base.pop("staff_outside_shift_user_ids", None)
+            base.pop("staff_outside_shift", None)
+            return Booking.create(base), True
 
     def action_cancel_recurring(self):
         """Huỷ lịch theo tuần: xoá các lịch con ở tương lai chưa dùng, tắt UI recurring."""
@@ -1482,73 +1551,217 @@ class SpaServiceBooking(models.Model):
                     usages.append((user.id, self.start_datetime, self.end_datetime, cap))
         return usages
 
-    @api.constrains("start_datetime", "end_datetime", "staff_ids", "state", "booking_line_ids")
+    def _spa_staff_outside_shift_users(self, staff_users, start_dt, end_dt):
+        """NV trong staff_users có slot ngoài ca đã cấu hình."""
+        if not staff_users or not start_dt or not end_dt:
+            return self.env["res.users"]
+        ShiftCfg = self.env["booking.shift.config"]
+        return staff_users.filtered(
+            lambda u: not ShiftCfg.user_slot_within_shift(u, start_dt, end_dt)
+        )
+
+    @staticmethod
+    def _spa_raise_outside_shift_users(users):
+        """ValidationError liệt kê tất cả NV ngoài ca chưa được phép."""
+        users = users.exists()
+        if not users:
+            return
+        names = ", ".join(users.mapped("name"))
+        raise ValidationError(
+            _(
+                "Nhân viên %s ngoài ca đã cấu hình. "
+                "Thêm vào «NV ngoài ca (chi tiết)» hoặc chỉnh ca làm.",
+                names,
+            )
+        )
+
+    @api.depends(
+        "staff_ids",
+        "start_datetime",
+        "end_datetime",
+        "duration",
+        "staff_outside_shift_user_ids",
+        "booking_line_ids",
+        "is_composite_booking",
+    )
+    def _compute_staff_outside_shift_warning_html(self):
+        for rec in self:
+            rec.staff_outside_shift_warning_html = False
+            if rec.is_composite_booking or not rec.staff_ids:
+                continue
+            if not rec.start_datetime:
+                continue
+            end_dt = rec.end_datetime
+            if not end_dt and rec.duration:
+                end_dt = fields.Datetime.to_datetime(rec.start_datetime) + timedelta(
+                    minutes=int(rec.duration or 0)
+                )
+            if not end_dt:
+                continue
+            outside = rec._spa_staff_outside_shift_users(
+                rec.staff_ids, rec.start_datetime, end_dt
+            )
+            missing = outside - rec.staff_outside_shift_user_ids
+            if not missing:
+                continue
+            names = ", ".join(escape(u.name or u.login) for u in missing)
+            rec.staff_outside_shift_warning_html = Markup(
+                '<div class="alert alert-warning mb-0" role="alert">'
+                "<strong>Ngoài ca đã cấu hình:</strong> "
+                "%s — thêm vào «NV ngoài ca (chi tiết)» hoặc chỉnh ca làm."
+                "</div>"
+            ) % names
+
+    @api.model
+    def _spa_m2m_ids_from_commands(self, commands):
+        if not commands:
+            return []
+        result = set()
+        for cmd in commands:
+            if not isinstance(cmd, (list, tuple)) or len(cmd) < 1:
+                continue
+            op = cmd[0]
+            if op == 6 and len(cmd) >= 3:
+                result = set(cmd[2] or [])
+            elif op == 4 and len(cmd) >= 2:
+                result.add(cmd[1])
+            elif op == 3 and len(cmd) >= 2:
+                result.discard(cmd[1])
+            elif op == 5:
+                result.clear()
+        return list(result)
+
+    @api.model
+    def _spa_strip_placeholder_booking_line_vals(self, vals):
+        """Form bundled save có thể gửi line placeholder không product_id — bỏ trước INSERT."""
+        commands = vals.get("booking_line_ids")
+        if not commands:
+            return vals, False
+        stripped = False
+        cleaned = []
+        for cmd in commands:
+            if not cmd:
+                continue
+            op = cmd[0]
+            if op == 0 and len(cmd) >= 3 and not cmd[2].get("product_id"):
+                stripped = True
+                continue
+            cleaned.append(cmd)
+        if cleaned:
+            vals["booking_line_ids"] = cleaned
+        else:
+            vals.pop("booking_line_ids", None)
+        return vals, stripped
+
+    @api.model
+    def _spa_prepare_outside_shift_create_vals(self, vals):
+        """RPC/create: đồng bộ M2M NV ngoài ca khi có cờ boolean."""
+        if vals.get("booking_line_ids"):
+            return vals
+        staff_ids = self._spa_m2m_ids_from_commands(vals.get("staff_ids"))
+        start = fields.Datetime.to_datetime(vals.get("start_datetime"))
+        if not staff_ids or not start:
+            return vals
+        end = vals.get("end_datetime")
+        duration = vals.get("duration")
+        if not end and duration:
+            end = start + timedelta(minutes=int(duration or 0))
+        else:
+            end = fields.Datetime.to_datetime(end) if end else end
+        if not end:
+            return vals
+        outside = self._spa_staff_outside_shift_users(
+            self.env["res.users"].browse(staff_ids), start, end
+        )
+        if outside:
+            if vals.get("staff_outside_shift") and not vals.get("staff_outside_shift_user_ids"):
+                vals["staff_outside_shift_user_ids"] = [(6, 0, outside.ids)]
+        else:
+            if vals.get("staff_outside_shift"):
+                vals["staff_outside_shift"] = False
+            if vals.get("staff_outside_shift_user_ids"):
+                vals["staff_outside_shift_user_ids"] = [(5, 0, 0)]
+        return vals
+
+    def _spa_sync_staff_outside_shift_flags(self):
+        """Đồng bộ cờ/M2M sau khi đổi NV hoặc giờ (bỏ NV không còn ngoài ca khỏi M2M)."""
+        for rec in self:
+            if rec.booking_line_ids:
+                continue
+            if not rec.staff_ids or not rec.start_datetime or not rec.end_datetime:
+                updates = {}
+                if rec.staff_outside_shift_user_ids:
+                    updates["staff_outside_shift_user_ids"] = [(5, 0, 0)]
+                if rec.staff_outside_shift:
+                    updates["staff_outside_shift"] = False
+                if updates:
+                    rec.write(updates)
+                continue
+            outside = rec._spa_staff_outside_shift_users(
+                rec.staff_ids, rec.start_datetime, rec.end_datetime
+            )
+            keep = rec.staff_outside_shift_user_ids & outside
+            updates = {}
+            if keep != rec.staff_outside_shift_user_ids:
+                updates["staff_outside_shift_user_ids"] = [(6, 0, keep.ids)]
+            new_flag = bool(outside)
+            if rec.staff_outside_shift != new_flag:
+                updates["staff_outside_shift"] = new_flag
+            if updates:
+                rec.with_context(skip_outside_shift_sync=True).write(updates)
+
+    @api.onchange("staff_ids", "start_datetime", "end_datetime", "staff_outside_shift")
+    def _onchange_staff_ids_outside_shift(self):
+        """Gợi ý tick / gán M2M NV ngoài ca khi chọn staff hoặc bật cờ."""
+        for rec in self:
+            if rec.is_composite_booking or not rec.staff_ids:
+                if not rec.staff_ids:
+                    rec.staff_outside_shift = False
+                    rec.staff_outside_shift_user_ids = [(5, 0, 0)]
+                continue
+            if not rec.start_datetime or not rec.end_datetime:
+                continue
+            outside = rec._spa_staff_outside_shift_users(
+                rec.staff_ids, rec.start_datetime, rec.end_datetime
+            )
+            rec.staff_outside_shift = bool(outside)
+            if rec.staff_outside_shift:
+                rec.staff_outside_shift_user_ids = outside
+            else:
+                rec.staff_outside_shift_user_ids = [(5, 0, 0)]
+
+    @api.constrains(
+        "start_datetime",
+        "end_datetime",
+        "staff_ids",
+        "state",
+        "booking_line_ids",
+        "staff_outside_shift",
+        "staff_outside_shift_user_ids",
+    )
     def _check_staff_conflict(self):
         """Kiểm tra theo capacity %: tổng % các đặt lịch cùng nhân viên trong cùng khung giờ không vượt 100%."""
         for rec in self:
             if rec.state == "cancel":
                 continue
-            # Check staff shift window: chỉ theo booking.shift.config theo từng ngày (không dùng giờ ca trên User).
-            # duration=0 trên dòng ca => nghỉ ngày đó.
             ShiftCfg = self.env["booking.shift.config"]
-
-            def _within_shift(user, start_dt, end_dt):
-                if not start_dt or not end_dt:
-                    return True
-                local_start = fields.Datetime.context_timestamp(self, start_dt) or start_dt
-                local_end = fields.Datetime.context_timestamp(self, end_dt) or end_dt
-                if getattr(local_start, "tzinfo", None):
-                    local_start = local_start.replace(tzinfo=None)
-                if getattr(local_end, "tzinfo", None):
-                    local_end = local_end.replace(tzinfo=None)
-
-                day_local = local_start.date()
-                prev_day = day_local - timedelta(days=1)
-                map_today = ShiftCfg.get_user_shift_map_for_date(day_local)
-                map_prev = ShiftCfg.get_user_shift_map_for_date(prev_day)
-
-                def _get_shift(shift_day):
-                    if shift_day == day_local and user.id in map_today:
-                        return map_today[user.id]
-                    if shift_day == prev_day and user.id in map_prev:
-                        return map_prev[user.id]
-                    return None, None
-
-                def _check_for_day(shift_day):
-                    st_hours, duration_hours = _get_shift(shift_day)
-                    if st_hours is None or duration_hours is None:
-                        return False
-                    if duration_hours <= 0:
-                        return False
-                    if st_hours < 0 or st_hours >= 24:
-                        return False
-                    shift_start = datetime.combine(
-                        shift_day, datetime.min.time()
-                    ) + timedelta(hours=st_hours)
-                    shift_end = shift_start + timedelta(hours=duration_hours)
-                    return local_start >= shift_start and local_end <= shift_end
-
-                return _check_for_day(day_local) or _check_for_day(prev_day)
 
             # Booking gộp: bỏ qua staff_ids trên booking cha, chỉ check theo từng dòng con.
             if not rec.booking_line_ids:
-                for user in rec.staff_ids:
-                    if not _within_shift(user, rec.start_datetime, rec.end_datetime):
-                        raise ValidationError(
-                            _(
-                                "Nhân viên %s không thuộc ca làm đã cấu hình cho ngày này.",
-                                user.name,
-                            )
-                        )
+                outside = rec._spa_staff_outside_shift_users(
+                    rec.staff_ids, rec.start_datetime, rec.end_datetime
+                )
+                missing = outside - rec.staff_outside_shift_user_ids
+                if missing:
+                    self._spa_raise_outside_shift_users(missing)
             for line in rec.booking_line_ids:
                 if line.staff_id and line.start_datetime and line.end_datetime:
-                    if not _within_shift(line.staff_id, line.start_datetime, line.end_datetime):
-                        raise ValidationError(
-                            _(
-                                "Nhân viên %s không thuộc ca làm đã cấu hình cho ngày này.",
-                                line.staff_id.name,
-                            )
-                        )
+                    if ShiftCfg.user_slot_within_shift(
+                        line.staff_id, line.start_datetime, line.end_datetime
+                    ):
+                        continue
+                    if not line.staff_outside_shift:
+                        self._spa_raise_outside_shift_users(line.staff_id)
 
             usages = rec._get_staff_capacity_usages()
             for staff_id, start, end, cap in usages:
@@ -1658,7 +1871,10 @@ class SpaServiceBooking(models.Model):
                 )
             )
         vals_list = [sanitize_booking_write_vals(vals, is_create=True) for vals in vals_list]
+        stripped_placeholders = []
         for vals in vals_list:
+            vals, stripped = self._spa_strip_placeholder_booking_line_vals(vals)
+            stripped_placeholders.append(stripped)
             if not vals.get("name"):
                 vals["name"] = self.env["ir.sequence"].next_by_code("spa.service.booking") or _("New")
             # Khi có thẻ: luôn lấy duration từ thẻ (form/calendar có thể gửi duration=60 hoặc không gửi duration)
@@ -1687,10 +1903,25 @@ class SpaServiceBooking(models.Model):
                         vals["duration"] = max(int(round(delta.total_seconds() / 60.0)), 15)
                 except (TypeError, ValueError):
                     pass
+            vals = self._spa_prepare_outside_shift_create_vals(vals)
         result = super().create(vals_list)
         if result:
             # After stripping stale display_end from vals, stored display_* must be refreshed.
             result._compute_display_datetimes()
+        for rec, stripped in zip(result, stripped_placeholders):
+            bad_lines = rec.booking_line_ids.filtered(lambda l: not l.product_id)
+            if bad_lines:
+                bad_lines.unlink()
+            if (
+                stripped
+                and rec.booking_kind == "card"
+                and rec.card_id
+                and rec.card_id.product_id
+                and rec.card_id.product_id.product_tmpl_id.is_composite_service
+                and not rec.booking_line_ids
+                and rec.start_datetime
+            ):
+                rec.action_generate_bundle_steps()
         # Ensure sequential chain for newly created children/parents
         roots = set()
         for rec in result:
@@ -1728,12 +1959,17 @@ class SpaServiceBooking(models.Model):
                 raise self._spa_operator_staff_write_access_error()
             line_id = cmd[1]
             line_vals = cmd[2] or {}
-            extra = set(line_vals) - {"staff_id"}
+            extra = set(line_vals) - {"staff_id", "staff_outside_shift"}
             if extra:
                 raise self._spa_operator_staff_write_access_error()
-            if "staff_id" not in line_vals:
+            if "staff_id" not in line_vals and "staff_outside_shift" not in line_vals:
                 continue
-            sanitized.append((1, line_id, {"staff_id": line_vals["staff_id"]}))
+            line_clean = {}
+            if "staff_id" in line_vals:
+                line_clean["staff_id"] = line_vals["staff_id"]
+            if "staff_outside_shift" in line_vals:
+                line_clean["staff_outside_shift"] = line_vals["staff_outside_shift"]
+            sanitized.append((1, line_id, line_clean))
         return sanitized
 
     def _spa_filter_operator_booking_write_vals(self, vals):
@@ -1751,6 +1987,12 @@ class SpaServiceBooking(models.Model):
             if key in drop_keys:
                 continue
             if key == "staff_ids":
+                cleaned[key] = value
+                continue
+            if key == "staff_outside_shift":
+                cleaned[key] = value
+                continue
+            if key == "staff_outside_shift_user_ids":
                 cleaned[key] = value
                 continue
             if key == "booking_line_ids":
@@ -1856,6 +2098,18 @@ class SpaServiceBooking(models.Model):
             self.env["spa.treatment.card"].browse(card_ids_to_invalidate).invalidate_recordset(
                 ["reserved_by_bookings", "available_for_booking"]
             )
+        if not self.env.context.get("skip_outside_shift_sync") and any(
+            k in vals
+            for k in (
+                "staff_ids",
+                "start_datetime",
+                "end_datetime",
+                "duration",
+                "staff_outside_shift",
+                "staff_outside_shift_user_ids",
+            )
+        ):
+            self._spa_sync_staff_outside_shift_flags()
         return result
 
     def unlink(self):
@@ -2275,7 +2529,8 @@ class SpaServiceBooking(models.Model):
     def get_available_staff_ids(self, product_id, start_datetime, end_datetime, booking_id=None):
         """
         Nhân viên đủ cấp theo product.spa_required_staff_level_id (spa.staff.level: level_group + rank),
-        có ca trong booking.shift.config, slot nằm trọn khung ca, còn đủ capacity %.
+        có ca trong booking.shift.config (khi ngày đã cấu hình ca), slot nằm trọn khung ca, còn đủ capacity %.
+        Khi ngày chưa có cấu hình ca: lọc theo cấp + capacity (không lọc khung ca).
         Khi sản phẩm không gán cấp: mọi NV nội bộ (cùng bộ lọc ca + capacity) đủ điều kiện luân ca.
         Khi sản phẩm gán cấp: NV chưa có spa_staff_level_id không được gợi ý.
         """
@@ -2298,59 +2553,10 @@ class SpaServiceBooking(models.Model):
         else:
             users = all_staff
 
-        # Lọc theo khung ca trên booking.shift.config (ngày local + có thể ca từ hôm trước).
-        #
-        # Odoo lưu `start_datetime/end_datetime` ở UTC (khi DB trả về có thể là aware/naive).
-        # Để so sánh đúng theo "giờ địa phương" của user (vd: Việt Nam UTC+7),
-        # ta convert sang local time bằng `context_timestamp`, sau đó strip tzinfo
-        # để tất cả giá trị so sánh đều là naive datetimes.
-        local_start = fields.Datetime.context_timestamp(self, start_datetime) or start_datetime
-        local_end = fields.Datetime.context_timestamp(self, end_datetime) or end_datetime
-        if getattr(local_start, "tzinfo", None):
-            local_start = local_start.replace(tzinfo=None)
-        if getattr(local_end, "tzinfo", None):
-            local_end = local_end.replace(tzinfo=None)
-        start_dt_naive = local_start
-        end_dt_naive = local_end
-
-        # Ca làm theo ngày: chỉ booking.shift.config (modal "Ca làm"). duration=0 => nghỉ ngày đó.
-        day = start_dt_naive.date()
-        prev_day = day - timedelta(days=1)
         ShiftCfg = self.env["booking.shift.config"]
-        shift_map_today = ShiftCfg.get_user_shift_map_for_date(day)
-        shift_map_prev = ShiftCfg.get_user_shift_map_for_date(prev_day)
-
-        def _get_shift_for_user_day(user, shift_day):
-            if shift_day == day and user.id in shift_map_today:
-                return shift_map_today[user.id]
-            if shift_day == prev_day and user.id in shift_map_prev:
-                return shift_map_prev[user.id]
-            return None, None
-
-        # A booking is considered doable by that staff if the whole [start, end]
-        # fits within the staff's shift window (trong giờ local).
-        def _within_shift(user):
-            def _check_for_day(shift_day):
-                st_hours, duration_hours = _get_shift_for_user_day(user, shift_day)
-                if st_hours is None or duration_hours is None:
-                    return False
-                if duration_hours <= 0:
-                    return False
-                if st_hours < 0 or st_hours >= 24:
-                    return False
-
-                shift_start = datetime.combine(
-                    shift_day, datetime.min.time()
-                ) + timedelta(hours=st_hours)
-                shift_end = shift_start + timedelta(hours=duration_hours)
-                return start_dt_naive >= shift_start and end_dt_naive <= shift_end
-
-            # Booking at early hours may belong to shift started from previous day.
-            return _check_for_day(day) or _check_for_day(prev_day)
-
         result = []
         for user in users:
-            if not _within_shift(user):
+            if not ShiftCfg.user_slot_within_shift(user, start_datetime, end_datetime):
                 continue
             total = self._sum_staff_capacity_in_range(
                 user.id, start_datetime, end_datetime, exclude_booking_id=booking_id
