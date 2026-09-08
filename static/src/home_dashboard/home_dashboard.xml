@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="rental.HomeDashboard">
+        <div class="o_rental_home_dashboard">
+            <div class="o_rental_home_grid">
+                <t t-foreach="gridItems" t-as="tile" t-key="tile.id">
+                    <div t-if="tile.blank" class="o_rental_home_tile o_rental_home_tile_blank"/>
+                    <div t-else=""
+                         class="o_rental_home_tile"
+                         t-att-data-tile-id="tile.id"
+                         t-on-click="() => this.onTileClick(tile)">
+                        <img class="o_rental_home_tile_icon" t-att-src="tile.icon" t-att-alt="tile.label"/>
+                        <span class="o_rental_home_tile_label" t-esc="tile.label"/>
+                        <div t-if="tile.children and state.openDropdownId === tile.id"
+                             class="o_rental_home_dropdown">
+                            <div t-foreach="tile.children" t-as="child" t-key="child.id"
+                                 class="o_rental_home_dropdown_item"
+                                 t-on-click="(ev) => this.onChildClick(child, ev)">
+                                <img class="o_rental_home_dropdown_icon" t-att-src="child.icon" t-att-alt="child.label"/>
+                                <span t-esc="child.label"/>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+</templates>

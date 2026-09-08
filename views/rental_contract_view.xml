@@ -206,8 +206,8 @@
                                         <field name="include_start_day_current"/>
                                     </group>
                                     <group>
-                                        <separator string="Bên A" class="text-danger text-medium"/>
-                                        <field name="a_company_party" placeholder="Công ty Lộc Phát" options="{'no_create': True}" readonly="not can_edit"/>
+                                        <separator string="Bên A" class="o_rental_section_color_1 o_rental_section_label"/>
+                                        <field name="a_company_party" placeholder="Công ty Lộc Phát" options="{'no_quick_create': True}" context="{'default_is_company': True, 'default_customer_type': 'company', 'default_is_rental_customer': True}" readonly="not can_edit"/>
                                         <field name="a_party" placeholder="Nguyễn văn A" readonly="not a_company_party or not can_edit" options="{'no_quick_create': True}" context="{'no_parent_prefix': True, 'default_parent_id': a_company_party, 'default_type': 'contact', 'rental_contact_quick': 1}"/>
                                         <field name="a_function" readonly="not can_edit"/>
                                         <field name="a_executor_id" placeholder="Người thực hiện" options="{'no_quick_create': True}" context="{'no_parent_prefix': True, 'default_parent_id': a_company_party, 'default_type': 'contact', 'rental_contact_quick': 1}" readonly="not can_edit"/>
@@ -218,7 +218,7 @@
                                         <field name="a_vat" readonly="not can_edit"/>
                                     </group>
                                     <group>
-                                        <separator string="Bên B" class="text-success text-medium"/>
+                                        <separator string="Bên B" class="o_rental_section_color_2 o_rental_section_label"/>
                                         <field name="b_company_party" placeholder="" options="{'no_create': True}" readonly="1"/>
                                         <field name="b_party" string="Đại diện bên B" placeholder="Nguyễn Văn A" options="{'no_quick_create': True}" context="{'no_parent_prefix': True, 'default_parent_id': b_company_party, 'default_type': 'contact', 'rental_contact_quick': 1}" readonly="not b_company_party or not can_edit"/>
                                         <field name="b_function" readonly="not can_edit"/>
@@ -230,7 +230,7 @@
                                         <field name="b_vat" readonly="not can_edit"/>
                                     </group>
                                     <group>
-                                        <separator string="Công trình" class="text-info text-medium"/>
+                                        <separator string="Công trình" class="o_rental_section_color_3 o_rental_section_label"/>
                                         <field name="construction_work_id" options="{'no_quick_create': True}" readonly="not can_edit"/>
                                         <field name="construction_work_project_id" readonly="1"/>
                                         <field name="construction_work_address" invisible="1"/>
@@ -300,7 +300,7 @@
                                     </tree>
                                 </field>
                             </page>
-                            <page string="Vận chuyển">
+                            <page string="Phiếu giao - nhận VT">
                                 <div class="d-flex gap-2 mb-2">
                                     <button name="action_open_transport_import_wizard"
                                             type="object"
@@ -335,7 +335,7 @@
                                     </tree>
                                 </field>
                             </page>
-                            <page string="Hóa đơn">
+                            <page string="Bảng KL, giá trị thuê">
                                 <div class="d-flex justify-content-between">
                                     <div>
 <!--                                        <button name="%(action_create_invoice_wizard)d"-->

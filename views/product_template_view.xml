@@ -106,6 +106,9 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_only_form_view" />
         <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="class" add="o_rental_product_form" separator=" "/>
+            </xpath>
             <xpath expr="//sheet/notebook" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -117,7 +120,8 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//sheet" position="inside">
-                <group string="Chi tiết sản phẩm">
+                <separator string="Chi tiết sản phẩm" class="o_rental_section_color_1 o_rental_section_label"/>
+                <group>
                     <group>
                         <field name="categ_id"/>
                         <field name="uom_id" domain="[('category_id.name','=','tbxd')]"/>  # Remember to create uom in inventory setting with category name is: tbxd - (thiết bị xây dựng)
@@ -131,7 +135,7 @@
                     </group>
                 </group>
                 <field name="description" placeholder="Mô tả"/>
-                <separator string="Thuộc tính &amp; biến thể" class="text-danger text-medium"/>
+                <separator string="Thuộc tính &amp; biến thể" class="o_rental_section_color_2 o_rental_section_label"/>
                 <field name="attribute_line_ids" nolabel="1" widget="one2many" context="{'show_attribute': False}">
                     <tree string="Biến thể" editable="bottom" decoration-info="value_count &lt;= 1">
                         <field name="value_count" column_invisible="True"/>

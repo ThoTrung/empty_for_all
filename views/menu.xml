@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem name="Cho thuê"
+    <menuitem name="Hệ thống"
               id="menu_rental_root"
               web_icon="rental, static/description/icon.png"
+              action="action_rental_home_dashboard"
               sequence="0"/>
+
+    <!-- name mặc định (en_US) đặt ở trên; nhãn tiếng Việt đang hiển thị
+         (vi_VN) được set riêng vì đã có bản dịch cũ khác biệt trong DB
+         và Odoo không tự ghi đè bản dịch đã tồn tại nếu không chỉ rõ lang -->
+    <record id="menu_rental_root" model="ir.ui.menu" context="{'lang': 'vi_VN'}">
+        <field name="name">Hệ thống</field>
+    </record>
 
     <menuitem id="menu_rental_analytics_dashboard"
               name="Thống kê"
@@ -12,70 +20,84 @@
               sequence="0"
               groups="rental.group_rental_staff"/>
 
+    <menuitem id="menu_danh_muc_root"
+              name="Danh mục"
+              parent="menu_rental_root"
+              sequence="1"
+              groups="rental.group_rental_staff"/>
+
+    <!-- Ẩn tạm: mọi thao tác dưới đây đã có sẵn trên lưới icon Trang chủ -->
     <menuitem name="Hợp đồng"
               id="menu_contract_master"
               parent="menu_rental_root"
               sequence="2"
+              active="False"
               groups="rental.group_rental_staff"/>
     <menuitem name="Hợp đồng thuê"
               id="menu_rental_contract"
               action="action_rental_contract"
               parent="menu_contract_master"
-              sequence="0"/>
+              sequence="0"
+              active="False"/>
     <menuitem id="menu_res_partner_renters"
-              name="Khách thuê"
-              parent="menu_contract_master"
+              name="Khách hàng/NCC"
+              parent="menu_danh_muc_root"
               action="action_res_partner_renters"
-              sequence="1"/>
+              sequence="2"/>
     <menuitem name="Bảng xác nhận KL"
               id="menu_rental_transport_matrix"
               action="action_rental_transport_matrix"
               parent="menu_contract_master"
-              sequence="2"/>
+              sequence="2"
+              active="False"/>
     <menuitem name="Hóa đơn thuê"
               id="menu_rental_invoice_and_refund"
               action="action_move_out_invoice_and_refund_type"
               parent="menu_contract_master"
-              sequence="3"/>
-    <menuitem name="Gói thầu / Công trình"
+              sequence="3"
+              active="False"/>
+    <menuitem name="Công trình"
               id="menu_construction_work"
               action="action_construction_work"
-              parent="menu_contract_master"
+              parent="menu_danh_muc_root"
               sequence="5"/>
     <menuitem name="Địa chỉ công trình"
               id="menu_construction_address"
               action="action_construction_address"
-              parent="menu_contract_master"
+              parent="menu_danh_muc_root"
               sequence="6"/>
 
     <menuitem id="menu_stock_master"
               name="Tồn kho"
               parent="menu_rental_root"
               sequence="5"
+              active="False"
               groups="rental.group_rental_staff,rental.group_rental_transport_courier"/>
     <menuitem id="menu_rr_transport"
               name="Lịch sử chuyến xe"
               parent="menu_stock_master"
               action="action_rr_transport"
               sequence="15"
+              active="False"
               groups="rental.group_rental_staff,rental.group_rental_transport_courier"/>
     <menuitem id="menu_rental_stock_xnt"
               name="Xuất nhập tồn"
               parent="menu_stock_master"
               action="action_rental_stock_xnt_wizard"
               sequence="16"
+              active="False"
               groups="rental.group_rental_staff"/>
     <menuitem id="menu_product_template"
-              name="Mẫu sản phẩm"
-              parent="menu_stock_master"
+              name="Vật tư"
+              parent="menu_danh_muc_root"
               action="action_rental_product_templates"
               sequence="0"
               groups="rental.group_rental_staff,rental.group_rental_transport_courier"/>
     <menuitem id="menu_product_product"
-              name="Biến thể sản phẩm"
-              parent="menu_stock_master"
+              name="Chi tiết vật tư"
+              parent="menu_danh_muc_root"
               action="action_rental_product_variants"
-              sequence="0"
+              sequence="1"
               groups="rental.group_rental_staff,rental.group_rental_transport_courier"/>
 
     <!-- Cũ: menu gốc "Khách thuê" — giữ xmlid, ẩn sau khi chuyển vào Hợp đồng -->
@@ -90,17 +112,24 @@
               name="Tài xế"
               parent="menu_rental_root"
               sequence="20"
+              active="False"
               groups="rental.group_rental_staff"/>
     <menuitem id="menu_res_partner_drivers"
               name="Tài xế"
-              parent="menu_res_partner_drivers_master"
+              parent="menu_danh_muc_root"
               action="action_res_partner_drivers"
-              sequence="0"/>
+              sequence="3"/>
     <menuitem id="menu_transport_truck"
-              name="Xe vận chuyển"
-              parent="menu_res_partner_drivers_master"
+              name="Xe"
+              parent="menu_danh_muc_root"
               action="action_transport_truck"
-              sequence="5"/>
+              sequence="4"/>
+
+    <menuitem id="menu_rental_help"
+              name="Trợ giúp"
+              parent="menu_rental_root"
+              action="action_rental_help_placeholder"
+              sequence="30"/>
 
     <menuitem id="menu_setting_master"
               name="Cài đặt"

@@ -13,6 +13,7 @@
         'stock',
         'sale',
         'sale_management',
+        'purchase',
         'partner_autocomplete',
     ],
     'sequence': -100,
@@ -61,6 +62,7 @@
 
         'views/account_move_view.xml',
         'views/rental_analytics_view.xml',
+        'views/rental_home_dashboard_view.xml',
 
         'views/menu.xml',
     ],
@@ -75,6 +77,9 @@
             'rental/static/src/analytics_dashboard/analytics_dashboard.js',
             'rental/static/src/analytics_dashboard/analytics_dashboard.xml',
             'rental/static/src/analytics_dashboard/analytics_dashboard.scss',
+            'rental/static/src/home_dashboard/home_dashboard.js',
+            'rental/static/src/home_dashboard/home_dashboard.xml',
+            'rental/static/src/home_dashboard/home_dashboard.scss',
         ],
     },
     'installable': True,

@@ -6,6 +6,8 @@
             <search>
                 <field name="code"/>
                 <field name="name"/>
+                <field name="type"/>
+                <field name="plate"/>
                 <field name="driver_id"
                        domain="[('customer_type', '=', 'driver'), ('is_company', '=', False)]"/>
                 <field name="rental_contract_id" groups="rental.group_rental_staff"/>
@@ -13,6 +15,18 @@
                 <filter name="draft" string="Nháp" domain="[('state', '=', 'draft')]"/>
                 <filter name="done" string="Hoàn thành" domain="[('state', '=', 'done')]"/>
                 <filter name="cancel" string="Đã hủy" domain="[('state', '=', 'cancel')]"/>
+                <separator/>
+                <filter name="type_delivery" string="Giao hàng" domain="[('type', '=', 'delivery')]"/>
+                <filter name="type_return" string="Trả hàng" domain="[('type', '=', 'return')]"/>
+                <filter name="type_compensation" string="Đền bù" domain="[('type', '=', 'compensation')]"/>
+                <group expand="0" string="Nhóm theo">
+                    <filter name="group_type" string="Loại" context="{'group_by': 'type'}"/>
+                </group>
+                <searchpanel>
+                    <field name="driver_id" string="Tài xế" select="multi" enable_counters="1"
+                           domain="[('customer_type', '=', 'driver'), ('is_company', '=', False)]"/>
+                    <field name="transport_truck_id" string="Biển số xe" enable_counters="1"/>
+                </searchpanel>
             </search>
         </field>
     </record>
@@ -86,7 +100,7 @@
                     </group>
                     <group>
                         <group>
-                            <separator string="BÊN GIAO" class="text-medium"/>
+                            <separator string="BÊN GIAO" class="o_rental_section_color_1 o_rental_section_label"/>
                             <field name="delivering_party" invisible="1"/>
                             <field name="delivering_party_parent_id" invisible="1"/>
                             <field name="dp_name" string="Bên giao" readonly="1"/>
@@ -111,7 +125,7 @@
                             <field name="deliverer_partner_function" string="Chức vụ" readonly="1"/>
                         </group>
                         <group>
-                            <separator string="BÊN NHẬN" class="text-medium"/>
+                            <separator string="BÊN NHẬN" class="o_rental_section_color_2 o_rental_section_label"/>
                             <field name="receiving_party" invisible="1"/>
                             <field name="receiving_party_parent_id" invisible="1"/>
                             <field name="rp_name" string="Bên nhận" readonly="1"/>
@@ -137,7 +151,7 @@
                     </group>
                     <group>
                         <group>
-                            <separator string="Thông tin vận chuyển" class="text-danger text-medium"/>
+                            <separator string="Thông tin vận chuyển" class="o_rental_section_color_3 o_rental_section_label"/>
 <!--                            <field name="rental_contract_id" readonly="state in ['done', 'cancel']"/>-->
                             <field name="state" invisible="1"/>
                             <!-- <field name="construction_work_id" readonly="state in ['done', 'cancel']"/> -->
@@ -150,7 +164,7 @@
                             <field name="vehicle_arrival_time" readonly="state in ['done', 'cancel']" placeholder="11/02/2025 07:00:00"/>
                         </group>
                         <group>
-                            <separator string="Tài xế - Xe" class="text-success text-medium"/>
+                            <separator string="Tài xế - Xe" class="o_rental_section_color_4 o_rental_section_label"/>
                             <field name="driver_id"
                                    readonly="state in ['done', 'cancel']"
                                    placeholder="Nguyễn Văn A"

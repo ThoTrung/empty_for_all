@@ -7,6 +7,9 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
+             <xpath expr="//form" position="attributes">
+                <attribute name="class" add="o_rental_partner_form" separator=" "/>
+            </xpath>
              <xpath expr="//div[@class='oe_button_box']" position="attributes">
                 <attribute name="invisible">customer_type in ['driver', 'company']</attribute>
             </xpath>

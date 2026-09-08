@@ -20,7 +20,7 @@
             <field name="name">rental.transport.matrix.form</field>
             <field name="model">rental.transport.matrix</field>
             <field name="arch" type="xml">
-                <form string="Bảng xác nhận khối lượng">
+                <form string="Bảng xác nhận khối lượng" class="o_rental_transport_matrix_form">
                     <header>
                         <button name="action_recalculate_matrix"
                                 type="object"
@@ -45,7 +45,7 @@
                             </group>
                         </group>
 
-                        <separator string="Các bên hợp đồng" class="text-info text-medium"/>
+                        <separator string="Các bên hợp đồng" class="o_rental_section_color_1 o_rental_section_label"/>
                         <group>
                             <group>
                                 <field name="a_company_name" string="Đơn vị đi thuê (Bên A):" class="fw-bold" readonly="1"/>
@@ -59,7 +59,7 @@
                             </group>
                         </group>
 
-                        <separator string="Bảng xác nhận (xem trước)" class="text-info text-medium"/>
+                        <separator string="Bảng xác nhận (xem trước)" class="o_rental_section_color_2 o_rental_section_label"/>
                         <field name="matrix_html" nolabel="1"/>
                     </sheet>
                 </form>

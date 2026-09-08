@@ -86,4 +86,39 @@
     font-weight: 700 !important;
 }
 
+// Chữ in hoa cho các tab trên form Hợp đồng cho thuê
+.o_rental_contract_form .o_notebook .nav-link {
+    text-transform: uppercase;
+}
+
+// Chữ in hoa cho các tab trên form Hóa đơn
+.o_rental_invoice_form .o_notebook .nav-link {
+    text-transform: uppercase;
+}
+
+// Chữ in hoa cho các tab trên form Khách thuê / Cấu hình hồ sơ công ty
+// (dùng chung 1 view) và form Lịch sử chuyến xe
+.o_rental_partner_form .o_notebook .nav-link,
+.o_rr_transport_form .o_notebook .nav-link {
+    text-transform: uppercase;
+}
+
+// Đồng bộ cỡ chữ label khối trên form Hợp đồng cho thuê, Bảng xác nhận
+// khối lượng, Lịch sử chuyến xe, Sản phẩm (thay cho class "text-medium"
+// không có thật, khiến các label từng hiển thị lệch cỡ nhau)
+.o_rental_contract_form .o_horizontal_separator.o_rental_section_label,
+.o_rental_transport_matrix_form .o_horizontal_separator.o_rental_section_label,
+.o_rr_transport_form .o_horizontal_separator.o_rental_section_label,
+.o_rental_product_form .o_horizontal_separator.o_rental_section_label,
+.o_rental_invoice_form .o_horizontal_separator.o_rental_section_label {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+}
+
+// Màu label khối theo vị trí — dùng thống nhất trên mọi màn hình:
+// khối 1 = xanh lá, khối 2 = xanh dương, khối 3 = đỏ, khối 4 = cam
+.o_rental_section_color_1 { color: #22C55E !important; }
+.o_rental_section_color_2 { color: #4C6FFF !important; }
+.o_rental_section_color_3 { color: #EF4444 !important; }
+.o_rental_section_color_4 { color: #F59E0B !important; }
 

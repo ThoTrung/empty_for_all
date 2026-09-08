@@ -18,6 +18,27 @@
     <field name="model">account.move</field>
     <field name="inherit_id" ref="account.view_move_form"/>
     <field name="arch" type="xml">
+      <xpath expr="//form" position="attributes">
+        <attribute name="class" add="o_rental_invoice_form" separator=" "/>
+      </xpath>
+      <!-- Tab "Thông tin khác": style lại label 2 khối chuẩn của Odoo.
+           Ghi thẳng tiếng Việt (không dùng lại string gốc "Invoice"/
+           "Accounting") vì bản dịch arch_db lưu riêng theo từng view —
+           separator mới thêm ở view này không tự thừa hưởng bản dịch
+           của view gốc account.view_move_form. -->
+      <!-- Text tiếng Việt gốc lấy đúng từ view core: group name="sale_info_group" = "Hóa đơn", name="accounting_info_group" = "Kế toán" -->
+      <xpath expr="//group[@name='sale_info_group']" position="attributes">
+        <attribute name="string"></attribute>
+      </xpath>
+      <xpath expr="//group[@name='sale_info_group']" position="before">
+        <separator string="Hóa đơn" class="o_rental_section_color_1 o_rental_section_label"/>
+      </xpath>
+      <xpath expr="//group[@name='accounting_info_group']" position="attributes">
+        <attribute name="string"></attribute>
+      </xpath>
+      <xpath expr="//group[@name='accounting_info_group']" position="before">
+        <separator string="Kế toán" class="o_rental_section_color_2 o_rental_section_label"/>
+      </xpath>
       <!-- Insert near the top info group -->
         <xpath expr="//form/header" position="inside">
                 <button name="action_download_business_xlsx"
