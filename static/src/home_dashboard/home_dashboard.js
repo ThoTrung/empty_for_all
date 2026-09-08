@@ -11,7 +11,7 @@ const ICON_BASE = "/rental/static/src/img/dashboard/";
  * Để đổi icon: chỉ cần ghi đè file ảnh cùng tên trong thư mục
  * rental/static/src/img/dashboard/ (không cần sửa file này).
  * Thứ tự các ô dưới đây quyết định vị trí hiển thị trên lưới
- * (5 ô đầu ở hàng 1, 4 ô sau ở hàng 2 - lệch phải 1 cột).
+ * (5 ô đầu ở hàng 1, 5 ô sau ở hàng 2).
  */
 const TILES = [
     {
@@ -37,6 +37,12 @@ const TILES = [
         label: "Khách hàng",
         icon: ICON_BASE + "icon_khachhang.svg",
         action: "rental.action_res_partner_renters",
+    },
+    {
+        id: "cong_trinh",
+        label: "Công trình",
+        icon: ICON_BASE + "icon_congtrinh.svg",
+        action: "rental.action_construction_work",
     },
     {
         id: "ban_hang",
@@ -86,12 +92,6 @@ const TILES = [
                 action: "rental.action_transport_truck",
             },
             {
-                id: "cong_trinh",
-                label: "Công trình",
-                icon: ICON_BASE + "icon_congtrinh.svg",
-                action: "rental.action_construction_work",
-            },
-            {
                 id: "dia_chi_cong_trinh",
                 label: "Địa chỉ công trình",
                 icon: ICON_BASE + "icon_diachicongtrinh.svg",
@@ -101,7 +101,7 @@ const TILES = [
     },
     {
         id: "kho",
-        label: "Kho",
+        label: "Xuất - Nhập - Tồn",
         icon: ICON_BASE + "icon_kho.svg",
         action: "stock.stock_picking_type_action",
     },
@@ -119,8 +119,8 @@ export class RentalHomeDashboard extends Component {
         this.state = useState({ openDropdownId: null });
         useExternalListener(window, "click", this.onWindowClick, { capture: true });
 
-        // Hàng 1: 5 ô | Hàng 2: 1 ô trống + 4 ô (khớp bố cục ảnh mẫu)
-        this.gridItems = [...TILES.slice(0, 5), { id: "blank", blank: true }, ...TILES.slice(5, 9)];
+        // Hàng 1: 5 ô | Hàng 2: 5 ô
+        this.gridItems = TILES;
     }
 
     onWindowClick(ev) {
