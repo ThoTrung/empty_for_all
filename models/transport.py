@@ -110,6 +110,7 @@ class Transport(models.Model):
     vehicle_start_time = fields.Datetime(string="Giờ xe xuất phát", required=True, default=date.today(), tracking=10)
     vehicle_arrival_time = fields.Datetime(string="Giờ xe đến", tracking=11)
     fee = fields.Float(string="Giá vận chuyển", default=0, tracking=12)
+    fee_actual = fields.Float(string="Giá vận chuyển thực tế", default=0, tracking=True)
     fee_billed_date = fields.Date(
         string="Ngày tính phí VC (HSTT)",
         tracking=True,

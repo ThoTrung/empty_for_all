@@ -103,7 +103,12 @@ const TILES = [
         id: "kho",
         label: "Xuất - Nhập - Tồn",
         icon: ICON_BASE + "icon_kho.svg",
-        action: "stock.stock_picking_type_action",
+        action: (component) => component.orm.call(
+            "rental.stock.xnt.wizard",
+            "action_open_wizard",
+            [],
+            {}
+        ),
     },
     {
         id: "van_chuyen",
@@ -116,6 +121,7 @@ const TILES = [
 export class RentalHomeDashboard extends Component {
     setup() {
         this.action = useService("action");
+        this.orm = useService("orm");
         this.state = useState({ openDropdownId: null });
         useExternalListener(window, "click", this.onWindowClick, { capture: true });
 
@@ -132,7 +138,7 @@ export class RentalHomeDashboard extends Component {
         }
     }
 
-    onTileClick(tile) {
+    async onTileClick(tile) {
         if (tile.blank) {
             return;
         }
@@ -141,7 +147,8 @@ export class RentalHomeDashboard extends Component {
             return;
         }
         this.state.openDropdownId = null;
-        this.action.doAction(tile.action);
+        const action = typeof tile.action === "function" ? await tile.action(this) : tile.action;
+        this.action.doAction(action);
     }
 
     onChildClick(child, ev) {

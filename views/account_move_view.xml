@@ -65,6 +65,10 @@
                         invisible="not rental_contract_id or not rental_start_date or not rental_end_date"
                 />
         </xpath>
+        <!-- Ẩn nút "Giấy báo có" (Credit Note) trên mọi hóa đơn -->
+        <xpath expr="//button[@name='action_reverse']" position="attributes">
+            <attribute name="invisible">1</attribute>
+        </xpath>
       <xpath expr="//field[@name='partner_id']" position="after">
         <field name="rental_contract_id" options="{'no_create_edit': True}" readonly="1"/>
         <field name="rental_start_date" readonly="1"/>
