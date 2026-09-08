@@ -74,12 +74,6 @@ const TILES = [
                 action: "rental.action_rental_product_variants",
             },
             {
-                id: "khach_hang_ncc",
-                label: "Khách hàng/NCC",
-                icon: ICON_BASE + "icon_khachhang.svg",
-                action: "rental.action_res_partner_renters",
-            },
-            {
                 id: "tai_xe",
                 label: "Tài xế",
                 icon: ICON_BASE + "icon_taixe.svg",
