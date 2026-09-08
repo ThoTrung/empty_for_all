@@ -17,8 +17,9 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        padding: 24px 12px;
+        gap: 14px;
+        padding: 18px 12px;
+        aspect-ratio: 1 / 1;
         border-radius: 16px;
         background-color: #fff;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -40,13 +41,13 @@
     }
 
     .o_rental_home_tile_icon {
-        width: 64px;
-        height: 64px;
+        width: 80px;
+        height: 80px;
     }
 
     .o_rental_home_tile_label {
         font-weight: 600;
-        font-size: 14px;
+        font-size: 13px;
         color: #4a4a4a;
         line-height: 1.3;
         text-transform: uppercase;
@@ -58,7 +59,7 @@
         left: 50%;
         transform: translateX(-50%);
         margin-top: 8px;
-        min-width: 220px;
+        min-width: 240px;
         background-color: #fff;
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
@@ -83,9 +84,75 @@
     }
 
     .o_rental_home_dropdown_icon {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         flex: 0 0 auto;
+    }
+}
+
+@media (min-width: 1400px) {
+    .o_rental_home_dashboard .o_rental_home_grid {
+        max-width: 1200px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_tile {
+        padding: 20px 14px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_tile_icon {
+        width: 88px;
+        height: 88px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_tile_label {
+        font-size: 14px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_dropdown {
+        min-width: 260px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_dropdown_icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_dropdown_item {
+        font-size: 14px;
+        padding: 9px 11px;
+    }
+}
+
+@media (min-width: 1800px) {
+    .o_rental_home_dashboard .o_rental_home_grid {
+        max-width: 1320px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_tile {
+        padding: 22px 16px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_tile_icon {
+        width: 96px;
+        height: 96px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_tile_label {
+        font-size: 15px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_dropdown {
+        min-width: 280px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_dropdown_icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_dropdown_item {
+        font-size: 15px;
+        padding: 10px 12px;
     }
 }
 
@@ -110,12 +177,27 @@
     }
 
     .o_rental_home_dashboard .o_rental_home_tile {
-        padding: 16px 8px;
+        padding: 12px 8px;
+        gap: 10px;
     }
 
     .o_rental_home_dashboard .o_rental_home_tile_icon {
-        width: 48px;
-        height: 48px;
+        width: 56px;
+        height: 56px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_dropdown {
+        min-width: 200px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_dropdown_icon {
+        width: 22px;
+        height: 22px;
+    }
+
+    .o_rental_home_dashboard .o_rental_home_dropdown_item {
+        font-size: 12px;
+        padding: 7px 9px;
     }
 }
 
