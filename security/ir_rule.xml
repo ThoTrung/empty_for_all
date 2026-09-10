@@ -272,11 +272,15 @@
         </record>
 
         <!-- Global AND with base.res_partner_rule: hide shared commercial partners
-             (company_id=False). Internal users (partner_share=False) stay visible. -->
+             (company_id=False). Internal users (partner_share=False) stay visible.
+             Users in base.group_system (Settings/Administration) are exempt from
+             this restriction, otherwise the auto-created res.partner (company_id=False,
+             partner_share=True) inside res.company.create() gets blocked, preventing
+             even admins from creating a new company. -->
         <record id="rental_res_partner_company_strict_rule" model="ir.rule">
             <field name="name">res.partner: strict multi-company (no shared)</field>
             <field name="model_id" ref="base.model_res_partner"/>
-            <field name="domain_force">['|', ('partner_share', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('base.group_system') else ['|', ('partner_share', '=', False), ('company_id', 'in', company_ids)]</field>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
             <field name="perm_create" eval="True"/>
