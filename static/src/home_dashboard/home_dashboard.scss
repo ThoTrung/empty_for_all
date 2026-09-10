@@ -38,6 +38,10 @@
             cursor: default;
             pointer-events: none;
         }
+
+        &.o_rental_home_tile_open {
+            z-index: 10;
+        }
     }
 
     .o_rental_home_tile_icon {
@@ -56,10 +60,9 @@
     .o_rental_home_dropdown {
         position: absolute;
         top: 100%;
-        left: 50%;
-        transform: translateX(-50%);
+        left: 0;
         margin-top: 8px;
-        min-width: 240px;
+        width: 100%;
         background-color: #fff;
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
@@ -108,10 +111,6 @@
         font-size: 14px;
     }
 
-    .o_rental_home_dashboard .o_rental_home_dropdown {
-        min-width: 260px;
-    }
-
     .o_rental_home_dashboard .o_rental_home_dropdown_icon {
         width: 36px;
         height: 36px;
@@ -139,10 +138,6 @@
 
     .o_rental_home_dashboard .o_rental_home_tile_label {
         font-size: 15px;
-    }
-
-    .o_rental_home_dashboard .o_rental_home_dropdown {
-        min-width: 280px;
     }
 
     .o_rental_home_dashboard .o_rental_home_dropdown_icon {
@@ -184,10 +179,6 @@
     .o_rental_home_dashboard .o_rental_home_tile_icon {
         width: 56px;
         height: 56px;
-    }
-
-    .o_rental_home_dashboard .o_rental_home_dropdown {
-        min-width: 200px;
     }
 
     .o_rental_home_dashboard .o_rental_home_dropdown_icon {

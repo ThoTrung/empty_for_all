@@ -7,6 +7,7 @@
                     <div t-if="tile.blank" class="o_rental_home_tile o_rental_home_tile_blank"/>
                     <div t-else=""
                          class="o_rental_home_tile"
+                         t-att-class="{'o_rental_home_tile_open': tile.children and state.openDropdownId === tile.id}"
                          t-att-data-tile-id="tile.id"
                          t-on-click="() => this.onTileClick(tile)">
                         <img class="o_rental_home_tile_icon" t-att-src="tile.icon" t-att-alt="tile.label"/>
