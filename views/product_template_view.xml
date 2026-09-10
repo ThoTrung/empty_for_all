@@ -126,7 +126,7 @@
                 <separator string="Chi tiết vật tư" class="o_rental_section_color_1 o_rental_section_label"/>
                 <group>
                     <group>
-                        <field name="categ_id" string="Danh mục vật tư"/>
+                        <field name="categ_id" string="Nhóm vật tư"/>
                         <field name="uom_id" domain="[('category_id.name','=','tbxd')]"/>  # Remember to create uom in inventory setting with category name is: tbxd - (thiết bị xây dựng)
                         <field name="default_code" string="Mã vật tư"/>
                     </group>

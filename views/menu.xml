@@ -159,4 +159,10 @@
               action="action_rental_holiday"
               sequence="7"
               groups="rental.group_rental_staff"/>
+    <menuitem id="menu_rental_product_attribute"
+              name="Thuộc tính vật tư"
+              parent="menu_setting_master"
+              action="action_rental_product_attribute"
+              sequence="8"
+              groups="product.group_product_variant"/>
 </odoo>

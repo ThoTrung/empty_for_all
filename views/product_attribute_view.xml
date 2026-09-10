@@ -12,4 +12,12 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Action riêng cho menu: ẩn các thuộc tính đã đánh dấu "Không dùng" -->
+    <record id="action_rental_product_attribute" model="ir.actions.act_window">
+        <field name="name">Thuộc tính vật tư</field>
+        <field name="res_model">product.attribute</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('name', 'not ilike', 'không dùng')]</field>
+    </record>
 </odoo>
