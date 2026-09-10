@@ -42,6 +42,22 @@
         </field>
     </record>
 
+    <record id="view_product_category_list_spa_payroll_commission" model="ir.ui.view">
+        <field name="name">product.category.list.spa.payroll.commission</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_list_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="attributes">
+                <attribute name="editable">bottom</attribute>
+                <attribute name="open_form_view">1</attribute>
+            </xpath>
+            <xpath expr="//tree" position="inside">
+                <field name="spa_sales_commission_percent" optional="show"
+                       groups="spa_staff_payroll.group_spa_payroll_manager,spa.group_spa_manager"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="view_spa_product_payroll_profile_tree" model="ir.ui.view">
         <field name="name">spa.product.payroll.profile.tree</field>
         <field name="model">spa.product.payroll.profile</field>
