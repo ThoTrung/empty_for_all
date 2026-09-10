@@ -146,7 +146,8 @@
                             <field name="website" placeholder="rental.linhha.com"/>
                         </group>
                     </group>
-                    <group string="Vai trò" invisible="customer_type != 'company'" col="2">
+                    <group invisible="customer_type != 'company'" col="2">
+                        <separator string="Vai trò" class="o_rental_section_color_1 o_rental_section_label"/>
                         <field name="is_rental_customer"/>
                         <field name="is_rental_supplier"/>
                     </group>
