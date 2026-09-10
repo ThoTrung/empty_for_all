@@ -28,7 +28,7 @@ class ResUsers(models.Model):
 
     def _rental_dashboard_home_action(self):
         return self.env.ref(
-            "rental.action_rental_analytics_dashboard",
+            "rental.action_rental_home_dashboard",
             raise_if_not_found=False,
         )
 
