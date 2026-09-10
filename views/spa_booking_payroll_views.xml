@@ -15,6 +15,22 @@
         </field>
     </record>
 
+    <record id="view_spa_staff_payroll_inherit_booking_form_operator" model="ir.ui.view">
+        <field name="name">spa.staff.payroll.inherit.spa.service.booking.form.operator</field>
+        <field name="model">spa.service.booking</field>
+        <field name="inherit_id" ref="booking_calendar.view_spa_service_booking_form_operator"/>
+        <field name="arch" type="xml">
+            <data>
+                <xpath expr="//field[@name='spa_payroll_shift_kind']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='spa_payroll_customer_requested']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+            </data>
+        </field>
+    </record>
+
     <record id="view_spa_staff_payroll_inherit_booking_line_form" model="ir.ui.view">
         <field name="name">spa.staff.payroll.inherit.spa.service.booking.line.form</field>
         <field name="model">spa.service.booking.line</field>

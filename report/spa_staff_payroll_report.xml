@@ -53,6 +53,84 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <div t-if="o.commission_line_clinic_ids">
+                            <h4>Hoa hồng SP — Phòng khám</h4>
+                            <table class="table table-sm o_main_table">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày</th>
+                                        <th>KH</th>
+                                        <th>Mã KH</th>
+                                        <th>SP</th>
+                                        <th>Danh mục</th>
+                                        <th class="text-end">SL</th>
+                                        <th class="text-end">Thành tiền</th>
+                                        <th class="text-end">% HH</th>
+                                        <th class="text-end">Hoa hồng</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="o.commission_line_clinic_ids" t-as="cl">
+                                        <td><span t-field="cl.settle_date"/></td>
+                                        <td><span t-field="cl.partner_id"/></td>
+                                        <td><span t-out="cl.partner_code or ''"/></td>
+                                        <td><span t-field="cl.product_id"/></td>
+                                        <td><span t-field="cl.categ_id"/></td>
+                                        <td class="text-end"><span t-field="cl.quantity"/></td>
+                                        <td class="text-end"><span t-field="cl.price_subtotal"/></td>
+                                        <td class="text-end"><span t-out="'%.2f' % (cl.commission_percent or 0.0)"/>%</td>
+                                        <td class="text-end"><span t-field="cl.commission_amount"/></td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="6" class="text-end fw-bold">Tổng</td>
+                                        <td class="text-end fw-bold"><span t-field="o.commission_clinic_revenue"/></td>
+                                        <td/>
+                                        <td class="text-end fw-bold"><span t-field="o.commission_clinic_amount"/></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <div t-if="o.commission_line_spa_ids">
+                            <h4>Hoa hồng SP — Spa</h4>
+                            <table class="table table-sm o_main_table">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày</th>
+                                        <th>KH</th>
+                                        <th>Mã KH</th>
+                                        <th>SP</th>
+                                        <th>Danh mục</th>
+                                        <th class="text-end">SL</th>
+                                        <th class="text-end">Thành tiền</th>
+                                        <th class="text-end">% HH</th>
+                                        <th class="text-end">Hoa hồng</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="o.commission_line_spa_ids" t-as="cl">
+                                        <td><span t-field="cl.settle_date"/></td>
+                                        <td><span t-field="cl.partner_id"/></td>
+                                        <td><span t-out="cl.partner_code or ''"/></td>
+                                        <td><span t-field="cl.product_id"/></td>
+                                        <td><span t-field="cl.categ_id"/></td>
+                                        <td class="text-end"><span t-field="cl.quantity"/></td>
+                                        <td class="text-end"><span t-field="cl.price_subtotal"/></td>
+                                        <td class="text-end"><span t-out="'%.2f' % (cl.commission_percent or 0.0)"/>%</td>
+                                        <td class="text-end"><span t-field="cl.commission_amount"/></td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="6" class="text-end fw-bold">Tổng</td>
+                                        <td class="text-end fw-bold"><span t-field="o.commission_spa_revenue"/></td>
+                                        <td/>
+                                        <td class="text-end fw-bold"><span t-field="o.commission_spa_amount"/></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
                         <p class="text-muted mt32">
                             Lương cố định theo HĐ — chưa trừ ngày nghỉ tự động. Tab dịch vụ legacy không cộng vào tổng.
                         </p>

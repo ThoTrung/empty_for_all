@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_spa_staff_payroll_commission_report_search" model="ir.ui.view">
+            <field name="name">spa.staff.payroll.commission.report.search</field>
+            <field name="model">spa.staff.payroll.commission.report</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="employee_id"/>
+                    <field name="product_id"/>
+                    <field name="categ_id"/>
+                    <field name="sale_order_id"/>
+                    <field name="partner_id"/>
+
+                    <filter string="Tháng này" name="filter_this_month"
+                            date="payroll_date_from"
+                            default_period="this_month"/>
+                    <filter string="Tháng trước" name="filter_last_month"
+                            date="payroll_date_from"
+                            default_period="last_month"/>
+                    <filter string="Năm nay" name="filter_this_year"
+                            date="payroll_date_from"
+                            default_period="this_year"/>
+                    <separator/>
+                    <filter string="Đã xác nhận" name="filter_state_done"
+                            domain="[('payroll_state', '=', 'done')]"/>
+                    <filter string="Chờ duyệt" name="filter_state_to_approve"
+                            domain="[('payroll_state', '=', 'to_approve')]"/>
+                    <filter string="Nháp" name="filter_state_draft"
+                            domain="[('payroll_state', '=', 'draft')]"/>
+
+                    <group expand="0" string="Group By">
+                        <filter string="Nhân viên" name="group_employee"
+                                context="{'group_by': 'employee_id'}"/>
+                        <filter string="Kỳ lương" name="group_period"
+                                context="{'group_by': 'payroll_date_from:month'}"/>
+                        <filter string="Danh mục" name="group_categ"
+                                context="{'group_by': 'categ_id'}"/>
+                        <filter string="Sản phẩm" name="group_product"
+                                context="{'group_by': 'product_id'}"/>
+                        <filter string="Khách hàng" name="group_partner"
+                                context="{'group_by': 'partner_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_spa_staff_payroll_commission_report_tree" model="ir.ui.view">
+            <field name="name">spa.staff.payroll.commission.report.tree</field>
+            <field name="model">spa.staff.payroll.commission.report</field>
+            <field name="arch" type="xml">
+                <tree create="0" edit="0" delete="0">
+                    <field name="employee_id"/>
+                    <field name="payroll_date_from"/>
+                    <field name="product_id"/>
+                    <field name="categ_id" optional="hide"/>
+                    <field name="sale_order_id" optional="show"/>
+                    <field name="partner_id" optional="hide"/>
+                    <field name="quantity" sum="Số lượng" optional="hide"/>
+                    <field name="price_subtotal" sum="Thành tiền" optional="show"/>
+                    <field name="commission_percent" avg="% HH TB" optional="show"/>
+                    <field name="commission_amount" sum="Hoa hồng"/>
+                    <field name="payroll_state" optional="show"/>
+                    <field name="currency_id" column_invisible="1"/>
+                    <field name="company_id" optional="hide" groups="base.group_multi_company"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_spa_staff_payroll_commission_report_pivot" model="ir.ui.view">
+            <field name="name">spa.staff.payroll.commission.report.pivot</field>
+            <field name="model">spa.staff.payroll.commission.report</field>
+            <field name="arch" type="xml">
+                <pivot string="Thống kê hoa hồng" sample="1">
+                    <field name="employee_id" type="row"/>
+                    <field name="payroll_date_from" interval="month" type="col"/>
+                    <field name="commission_amount" type="measure"/>
+                    <field name="price_subtotal" type="measure"/>
+                    <field name="quantity" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="view_spa_staff_payroll_commission_report_graph" model="ir.ui.view">
+            <field name="name">spa.staff.payroll.commission.report.graph</field>
+            <field name="model">spa.staff.payroll.commission.report</field>
+            <field name="arch" type="xml">
+                <graph string="Thống kê hoa hồng" type="bar" sample="1">
+                    <field name="payroll_date_from" interval="month"/>
+                    <field name="commission_amount" type="measure"/>
+                    <field name="employee_id"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="view_spa_staff_payroll_commission_report_form" model="ir.ui.view">
+            <field name="name">spa.staff.payroll.commission.report.form</field>
+            <field name="model">spa.staff.payroll.commission.report</field>
+            <field name="arch" type="xml">
+                <form create="0" edit="0" delete="0">
+                    <header>
+                        <button name="action_open_payroll"
+                                type="object"
+                                string="Mở phiếu lương"
+                                class="btn-primary"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="employee_id"/>
+                                <field name="payroll_date_from"/>
+                                <field name="payroll_date_to"/>
+                                <field name="payroll_state"/>
+                                <field name="partner_id"/>
+                            </group>
+                            <group>
+                                <field name="product_id"/>
+                                <field name="categ_id"/>
+                                <field name="sale_order_id"/>
+                                <field name="move_id"/>
+                                <field name="quantity"/>
+                                <field name="price_subtotal"/>
+                                <field name="commission_percent"/>
+                                <field name="commission_amount"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_spa_staff_payroll_commission_report" model="ir.actions.act_window">
+            <field name="name">Thống kê hoa hồng</field>
+            <field name="res_model">spa.staff.payroll.commission.report</field>
+            <field name="view_mode">pivot,graph,tree,form</field>
+            <field name="search_view_id" ref="view_spa_staff_payroll_commission_report_search"/>
+            <field name="context" eval="{'search_default_filter_this_month': 1, 'search_default_group_employee': 1}"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Chưa có dữ liệu hoa hồng trong bộ lọc hiện tại.
+                </p>
+                <p>
+                    Hoa hồng được tính từ đơn hàng/hóa đơn đã hoàn thành (trả hết tiền),
+                    tổng hợp theo nhân viên, sản phẩm, danh mục và kỳ lương.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

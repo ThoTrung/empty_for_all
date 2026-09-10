@@ -19,6 +19,184 @@ Use this file for short session-level handoff notes.
 
 ## Entries
 
+### 2026-09-09 - Đơn có trả hàng lọt KPI/HH (fix ở `spa`, engine payroll không đổi)
+- Goal: Đơn bán có credit note trả hàng một phần bị loại hoàn toàn khỏi KPI + hoa hồng (bug S53056) vì SO không bao giờ có `spa_settled_date`. Sửa nguồn sự thật settlement trong module `spa`; **`spa_staff_payroll` không sửa logic** — chỉ thêm test.
+- Changes made:
+  - `spa/models/sale_order.py`: `_spa_order_is_closed_by_returns()` (so **theo số tiền** `amount_to_invoice ≈ Σ posted_refunds.amount_total`, không khớp dòng); `spa_settled_date` **ghi 1 lần rồi đóng băng**; ngày gốc từ move không-refund. `spa_is_settled` không đổi.
+  - `spa/models/spa_revenue_report_mixin.py`: bỏ guard `>=` trong `_spa_where_refund_adjustment`.
+  - `spa_staff_payroll/tests/test_spa_staff_payroll.py`: 5 test mới (partial/full return cùng tháng, multi-return 2 tháng, delivery-policy giới hạn, mixed-policy) — assert số **hardcode**, `spa_settled_date` ngày chính xác, `spa_is_settled` False. Helper `_make_policy_comm_product` set `taxes_id=[]` để số sạch.
+  - `spa_staff_payroll/models/account_move_payroll.py`: 1 dòng comment (bỏ chữ `flush_all` khỏi comment giải thích — sửa `test_late_refund_notify_flush_uses_narrow_model_flush` vốn fail sẵn do so khớp chuỗi ngây thơ; không đổi hành vi).
+  - `docs/DECISIONS.md`: [PAY-DEC-2026-09-09-01] (cập nhật bản round 2).
+- Files touched: `spa/models/sale_order.py`, `spa/models/spa_revenue_report_mixin.py`, `spa/tests/*`, `spa/docs/*`, `spa_staff_payroll/tests/test_spa_staff_payroll.py`, `spa_staff_payroll/models/account_move_payroll.py`, `spa_staff_payroll/docs/DECISIONS.md`, `spa_staff_payroll/docs/WORKLOG.md`.
+- Validation done: full `spa` + `spa_staff_payroll` suites trên DB throwaway; baseline diff (stash 2 file spa) → 0 regression mới. Regression flagged (`test_late_refund_keeps_origin_month...`, `test_card_return_commission_no_double_clawback`, `test_kpi_so_settled_month_july_not_may`, `test_sales_commission_so_partial_payment_no_hh`, toàn bộ revenue-report/stats/dashboard) đều xanh.
+- Dependency impact check:
+  - Dependents reviewed: `_spa_sale_orders_settled_in_period` / `_spa_so_linked_refunds_paid_in_period` / `_spa_net_invoice_revenue_for_sales_user` — key theo `spa_settled_date` (stored), guard "linked order có spa_settled_date" nay pass cho đơn kiểu S53056. Không đổi công thức HH/KPI.
+  - Contract compatibility result: `kpi_revenue_base` / `sales_commission` cho đơn có trả hàng nay = net (bucket 1 gộp + bucket 3 CN âm); phiếu `done` không tự sửa.
+  - Regression tests/manual checks run: 53 test `spa_staff_payroll` (gồm 5 mới) + suite `spa`.
+- Open risks: giới hạn `invoice_policy='delivery'` + restock (xem [PAY-DEC-2026-09-09-01] / [SPA-DEC-2026-09-09-08]); deploy cần recompute thủ công `drlai` (§Deploy trong plan).
+- Next suggested steps: §Deploy trên `drlai`; recompute phiếu lương draft có kỳ xuất hiện `spa_settled_date` mới.
+
+### 2026-09-03 - Global discount prorated into commission; card-return double-clawback fixed
+- Goal: Đóng "open risk" HH ≠ KPI khi có CK toàn đơn (PAY-DEC-2026-08-29-01); điều tra và sửa double-clawback hoa hồng khi khách trả thẻ dịch vụ (2 agent điều tra độc lập + 1 agent review, tự đọc code xác nhận trước khi sửa).
+- Changes made: `_spa_global_discount_share_untaxed()` mới, trừ vào subtotal trước khi tính `commission_amount` (SO + invoice); field `sale.order.is_card_return_order` loại đơn trả thẻ khỏi `_spa_sale_orders_settled_in_period`; `spa_card_upgrade_wizard.py` sửa default `credit_old_card` (giá đã bán gốc) + `user_id` (salesperson gốc) cho nhánh `return`. Xem [PAY-DEC-2026-09-03-01].
+- Files touched:
+  - `custom_addons/spa_staff_payroll/models/spa_staff_payroll.py`
+  - `custom_addons/spa/models/sale_order.py`
+  - `custom_addons/spa/wizards/spa_card_upgrade_wizard.py`
+  - `custom_addons/spa_staff_payroll/tests/test_spa_staff_payroll.py`
+  - `docs/DECISIONS.md`
+- Validation done: `-u spa,spa_staff_payroll --test-enable --test-tags /spa_staff_payroll` trên bản sao DB dev (`drlai`) → 0 failed, 0 error (40 tests, gồm 3 test mới + 1 test cập nhật kỳ vọng).
+- Dependency impact check:
+  - Dependents reviewed: `_spa_net_invoice_revenue_for_sales_user` (dùng chung `_spa_sale_orders_settled_in_period`, tự động fix theo); KPI `net_rev` (cùng nguồn `orders`, tự động fix double-count).
+  - Contract compatibility result: `spa.staff.payroll.commission.line.price_subtotal`/`commission_amount` cho dòng có CK toàn đơn nay là giá trị NET (khác giá trị cũ) — không hồi tố phiếu `done`.
+  - Regression tests/manual checks run: toàn bộ `TestSpaStaffPayroll` (40 tests).
+- Open risks: double-clawback trả thẻ trong quá khứ (nếu có giao dịch trước fix) không được rà soát lại — theo quyết định người dùng, chỉ chặn từ nay về sau.
+- Next suggested steps: nếu phát sinh nhu cầu, cân nhắc rà soát thủ công các phiếu lương `done` cũ có liên quan trả thẻ.
+
+### 2026-08-29 - Note: spa Dashboard month snapshot (no payroll code)
+- Goal: Confirm payroll không đọc `spa.dashboard.month.line`; KPI vẫn helper SO live.
+- Changes made: none in this module.
+- Files touched: `docs/AGENT_REFERENCE.md` (note only)
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: KPI/ranking `_spa_recognized_amount_total`; không inherit dashboard RPC.
+  - Contract compatibility result: no impact.
+  - Regression tests/manual checks run: none
+- Open risks: none
+- Next suggested steps: none
+
+### 2026-08-29 - KPI = spa recognized net CK
+- Goal: Phiếu lương KPI/ranking khớp Dashboard DT (trừ cọc, đã trừ CK).
+- Changes made: `_spa_recognized_amount_total` cho KPI + ranking; HH skip `is_global_discount`.
+- Files touched: `spa_staff_payroll.py`, detail_line help, tests, docs
+- Validation done: cùng lần 62 tests trên `drlai` → **0 failed**.
+- Dependency impact check:
+  - Dependents reviewed: ranking `_spa_net_invoice_revenue_for_sales_user`; spa helper SoT; booking không đụng.
+  - Contract compatibility result: helper công khai mới trên SO; phiếu done không tự sửa.
+  - Regression tests/manual checks run: TestSpaStaffPayroll.
+- Open risks: recompute draft sau upgrade; HH ≠ KPI khi có CK toàn đơn.
+- Next suggested steps: Tính lại phiếu draft tháng có CK.
+
+### 2026-08-29 - Note: spa revenue-report HTML lần thu (no payroll code)
+- Goal: Confirm payroll không đọc HTML lần thu trên order report.
+- Changes made: none in this module.
+- Files touched: none
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: KPI/HH vẫn `spa_settled_*`; không đọc `spa_invoice_html`.
+  - Contract compatibility result: no impact.
+  - Regression tests/manual checks run: none in this module.
+- Open risks: none
+- Next suggested steps: none
+
+### 2026-08-29 - Note: spa HĐ-from-SO + dashboard drill (no payroll code)
+- Goal: Confirm payroll vẫn ủy quyền settled trên `sale.order`; không tạo HĐ lẻ.
+- Changes made: none in this module.
+- Files touched: none
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: helpers `spa_settled_*` / `spa_fully_paid_date` không đổi tên; KPI/HH từ SO settled.
+  - Contract compatibility result: no impact. HĐ lẻ leftover vẫn có thể vào SQL DT spa nếu đã post trước guard.
+  - Regression tests/manual checks run: none in this module.
+- Open risks: none
+- Next suggested steps: none
+
+### 2026-08-28 - Clawback CN tháng refund + nới spa_is_settled
+- Goal: Đồng bộ lương với thống kê settled: tháng gốc giữ khi refund muộn; tháng refund trừ KPI/HH nếu phiếu draft; phiếu done → activity.
+- Changes made: domain settled chỉ `spa_settled_date`; helper CN gắn SO; HH invoice sign âm cho refund; inherit `_spa_mark_settlement_recompute` tạo activity.
+- Files touched: `spa_staff_payroll.py`, `account_move_payroll.py`, `models/__init__.py`, tests, docs.
+- Validation done: `--test-tags=/spa_staff_payroll:TestSpaStaffPayroll` trên `drlai` (cùng lần spa stats) → 0 failed.
+- Dependency impact check:
+  - Dependents reviewed: ranking `_spa_net_invoice_revenue_for_sales_user` gồm clawback CN; `spa` settlement fields không đổi tên; `booking_calendar` không đụng.
+  - Contract compatibility result: helper công khai giữ tên; nới domain (cố ý).
+  - Regression tests/manual checks run: commission/KPI cũ + `test_late_refund_*`.
+- Open risks: activity phụ thuộc hook reconcile; CN không qua payment thì không notify.
+- Next suggested steps: none.
+
+### 2026-08-26 - Delegate settled helpers to spa settlement fields
+- Goal: Một nguồn sự thật settled với màn doanh thu spa (SPA-DEC-2026-08-26-01).
+- Changes made: `_spa_is_sale_order_settled` / `_spa_sale_order_settled_date` / `_spa_invoice_fully_paid_date` / `_spa_sale_orders_settled_in_period` ủy quyền field/helper spa; domain search theo `spa_settled_date` khi có.
+- Files touched: `models/spa_staff_payroll.py`, docs.
+- Validation done: settled May→July commission + KPI July → **0 failed / 2 tests** trên `drlai`.
+- Dependency impact check:
+  - Dependents reviewed: commission/KPI/ranking sales paths dùng helpers trên; không đổi signature công khai.
+  - Contract compatibility result: tương thích; spa phải upgraded trước/cùng lúc.
+  - Regression tests/manual checks run: TestSpaStaffPayroll settled/KPI tags.
+- Open risks: nếu spa chưa upgrade, fallback legacy vẫn chạy.
+- Next suggested steps: none for payroll; theo phase 2 thống kê spa.
+
+### 2026-08-25 - Product form: Payroll Spa above composite, table 50%
+- Goal: Khối Payroll Spa (theo profile) nằm trên Dịch vụ tổng; bảng payout rộng 50%.
+- Changes made: xpath `position="before"` `group_spa_composite_service`; outer+inner group 50%; help dưới bảng `colspan="2"`.
+- Files touched: `views/product_payroll_views.xml`, `tests/test_spa_staff_payroll.py` (`TestSpaPayrollProductFormLayout`), docs.
+- Validation done: `--test-tags=/spa:TestSpaProductTemplateFormLayout,/spa_staff_payroll:TestSpaPayrollProductFormLayout` trên `drlai` → **0 failed, 0 error(s) of 2 tests**.
+- Dependency impact check:
+  - Dependents reviewed: `spa.view_spa_inherit_product_template_form` (`group_spa_composite_service`); không đụng phiếu lương / booking form.
+  - Contract compatibility result: XML id view không đổi; field `spa_payroll_profile_payout_line_ids` không đổi.
+  - Regression tests/manual checks run: TestSpaPayrollProductFormLayout.
+- Open risks: none for layout; cần `-u spa_staff_payroll` vì XML view.
+- Next suggested steps: smoke UI form dịch vụ — Payroll trên Dịch vụ tổng, cột cấp NV không bị cắt.
+
+### 2026-08-19 - Note: booking tree columns (no payroll code change)
+- Goal: Confirm payroll không inherit tree booking khi đổi cột / default_order.
+- Changes made: none in this module.
+- Files touched: none
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: `spa_booking_payroll_views.xml` chỉ inherit form staff + form operator.
+  - Contract compatibility result: no impact.
+  - Regression tests/manual checks run: none
+- Open risks: none
+- Next suggested steps: none
+
+### 2026-08-19 - Operator form: readonly payroll flags
+- Goal: Operator `edit=1` không sửa được flag ca dài / khách đặt NV.
+- Changes made: inherit `view_spa_service_booking_form_operator`, readonly `spa_payroll_shift_kind` + `spa_payroll_customer_requested`.
+- Files touched: `views/spa_booking_payroll_views.xml`, `tests/test_spa_staff_payroll.py`, docs.
+- Validation done: `TestSpaPayrollOperatorBookingForm` trên DB `drlai`.
+- Dependency impact check:
+  - Dependents reviewed: form staff (không đổi); booking_calendar operator write vẫn reject payroll keys.
+  - Contract compatibility result: additive inherit.
+  - Regression tests/manual checks run: TestSpaPayrollOperatorBookingForm.
+- Open risks: xpath fail nếu payroll field bị nhân đôi trên form operator — hiện 1 cặp field.
+- Next suggested steps: `-u spa_staff_payroll`.
+
+### 2026-08-03 - Note: spa loyalty pre-deploy check (no code change)
+- Goal: Confirm no payroll impact before spa loyalty cancel prod deploy.
+- Changes made: none
+- Files touched: none
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: payroll không đọc spa.loyalty.ledger cancel.
+  - Contract compatibility result: no impact.
+  - Regression tests/manual checks run: none
+- Open risks: none
+- Next suggested steps: none
+
+### 2026-08-02 - Note: spa loyalty residual risk register (no code change)
+- Goal: Mirror spa docs — residual risk register for loyalty cancel.
+- Changes made: none in this module.
+- Files touched: none (spa docs only).
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: payroll không đọc loyalty ledger.
+  - Contract compatibility result: no impact.
+  - Regression tests/manual checks run: none
+- Open risks: none for this module
+- Next suggested steps: none
+
+### 2026-08-02 - Note: spa loyalty cancel cleanup (no code change)
+- Goal: Ghi nhận task spa dọn `spa.loyalty.ledger` khi hủy SO/HĐ.
+- Changes made: none in this module.
+- Files touched: none
+- Validation done: n/a
+- Dependency impact check:
+  - Dependents reviewed: payroll không đọc loyalty ledger.
+  - Contract compatibility result: no impact.
+  - Regression tests/manual checks run: none
+- Open risks: none
+- Next suggested steps: none
+
 ### 2026-07-26 - Aggregate service ledger + tab Buổi làm
 - Goal: Ledger 1 dòng tiền công buổi; chi tiết session trên tab Buổi làm; gộp thưởng ca theo loại.
 - Changes made: `_spa_compute_session_service_payout_lines` tạo detail + 1 ledger; long/req 1 dòng; lock sync qua `service.line`; rename tab; tests.

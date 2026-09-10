@@ -114,6 +114,36 @@ class SpaStaffPayroll(models.Model):
         "payroll_id",
         string="Chi tiết hoa hồng SP",
     )
+    commission_line_clinic_ids = fields.One2many(
+        comodel_name="spa.staff.payroll.commission.line",
+        compute="_compute_commission_split",
+        string="HH Phòng khám",
+    )
+    commission_line_spa_ids = fields.One2many(
+        comodel_name="spa.staff.payroll.commission.line",
+        compute="_compute_commission_split",
+        string="HH Spa",
+    )
+    commission_clinic_revenue = fields.Monetary(
+        string="DT Phòng khám",
+        currency_field="currency_id",
+        compute="_compute_commission_split",
+    )
+    commission_clinic_amount = fields.Monetary(
+        string="Hoa hồng Phòng khám",
+        currency_field="currency_id",
+        compute="_compute_commission_split",
+    )
+    commission_spa_revenue = fields.Monetary(
+        string="DT Spa",
+        currency_field="currency_id",
+        compute="_compute_commission_split",
+    )
+    commission_spa_amount = fields.Monetary(
+        string="Hoa hồng Spa",
+        currency_field="currency_id",
+        compute="_compute_commission_split",
+    )
     kpi_line_ids = fields.One2many(
         "spa.staff.payroll.kpi.line",
         "payroll_id",
@@ -280,6 +310,22 @@ class SpaStaffPayroll(models.Model):
                 - (rec.amount_insurance or 0.0)
                 - (rec.amount_other_deduction or 0.0)
             )
+
+    @api.depends(
+        "commission_line_ids.price_subtotal",
+        "commission_line_ids.commission_amount",
+        "commission_line_ids.product_branch",
+    )
+    def _compute_commission_split(self):
+        for rec in self:
+            clinic = rec.commission_line_ids.filtered(lambda l: l.product_branch == 'clinic')
+            spa = rec.commission_line_ids - clinic
+            rec.commission_line_clinic_ids = clinic
+            rec.commission_line_spa_ids = spa
+            rec.commission_clinic_revenue = sum(clinic.mapped('price_subtotal'))
+            rec.commission_clinic_amount = sum(clinic.mapped('commission_amount'))
+            rec.commission_spa_revenue = sum(spa.mapped('price_subtotal'))
+            rec.commission_spa_amount = sum(spa.mapped('commission_amount'))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -501,8 +547,13 @@ class SpaStaffPayroll(models.Model):
     def _spa_invoice_fully_paid_date(self, move):
         """Date when a posted customer invoice became fully paid (residual ≈ 0).
 
-        Prefer last reconciled payment / AML date; fallback to invoice_date.
+        Prefer stored ``spa_fully_paid_date`` (spa module); fallback to compute helper.
         """
+        if "spa_fully_paid_date" in move._fields and move.spa_fully_paid_date:
+            return fields.Date.to_date(move.spa_fully_paid_date)
+        if hasattr(move, "_spa_compute_fully_paid_date"):
+            return move._spa_compute_fully_paid_date()
+        # Legacy fallback (should not run when spa is up to date).
         self.ensure_one()
         if move.state != "posted":
             return False
@@ -527,7 +578,14 @@ class SpaStaffPayroll(models.Model):
         return fields.Date.to_date(move.invoice_date or move.date)
 
     def _spa_is_sale_order_settled(self, order):
-        """SO settled: confirmed, fully invoiced, all posted invoices residual ≈ 0."""
+        """SO settled — delegate to spa.sale.order helper / stored flag."""
+        if "spa_is_settled" in order._fields:
+            # Prefer live helper so payroll stays correct even if stored field lagging.
+            if hasattr(order, "_spa_order_is_settled"):
+                return order._spa_order_is_settled()
+            return bool(order.spa_is_settled)
+        if hasattr(order, "_spa_order_is_settled"):
+            return order._spa_order_is_settled()
         if order.state not in ("sale", "done"):
             return False
         currency = order.currency_id or order.company_id.currency_id
@@ -541,13 +599,16 @@ class SpaStaffPayroll(models.Model):
             return False
         for inv in invoices:
             if not currency.is_zero(float(inv.amount_residual or 0.0)):
-                # Allow payment_state paid when residual not synced (edge / test)
                 if inv.payment_state not in ("paid", "in_payment", "reversed"):
                     return False
         return True
 
     def _spa_sale_order_settled_date(self, order):
-        """Date SO became settled = max fully-paid date of its posted invoices."""
+        """Date SO became settled — prefer stored spa_settled_date (kept after late refund)."""
+        if "spa_settled_date" in order._fields and order.spa_settled_date:
+            return fields.Date.to_date(order.spa_settled_date)
+        if hasattr(order, "_spa_order_settled_date"):
+            return order._spa_order_settled_date()
         if not self._spa_is_sale_order_settled(order):
             return False
         dates = []
@@ -561,22 +622,75 @@ class SpaStaffPayroll(models.Model):
         return max(dates) if dates else False
 
     def _spa_sale_orders_settled_in_period(self, user):
-        """Confirmed SOs of salesperson that became settled within payroll period."""
+        """Confirmed SOs of salesperson whose first settled date falls in payroll period.
+
+        Do **not** require ``spa_is_settled=True``: a late refund may unset the flag
+        while ``spa_settled_date`` is kept so the origin month stays on the payslip.
+        """
         self.ensure_one()
         start = fields.Date.to_date(self.date_from)
         end = fields.Date.to_date(self.date_to)
         Order = self.env["sale.order"].sudo()
-        candidates = Order.search([
+        domain = [
             ("company_id", "=", self.company_id.id),
             ("user_id", "=", user.id),
             ("state", "in", ("sale", "done")),
-        ])
+        ]
+        if "is_card_return_order" in Order._fields:
+            # Đơn trả thẻ (spa.card.upgrade.wizard, upgrade_option='return')
+            # được claw-back đúng 1 lần qua nhánh so_refunds (credit note
+            # liên kết) — loại khỏi đây để tránh tính trùng 2 lần.
+            domain.append(("is_card_return_order", "=", False))
+        if "spa_settled_date" in Order._fields:
+            domain += [
+                ("spa_settled_date", ">=", start),
+                ("spa_settled_date", "<=", end),
+            ]
+            return Order.search(domain)
+        candidates = Order.search(domain)
         settled = Order.browse()
         for order in candidates:
             settled_date = self._spa_sale_order_settled_date(order)
             if settled_date and start <= settled_date <= end:
                 settled |= order
         return settled
+
+    def _spa_so_linked_refunds_paid_in_period(self, user):
+        """SO-linked credit notes fully paid in this period (clawback month).
+
+        Only orders that already have ``spa_settled_date`` (were completed once).
+        Standalone refunds stay on ``_spa_standalone_paid_invoices_in_period``.
+        """
+        self.ensure_one()
+        Move = self.env["account.move"].sudo()
+        start = fields.Date.to_date(self.date_from)
+        end = fields.Date.to_date(self.date_to)
+        domain = [
+            ("company_id", "=", self.company_id.id),
+            ("move_type", "=", "out_refund"),
+            ("state", "=", "posted"),
+        ]
+        if "spa_fully_paid_date" in Move._fields:
+            domain += [
+                ("spa_fully_paid_date", ">=", start),
+                ("spa_fully_paid_date", "<=", end),
+            ]
+        moves = Move.search(domain)
+        result = Move.browse()
+        for move in moves:
+            orders = self._spa_invoice_linked_sale_orders(move)
+            if not orders:
+                continue
+            if user.id not in orders.mapped("user_id").ids:
+                continue
+            if not any(
+                "spa_settled_date" in o._fields and o.spa_settled_date for o in orders
+            ):
+                continue
+            paid_date = self._spa_invoice_fully_paid_date(move)
+            if paid_date and start <= paid_date <= end:
+                result |= move
+        return result
 
     def _spa_standalone_paid_invoices_in_period(self, user, include_refunds=True):
         """Paid invoices with no SO link; fully-paid date in payroll period."""
@@ -600,6 +714,26 @@ class SpaStaffPayroll(models.Model):
                 result |= move
         return result
 
+    def _spa_global_discount_share_untaxed(self, line):
+        """Phần chiết khấu toàn đơn/hoá đơn phân bổ cho ``line``, cơ sở untaxed.
+
+        Không tái dùng field ``global_discount_share`` có sẵn (sale_order.py)
+        vì field đó nhân tổng CK theo ``price_total`` (có thuế) với tỉ trọng
+        theo ``price_subtotal`` (không thuế) — lệch cơ sở thuế. Ở đây tính lại
+        nhất quán trên untaxed để trừ thẳng vào ``price_subtotal`` khi tính
+        hoa hồng. Giá trị trả về ÂM (hoặc 0 nếu không có CK toàn đơn).
+        """
+        siblings = line.order_id.order_line if "order_id" in line._fields and line.order_id \
+            else line.move_id.invoice_line_ids
+        base_lines = siblings.filtered(lambda l: not l.is_global_discount and not l.display_type)
+        total = sum(base_lines.mapped("price_subtotal"))
+        if not total:
+            return 0.0
+        discount_untaxed = sum(
+            siblings.filtered(lambda l: l.is_global_discount).mapped("price_subtotal")
+        )
+        return discount_untaxed * (line.price_subtotal / total)
+
     def _spa_commission_detail_vals_for_sale_order(self, order):
         """Detail rows for SO product lines with category commission % > 0."""
         self.ensure_one()
@@ -609,15 +743,20 @@ class SpaStaffPayroll(models.Model):
                 continue
             if getattr(line, "is_downpayment", False):
                 continue
+            if getattr(line, "is_global_discount", False):
+                continue
             tmpl = line.product_id.product_tmpl_id
             pct = float(tmpl._spa_get_sales_commission_percent() or 0.0)
             if not pct:
                 continue
-            subtotal = float(line.price_subtotal or 0.0)
+            subtotal = float(line.price_subtotal or 0.0) + self._spa_global_discount_share_untaxed(line)
             rows.append({
                 "payroll_id": self.id,
                 "product_id": line.product_id.id,
                 "categ_id": tmpl.categ_id.id if tmpl.categ_id else False,
+                "product_branch": 'clinic' if tmpl.user_company_selection == 'clic_company' else 'spa',
+                "partner_id": order.partner_id.id or False,
+                "settle_date": self._spa_sale_order_settled_date(order),
                 "sale_order_id": order.id,
                 "move_id": False,
                 "quantity": float(line.product_uom_qty or 0.0),
@@ -630,24 +769,35 @@ class SpaStaffPayroll(models.Model):
         return rows
 
     def _spa_commission_detail_vals_for_invoice(self, move):
-        """Detail rows for standalone invoice product lines with commission % > 0."""
+        """Detail rows for invoice/refund product lines with commission % > 0.
+
+        Credit notes use a negative sign so HH clawback reduces the period total.
+        """
         self.ensure_one()
         rows = []
+        sign = -1.0 if move.move_type == "out_refund" else 1.0
         for line in move.invoice_line_ids.filtered(lambda l: l.display_type == "product"):
             if not line.product_id:
+                continue
+            if getattr(line, "is_global_discount", False):
+                continue
+            if getattr(line, "is_downpayment", False):
                 continue
             tmpl = line.product_id.product_tmpl_id
             pct = float(tmpl._spa_get_sales_commission_percent() or 0.0)
             if not pct:
                 continue
-            subtotal = float(line.price_subtotal or 0.0)
+            subtotal = (float(line.price_subtotal or 0.0) + self._spa_global_discount_share_untaxed(line)) * sign
             rows.append({
                 "payroll_id": self.id,
                 "product_id": line.product_id.id,
                 "categ_id": tmpl.categ_id.id if tmpl.categ_id else False,
+                "product_branch": 'clinic' if tmpl.user_company_selection == 'clic_company' else 'spa',
+                "partner_id": move.partner_id.id or False,
+                "settle_date": self._spa_invoice_fully_paid_date(move),
                 "sale_order_id": False,
                 "move_id": move.id,
-                "quantity": float(line.quantity or 0.0),
+                "quantity": float(line.quantity or 0.0) * sign,
                 "price_unit": float(line.price_unit or 0.0),
                 "discount": float(line.discount or 0.0),
                 "price_subtotal": subtotal,
@@ -671,14 +821,80 @@ class SpaStaffPayroll(models.Model):
         )
 
     def _spa_net_invoice_revenue_for_sales_user(self, user):
-        """Cash-basis net revenue: settled SOs in period + standalone paid invoices/refunds."""
+        """Cash-basis net revenue: settled SOs + standalone paid moves + SO-linked CN clawback."""
         self.ensure_one()
         net = 0.0
         for order in self._spa_sale_orders_settled_in_period(user):
-            net += float(order.amount_total or 0.0)
+            net += float(order._spa_recognized_amount_total() or 0.0)
         for move in self._spa_standalone_paid_invoices_in_period(user, include_refunds=True):
             net += float(move.amount_total_signed or 0.0)
+        for move in self._spa_so_linked_refunds_paid_in_period(user):
+            net += float(move.amount_total_signed or 0.0)
         return net
+
+    @api.model
+    def _spa_notify_late_refund_on_locked_payslips(self, moves):
+        """Activity on done payslips when a late SO-linked credit note is paid.
+
+        Draft slips pick up clawback on next recompute; locked slips need a manual line.
+        """
+        if not moves:
+            return
+        Payroll = self.env["spa.staff.payroll"].sudo()
+        Activity = self.env["mail.activity"].sudo()
+        todo = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
+        if not todo:
+            return
+        refunds = moves.filtered(
+            lambda m: m.move_type == "out_refund" and m.state == "posted"
+        )
+        for move in refunds:
+            paid_date = False
+            if "spa_fully_paid_date" in move._fields and move.spa_fully_paid_date:
+                paid_date = fields.Date.to_date(move.spa_fully_paid_date)
+            elif hasattr(move, "_spa_compute_fully_paid_date"):
+                paid_date = move._spa_compute_fully_paid_date()
+            if not paid_date:
+                continue
+            orders = move.line_ids.sale_line_ids.order_id
+            if not orders or not any(
+                "spa_settled_date" in o._fields and o.spa_settled_date for o in orders
+            ):
+                continue
+            users = orders.mapped("user_id")
+            slips = Payroll.search([
+                ("state", "=", "done"),
+                ("user_id", "in", users.ids),
+                ("company_id", "=", move.company_id.id),
+                ("date_from", "<=", paid_date),
+                ("date_to", ">=", paid_date),
+            ])
+            summary = _("Hoàn tiền sau khi phiếu lương đã khóa")
+            marker = "move_id=%s" % move.id
+            note = _(
+                "Hóa đơn hoàn %(move)s (%(marker)s) đã thu đủ ngày %(date)s. "
+                "Phiếu lương kỳ này đã khóa — thêm dòng tay (KPI/hoa hồng) trên tab Lương."
+            ) % {
+                "move": move.display_name,
+                "marker": marker,
+                "date": paid_date,
+            }
+            for slip in slips:
+                existing = Activity.search([
+                    ("res_model", "=", "spa.staff.payroll"),
+                    ("res_id", "=", slip.id),
+                    ("activity_type_id", "=", todo.id),
+                    ("summary", "=", summary),
+                    ("note", "ilike", marker),
+                ], limit=1)
+                if existing:
+                    continue
+                slip.activity_schedule(
+                    "mail.mail_activity_data_todo",
+                    user_id=slip.user_id.id or self.env.uid,
+                    summary=summary,
+                    note=note,
+                )
 
     def _spa_booking_domain_in_period(self):
         self.ensure_one()
@@ -864,11 +1080,14 @@ class SpaStaffPayroll(models.Model):
             standalone_kpi_inv = rec._spa_standalone_paid_invoices_in_period(
                 rec.user_id, include_refunds=True
             )
+            so_refunds = rec._spa_so_linked_refunds_paid_in_period(rec.user_id)
 
             net_rev = 0.0
             for order in orders:
-                net_rev += float(order.amount_total or 0.0)
+                net_rev += float(order._spa_recognized_amount_total() or 0.0)
             for move in standalone_kpi_inv:
+                net_rev += float(move.amount_total_signed or 0.0)
+            for move in so_refunds:
                 net_rev += float(move.amount_total_signed or 0.0)
 
             rec.kpi_revenue_base = net_rev
@@ -881,7 +1100,7 @@ class SpaStaffPayroll(models.Model):
 
             kpi_detail = []
             for order in orders:
-                rev = float(order.amount_total or 0.0)
+                rev = float(order._spa_recognized_amount_total() or 0.0)
                 kpi_detail.append({
                     "payroll_id": rec.id,
                     "sale_order_id": order.id,
@@ -902,6 +1121,18 @@ class SpaStaffPayroll(models.Model):
                     "kpi_percent": kpi_pct,
                     "kpi_amount": rev * (kpi_pct / 100.0) if kpi_pct else 0.0,
                 })
+            for move in so_refunds:
+                rev = float(move.amount_total_signed or 0.0)
+                so_link = rec._spa_invoice_linked_sale_orders(move)[:1]
+                kpi_detail.append({
+                    "payroll_id": rec.id,
+                    "sale_order_id": so_link.id if so_link else False,
+                    "move_id": move.id,
+                    "source_name": move.display_name,
+                    "revenue_amount": rev,
+                    "kpi_percent": kpi_pct,
+                    "kpi_amount": rev * (kpi_pct / 100.0) if kpi_pct else 0.0,
+                })
             if kpi_detail:
                 KpiLine.create(kpi_detail)
 
@@ -916,7 +1147,7 @@ class SpaStaffPayroll(models.Model):
                     "amount": kpi_amt,
                     "is_manual": False,
                     "note": _(
-                        "SO settled (residual=0) hoặc HĐ không SO đã paid; "
+                        "SO settled net CK (trừ cọc) hoặc HĐ không SO đã paid; "
                         "kỳ theo ngày đủ tiền. Chi tiết tab «KPI»."
                     ),
                 })
@@ -927,6 +1158,8 @@ class SpaStaffPayroll(models.Model):
                 comm_detail.extend(rec._spa_commission_detail_vals_for_sale_order(order))
             for inv in standalone_inv:
                 comm_detail.extend(rec._spa_commission_detail_vals_for_invoice(inv))
+            for refund in so_refunds:
+                comm_detail.extend(rec._spa_commission_detail_vals_for_invoice(refund))
             if comm_detail:
                 CommLine.create(comm_detail)
             comm_total = sum(r["commission_amount"] for r in comm_detail)
@@ -940,8 +1173,8 @@ class SpaStaffPayroll(models.Model):
                     "amount": comm_total,
                     "is_manual": False,
                     "note": _(
-                        "SO thu đủ / HĐ lẻ paid; base = price_subtotal sau CK dòng. "
-                        "Chi tiết tab «Hoa hồng SP»."
+                        "SO thu đủ / HĐ lẻ paid; base = price_subtotal sau CK dòng, "
+                        "không HH trên dòng CK toàn đơn. Chi tiết tab «Hoa hồng SP»."
                     ),
                 })
 

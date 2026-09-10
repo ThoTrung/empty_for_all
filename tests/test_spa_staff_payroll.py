@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import inspect
 from datetime import date, datetime, timedelta
 from unittest import SkipTest
+from unittest.mock import patch
 
 from odoo import fields
 from odoo.exceptions import ValidationError
@@ -565,7 +567,9 @@ class TestSpaStaffPayroll(TransactionCase):
             "spa_sales_commission_percent": 50.0,  # ignored
         })
         product = tmpl.product_variant_id
-        Move = self.env["account.move"]
+        Move = self.env["account.move"].with_context(
+            spa_allow_invoice_without_so=True
+        )
         inv = Move.create({
             "move_type": "out_invoice",
             "partner_id": self.partner.id,
@@ -653,6 +657,15 @@ class TestSpaStaffPayroll(TransactionCase):
         })
         return tmpl.product_variant_id
 
+    def _make_comm_card_product(self, name, pct, price=200000, sessions=10):
+        """Comm product usable as a treatment-card package (spa_sessions_per_unit set)."""
+        product = self._make_comm_product(name, pct, price)
+        product.product_tmpl_id.write({
+            "spa_sessions_per_unit": sessions,
+            "taxes_id": [(6, 0, [])],
+        })
+        return product
+
     def _make_so_with_invoice(
         self,
         products_prices,
@@ -714,15 +727,26 @@ class TestSpaStaffPayroll(TransactionCase):
         })
 
     def _expected_so_commission(self, so):
+        base_lines = so.order_line.filtered(
+            lambda l: not l.is_global_discount and not l.display_type
+        )
+        base_total = sum(base_lines.mapped("price_subtotal"))
+        discount_untaxed = sum(
+            so.order_line.filtered(lambda l: l.is_global_discount).mapped("price_subtotal")
+        )
         total = 0.0
         for line in so.order_line:
             if line.display_type or not line.product_id:
                 continue
             if getattr(line, "is_downpayment", False):
                 continue
+            if getattr(line, "is_global_discount", False):
+                continue
             pct = float(line.product_id.product_tmpl_id._spa_get_sales_commission_percent() or 0.0)
-            if pct:
-                total += float(line.price_subtotal or 0.0) * (pct / 100.0)
+            if not pct:
+                continue
+            share = discount_untaxed * (line.price_subtotal / base_total) if base_total else 0.0
+            total += (float(line.price_subtotal or 0.0) + share) * (pct / 100.0)
         return total
 
     def test_sales_commission_so_settled_on_full_payment_month(self):
@@ -812,7 +836,9 @@ class TestSpaStaffPayroll(TransactionCase):
     def test_sales_commission_standalone_invoice_paid_date_not_invoice_date(self):
         """T4: standalone HĐ dated May, paid July → HH in July only."""
         product = self._make_comm_product("Standalone MayJul", 5.0, 200000)
-        inv = self.env["account.move"].create({
+        inv = self.env["account.move"].with_context(
+            spa_allow_invoice_without_so=True
+        ).create({
             "move_type": "out_invoice",
             "partner_id": self.partner.id,
             "invoice_date": date(2025, 5, 12),
@@ -1087,3 +1113,681 @@ class TestSpaStaffPayroll(TransactionCase):
             sum(payroll.service_line_ids.mapped("amount_share")),
             svc.amount,
         )
+
+    def _spa_pay_move(self, invoice, pay_date, amount=None):
+        """Pay invoice or credit note (inbound vs outbound)."""
+        journal = self.env["account.journal"].search([
+            ("company_id", "=", self.company.id),
+            ("type", "in", ("cash", "bank")),
+        ], limit=1)
+        if not journal:
+            raise SkipTest("No cash/bank journal for payment test")
+        pay_amt = float(amount if amount is not None else invoice.amount_residual)
+        payment = self.env["account.payment"].create({
+            "payment_type": "inbound" if invoice.move_type == "out_invoice" else "outbound",
+            "partner_type": "customer",
+            "partner_id": invoice.partner_id.id,
+            "amount": abs(pay_amt),
+            "date": pay_date,
+            "journal_id": journal.id,
+            "currency_id": invoice.currency_id.id,
+        })
+        payment.action_post()
+        lines = (invoice.line_ids + payment.move_id.line_ids).filtered(
+            lambda l: l.account_id.account_type == "asset_receivable" and not l.reconciled
+        )
+        lines.reconcile()
+        invoice.invalidate_recordset()
+        if hasattr(invoice, "_compute_spa_fully_paid_date"):
+            invoice._compute_spa_fully_paid_date()
+            invoice.flush_recordset(["spa_fully_paid_date"])
+        return payment
+
+    def test_late_refund_keeps_origin_month_and_claws_back_refund_month(self):
+        """SO settled July; CN paid October → July stays; October draft KPI/HH negative."""
+        product = self._make_comm_product("SO Late Refund", 5.0, 200000)
+        so, inv = self._make_so_with_invoice(
+            [(product, 200000)],
+            invoice_date=date(2025, 5, 10),
+        )
+        self._spa_pay_move(inv, date(2025, 7, 15))
+        so.invalidate_recordset()
+        so._compute_spa_settlement()
+        so.flush_recordset(["spa_is_settled", "spa_settled_date"])
+        self.assertEqual(so.spa_settled_date, date(2025, 7, 15))
+
+        pay_jul = self._payroll_for_month(2025, 7)
+        pay_jul.action_recompute_payroll_extras()
+        jul_comm = pay_jul.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertEqual(len(jul_comm), 1)
+        jul_comm_amt = jul_comm.amount
+        jul_kpi_base = pay_jul.kpi_revenue_base
+        self.assertAlmostEqual(jul_kpi_base, so.amount_total)
+        pay_jul.action_confirm()
+        self.assertEqual(pay_jul.state, "done")
+
+        refund = inv._reverse_moves(default_values_list=[{
+            "date": date(2025, 10, 5),
+            "invoice_date": date(2025, 10, 5),
+            "ref": "Payroll late refund",
+        }], cancel=False)
+        refund = refund[0]
+        if refund.state != "posted":
+            refund.action_post()
+        self._spa_pay_move(refund, date(2025, 10, 20))
+        so.invalidate_recordset()
+        so._compute_spa_settlement()
+        so.flush_recordset(["spa_is_settled", "spa_settled_date"])
+        self.assertEqual(so.spa_settled_date, date(2025, 7, 15))
+
+        pay_jul.invalidate_recordset()
+        self.assertEqual(pay_jul.state, "done")
+        self.assertAlmostEqual(
+            pay_jul.line_ids.filtered(lambda l: l.category == "sales_commission").amount,
+            jul_comm_amt,
+        )
+
+        pay_oct = self._payroll_for_month(2025, 10)
+        pay_oct.action_recompute_payroll_extras()
+        self.assertAlmostEqual(pay_oct.kpi_revenue_base, float(refund.amount_total_signed))
+        oct_comm = pay_oct.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertTrue(oct_comm)
+        self.assertLess(oct_comm.amount, 0)
+
+        pay_jul_draft = self._payroll_for_month(2025, 7)
+        pay_jul_draft.action_recompute_payroll_extras()
+        self.assertAlmostEqual(pay_jul_draft.kpi_revenue_base, so.amount_total)
+        self.assertAlmostEqual(
+            pay_jul_draft.line_ids.filtered(lambda l: l.category == "sales_commission").amount,
+            jul_comm_amt,
+        )
+
+    def test_kpi_recognized_amount_prorates_global_discount_into_commission(self):
+        """KPI = SO net CK; HH KHÔNG tính dòng is_global_discount nhưng có TRỪ
+        phần CK toàn đơn phân bổ (untaxed) khỏi subtotal của dòng SP còn lại
+        (PAY-DEC-2026-09-03-01 / global-discount fix)."""
+        self.env["spa.payroll.kpi.revenue.tier"].create({
+            "company_id": False,
+            "name": "KPI CK recognized",
+            "min_revenue": 1.0,
+            "percent": 1.0,
+            "currency_id": self.company.currency_id.id,
+        })
+        product = self._make_comm_product("SO KPI CK prod", 5.0, 2000000)
+        ck = self._make_comm_product("CK HH bait", 5.0, 0)
+        so = self.env["sale.order"].create({
+            "partner_id": self.partner.id,
+            "user_id": self.user.id,
+            "company_id": self.company.id,
+            "order_line": [
+                (0, 0, {
+                    "product_id": product.id,
+                    "product_uom_qty": 1,
+                    "price_unit": 2000000,
+                }),
+                (0, 0, {
+                    "product_id": ck.id,
+                    "name": "CK",
+                    "product_uom_qty": 1,
+                    "price_unit": -200000,
+                    "is_global_discount": True,
+                }),
+            ],
+        })
+        so.action_confirm()
+        inv = so._create_invoices()
+        inv.write({
+            "invoice_date": date(2025, 7, 1),
+            "invoice_user_id": self.user.id,
+        })
+        inv.action_post()
+        self._spa_pay_invoice(inv, date(2025, 7, 15))
+
+        pay = self._payroll_for_month(2025, 7)
+        pay.action_recompute_payroll_extras()
+        recognized = so._spa_recognized_amount_total()
+        self.assertAlmostEqual(pay.kpi_revenue_base, recognized)
+        self.assertAlmostEqual(
+            pay._spa_net_invoice_revenue_for_sales_user(self.user),
+            recognized,
+        )
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertAlmostEqual(comm.amount, self._expected_so_commission(so))
+        # CK toàn đơn -200,000đ được trừ vào subtotal dòng SP trước khi tính %.
+        self.assertAlmostEqual(comm.amount, (2000000.0 - 200000.0) * 0.05)
+        self.assertFalse(
+            pay.commission_line_ids.filtered(lambda l: l.product_id == ck)
+        )
+
+    def _make_card_from_sale_order(self, product, so, total_sessions, used_sessions):
+        """Get (or create) the treatment card for this SO line.
+
+        Posting an invoice for a service product with ``spa_sessions_per_unit``
+        auto-creates a card (`spa.treatment.card._spa_create_treatment_card_if_paid`,
+        `custom_addons/spa/models/account_move.py`), so reuse it instead of
+        creating a duplicate (unique constraint on ``sale_order_line_id``).
+        """
+        sol = so.order_line.filtered(lambda l: l.product_id == product)[:1]
+        card = self.env["spa.treatment.card"].search(
+            [("sale_order_line_id", "=", sol.id)], limit=1
+        )
+        if card:
+            card.write({"total_sessions": total_sessions, "lifecycle_status": "active"})
+        else:
+            card = self.env["spa.treatment.card"].create({
+                "partner_id": so.partner_id.id,
+                "product_id": product.id,
+                "total_sessions": total_sessions,
+                "sale_order_line_id": sol.id,
+                "lifecycle_status": "active",
+            })
+        if used_sessions:
+            self.env["spa.treatment.session"].create([
+                {"card_id": card.id, "state": "done", "date": fields.Datetime.now()}
+                for _ in range(used_sessions)
+            ])
+        card.invalidate_recordset()
+        return card
+
+    def test_card_return_credit_defaults_to_sold_price(self):
+        """default_get lấy giá đã bán gốc trên dòng SO, không phải giá pricelist
+        hiện tại (PAY-DEC-2026-09-03-01, mục C)."""
+        product = self._make_comm_card_product("Card Credit Default", 5.0, 1000000, sessions=10)
+        so, inv = self._make_so_with_invoice(
+            [(product, 1000000)],
+            discount=10.0,  # đơn gốc có CK dòng 10% → giá thực bán = 900,000
+            invoice_date=date(2025, 6, 1),
+        )
+        card = self._make_card_from_sale_order(product, so, total_sessions=10, used_sessions=2)
+
+        # Đổi giá bảng giá hiện tại — default KHÔNG được lấy giá này.
+        product.list_price = 1500000
+
+        wiz = self.env["spa.card.upgrade.wizard"].with_context(
+            default_card_id=card.id
+        ).create({
+            "card_id": card.id,
+            "partner_id": so.partner_id.id,
+            "upgrade_option": "return",
+        })
+        self.assertAlmostEqual(wiz.credit_old_card, 900000.0, delta=0.01)
+
+    def test_card_return_uses_original_salesperson(self):
+        """SO trả thẻ lấy user_id từ salesperson đã bán thẻ gốc, không phải
+        người phụ trách khách hàng hiện tại (PAY-DEC-2026-09-03-01, mục D)."""
+        product = self._make_comm_card_product("Card Salesperson", 5.0, 1000000, sessions=10)
+        so, inv = self._make_so_with_invoice(
+            [(product, 1000000)],
+            invoice_date=date(2025, 6, 1),
+        )
+        card = self._make_card_from_sale_order(product, so, total_sessions=10, used_sessions=2)
+
+        other_user = self.env["res.users"].create({
+            "name": "Other Salesperson",
+            "login": "other_salesperson@example.com",
+            "email": "other_salesperson@example.com",
+        })
+        so.partner_id.write({"user_id": other_user.id})
+
+        wiz = self.env["spa.card.upgrade.wizard"].with_context(
+            default_card_id=card.id
+        ).create({
+            "card_id": card.id,
+            "partner_id": so.partner_id.id,
+            "upgrade_option": "return",
+            "amount_per_session": 100000.0,
+            "credit_old_card": 1000000.0,
+        })
+        action = wiz.action_confirm()
+        return_so = self.env["sale.order"].browse(action["res_id"])
+        self.assertEqual(return_so.user_id, so.user_id)
+        self.assertNotEqual(return_so.user_id, other_user)
+        self.assertTrue(return_so.is_card_return_order)
+
+    def test_card_return_commission_no_double_clawback(self):
+        """Trả thẻ: claw-back hoa hồng đúng 1 lần, không bị tính trùng qua
+        credit note liên kết (PAY-DEC-2026-09-03-01, mục B)."""
+        product = self._make_comm_card_product("Card No Double Clawback", 5.0, 1000000, sessions=10)
+        so, inv = self._make_so_with_invoice(
+            [(product, 1000000)],
+            invoice_date=date(2025, 6, 1),
+        )
+        self._spa_pay_invoice(inv, date(2025, 6, 5))
+        so.invalidate_recordset()
+        so._compute_spa_settlement()
+        so.flush_recordset(["spa_is_settled", "spa_settled_date"])
+
+        pay_jun = self._payroll_for_month(2025, 6)
+        pay_jun.action_recompute_payroll_extras()
+        jun_comm = pay_jun.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertAlmostEqual(jun_comm.amount, 1000000.0 * 0.05)
+        pay_jun.action_confirm()
+
+        card = self._make_card_from_sale_order(product, so, total_sessions=10, used_sessions=2)
+        wiz = self.env["spa.card.upgrade.wizard"].with_context(
+            default_card_id=card.id
+        ).create({
+            "card_id": card.id,
+            "partner_id": so.partner_id.id,
+            "upgrade_option": "return",
+        })
+        action = wiz.action_confirm()
+        return_so = self.env["sale.order"].browse(action["res_id"])
+        self.assertTrue(return_so.is_card_return_order)
+        return_so.action_confirm()
+
+        used_value = 2 * (1000000.0 / 10)
+        refund_value = 1000000.0 - used_value
+
+        # Trả thẻ được thanh toán ở THÁNG KHÁC (7) để đo riêng claw-back, tách
+        # khỏi hoa hồng tháng 6 (giống pattern late-refund) — nếu double-count
+        # xảy ra thì nhánh "orders" (đã loại is_card_return_order) sẽ KHÔNG
+        # còn đóng góp, nên số liệu tháng 7 chỉ phản ánh đúng 1 lần claw-back
+        # từ nhánh so_refunds nếu fix đúng; sai sẽ lệch hẳn (double).
+        return_inv = return_so._create_invoices(final=True)
+        return_inv.write({"invoice_date": date(2025, 7, 1), "invoice_user_id": so.user_id.id})
+        return_inv.action_post()
+        self.assertEqual(return_inv.move_type, "out_refund")
+        self._spa_pay_move(return_inv, date(2025, 7, 5))
+        return_so.invalidate_recordset()
+
+        # Tháng 6 (đã khóa) không tự sửa: hoa hồng gốc giữ nguyên.
+        pay_jun.invalidate_recordset()
+        self.assertAlmostEqual(
+            pay_jun.line_ids.filtered(lambda l: l.category == "sales_commission").amount,
+            1000000.0 * 0.05,
+        )
+
+        pay_jul = self._payroll_for_month(2025, 7)
+        pay_jul.action_recompute_payroll_extras()
+        comm2 = pay_jul.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertTrue(comm2)
+        # Đúng 1 lần claw-back = -pct * refund_value, KHÔNG phải gấp đôi
+        # (trước khi sửa, cả nhánh "orders" lẫn "so_refunds" cùng tính, ra
+        # tổng khác hẳn giá trị này).
+        self.assertAlmostEqual(comm2.amount, -refund_value * 0.05, delta=1.0)
+
+    def test_late_refund_activity_on_done_refund_month_payslip(self):
+        product = self._make_comm_product("SO Refund Activity", 5.0, 100000)
+        so, inv = self._make_so_with_invoice(
+            [(product, 100000)],
+            invoice_date=date(2025, 5, 10),
+        )
+        self._spa_pay_move(inv, date(2025, 7, 15))
+        so.invalidate_recordset()
+        so._compute_spa_settlement()
+        so.flush_recordset(["spa_settled_date"])
+
+        pay_oct = self._payroll_for_month(2025, 10)
+        pay_oct.action_confirm()
+        self.assertEqual(pay_oct.state, "done")
+
+        refund = inv._reverse_moves(default_values_list=[{
+            "date": date(2025, 10, 5),
+            "invoice_date": date(2025, 10, 5),
+            "ref": "Payroll refund activity",
+        }], cancel=False)
+        refund = refund[0]
+        if refund.state != "posted":
+            refund.action_post()
+        self._spa_pay_move(refund, date(2025, 10, 20))
+
+        acts = self.env["mail.activity"].search([
+            ("res_model", "=", "spa.staff.payroll"),
+            ("res_id", "=", pay_oct.id),
+            ("summary", "=", "Hoàn tiền sau khi phiếu lương đã khóa"),
+        ])
+        self.assertTrue(acts, "Locked October payslip should get a todo activity")
+
+    def test_late_refund_notify_failure_does_not_rollback_payment(self):
+        """PAY-DEC-2026-09-03-01 follow-up: a bug in
+        _spa_notify_late_refund_on_locked_payslips (called from the
+        account.partial.reconcile hook, custom_addons/spa_staff_payroll/
+        models/account_move_payroll.py) must never roll back the accounting
+        reconcile/payment that triggered it — it's a best-effort side-effect,
+        not part of the settlement itself."""
+        product = self._make_comm_product("SO Refund Notify Isolation", 5.0, 100000)
+        so, inv = self._make_so_with_invoice(
+            [(product, 100000)],
+            invoice_date=date(2025, 5, 10),
+        )
+        self._spa_pay_move(inv, date(2025, 7, 15))
+        so.invalidate_recordset()
+        so._compute_spa_settlement()
+        so.flush_recordset(["spa_settled_date"])
+
+        pay_oct = self._payroll_for_month(2025, 10)
+        pay_oct.action_confirm()
+
+        refund = inv._reverse_moves(default_values_list=[{
+            "date": date(2025, 10, 5),
+            "invoice_date": date(2025, 10, 5),
+            "ref": "Payroll refund notify isolation",
+        }], cancel=False)
+        refund = refund[0]
+        if refund.state != "posted":
+            refund.action_post()
+
+        with patch.object(
+            type(self.env["spa.staff.payroll"]),
+            "_spa_notify_late_refund_on_locked_payslips",
+            side_effect=RuntimeError("boom - simulated bug in notify"),
+        ):
+            # Must NOT raise: the exception is isolated via cr.savepoint()
+            # inside _spa_mark_settlement_recompute.
+            self._spa_pay_move(refund, date(2025, 10, 20))
+
+        self.assertTrue(
+            self.company.currency_id.is_zero(refund.amount_residual),
+            "Refund payment must still be fully reconciled despite the notify bug",
+        )
+        # No activity created this time (notify failed before creating any),
+        # but the payment/reconcile itself committed successfully — that's
+        # the property under test, not the activity.
+
+    def test_late_refund_notify_flush_uses_narrow_model_flush(self):
+        """The reconcile hook must flush only sale.order/account.move (the
+        models the notify query reads), not env.flush_all() — regression
+        guard so a future edit doesn't reintroduce the broad flush on this
+        hot path (bulk bank-statement reconcile)."""
+        from odoo.addons.spa_staff_payroll.models import account_move_payroll as amp
+
+        source = inspect.getsource(amp.AccountMove._spa_mark_settlement_recompute)
+        self.assertNotIn("flush_all", source)
+        self.assertIn("flush_model", source)
+
+    # --- Partial / full return closes SO for KPI + HH (PAY-DEC-2026-09-09-01) ---
+
+    def _make_policy_comm_product(self, name, pct, price, policy):
+        categ = self.env["product.category"].create({
+            "name": "Categ %s" % name,
+            "spa_sales_commission_percent": pct,
+        })
+        tmpl = self.env["product.template"].create({
+            "name": name,
+            "detailed_type": "service",
+            "invoice_policy": policy,
+            "categ_id": categ.id,
+            "list_price": price,
+            "taxes_id": [(5, 0, 0)],  # no tax -> hard-coded expected amounts
+        })
+        return tmpl.product_variant_id
+
+    def _make_so_lines(self, line_specs, user=None):
+        """line_specs: [(product, price_unit, qty), ...] -> confirmed SO."""
+        user = user or self.user
+        so = self.env["sale.order"].create({
+            "partner_id": self.partner.id,
+            "user_id": user.id,
+            "company_id": self.company.id,
+            "order_line": [
+                (0, 0, {
+                    "product_id": p.id,
+                    "product_uom_qty": q,
+                    "price_unit": pu,
+                })
+                for (p, pu, q) in line_specs
+            ],
+        })
+        so.action_confirm()
+        return so
+
+    def _invoice_and_post(self, so, invoice_date, user=None):
+        user = user or self.user
+        inv = so._create_invoices()
+        inv.write({"invoice_date": invoice_date, "invoice_user_id": user.id})
+        inv.action_post()
+        return inv
+
+    def _partial_refund(self, inv, refund_date, qty_by_product=None, user=None):
+        """Credit-note ``inv``; optionally cut line quantities before posting."""
+        user = user or self.user
+        moves = inv._reverse_moves(default_values_list=[{
+            "date": refund_date,
+            "invoice_date": refund_date,
+            "invoice_user_id": user.id,
+            "ref": "Return %s" % inv.name,
+        }], cancel=False)
+        refund = moves[0]
+        if qty_by_product is not None:
+            # Keep only the returned products, at the requested quantities.
+            for line in refund.invoice_line_ids.filtered(
+                lambda l: l.display_type == "product"
+            ):
+                if line.product_id in qty_by_product:
+                    line.quantity = qty_by_product[line.product_id]
+                else:
+                    line.unlink()
+        if refund.state != "posted":
+            refund.action_post()
+        return refund
+
+    def _flush_settlement(self, so):
+        so.invalidate_recordset()
+        so._compute_spa_settlement()
+        so.flush_recordset(["spa_is_settled", "spa_settled_date", "spa_settled_month"])
+
+    def _pay_open(self, move, pay_date):
+        """Pay a move only if it still has a residual.
+
+        ``account.move._reverse_moves`` (spa override + core) reconciles a fresh
+        credit note against an open source invoice on post, so a return posted
+        *before* the invoice is paid already has residual 0 — the S53056 shape.
+        Then only the invoice's remaining net residual needs a real payment.
+        """
+        move.invalidate_recordset()
+        if not self.company.currency_id.is_zero(move.amount_residual):
+            if move.move_type == "out_invoice":
+                self._spa_pay_invoice(move, pay_date)
+            else:
+                self._spa_pay_move(move, pay_date)
+        if hasattr(move, "_compute_spa_fully_paid_date"):
+            move.invalidate_recordset()
+            move._compute_spa_fully_paid_date()
+            move.flush_recordset(["spa_fully_paid_date"])
+
+    def test_partial_return_same_month_counts_net_kpi_hh(self):
+        """Order-policy SO, 2 lines (no tax); a partial credit note is posted
+        BEFORE the invoice is fully paid, so it reconciles against the open
+        invoice, amount_to_invoice never returns to 0 and the SO is never even
+        transiently _spa_order_is_settled() — the S53056 shape. All money lands
+        the SAME month → draft payslip recognises net (gross − refund) for KPI
+        and the sales_commission ledger line, with HARD-CODED expected amounts.
+
+        gross = 2·100000 + 2·200000 = 600000 ; refund = 1·100000 = 100000
+        net KPI = 500000
+        net HH  = (2·100000·5%) + (2·200000·10%) − (1·100000·5%)
+                = 10000 + 40000 − 5000 = 45000
+        """
+        p_a = self._make_policy_comm_product("Ret A", 5.0, 100000, "order")
+        p_b = self._make_policy_comm_product("Ret B", 10.0, 200000, "order")
+        so = self._make_so_lines([(p_a, 100000, 2), (p_b, 200000, 2)])
+        inv = self._invoice_and_post(so, date(2025, 8, 3))
+
+        refund = self._partial_refund(
+            inv, date(2025, 8, 4), qty_by_product={p_a: 1}
+        )
+        self._pay_open(inv, date(2025, 8, 5))
+        self._pay_open(refund, date(2025, 8, 6))
+        self._flush_settlement(so)
+
+        self.assertFalse(so._spa_order_is_settled())
+        self.assertFalse(so.spa_is_settled)
+        self.assertTrue(so._spa_order_is_closed_by_returns())
+        self.assertEqual(so.spa_settled_date, date(2025, 8, 5))
+
+        pay = self._payroll_for_month(2025, 8)
+        pay.action_recompute_payroll_extras()
+
+        self.assertAlmostEqual(pay.kpi_revenue_base, 500000.0)
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertEqual(len(comm), 1)
+        self.assertAlmostEqual(comm.amount, 45000.0)
+
+    def test_full_return_same_month_nets_to_zero(self):
+        """100% returned same month → net KPI and net HH exactly 0; SO gets a
+        spa_settled_date but stays spa_is_settled = False."""
+        product = self._make_policy_comm_product("Ret Full", 5.0, 200000, "order")
+        so = self._make_so_lines([(product, 200000, 2)])
+        inv = self._invoice_and_post(so, date(2025, 8, 3))
+
+        refund = self._partial_refund(inv, date(2025, 8, 4))  # full reversal
+        self._pay_open(inv, date(2025, 8, 5))
+        self._pay_open(refund, date(2025, 8, 6))
+        self._flush_settlement(so)
+
+        self.assertFalse(so.spa_is_settled)
+        self.assertTrue(so._spa_order_is_closed_by_returns())
+        self.assertTrue(so.spa_settled_date)
+
+        pay = self._payroll_for_month(2025, 8)
+        pay.action_recompute_payroll_extras()
+
+        self.assertAlmostEqual(pay.kpi_revenue_base, 0.0)
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertFalse(comm, "gross 20000 − refund 20000 = 0 → no ledger line")
+
+    def test_multi_partial_return_across_months(self):
+        """Invoice fully paid Aug (settled, date frozen) then two returns paid to
+        the customer in Sep and Oct. Each return is clawed back as an exact
+        negative amount in its own paid month; the origin month never moves.
+
+        line: 3·100000 = 300000 gross ; each return = 1·100000 = 100000
+        Sep clawback KPI = −100000, HH = −100000·5% = −5000
+        Oct clawback KPI = −100000, HH = −5000
+        """
+        product = self._make_policy_comm_product("Ret Multi", 5.0, 100000, "order")
+        so = self._make_so_lines([(product, 100000, 3)])
+        inv = self._invoice_and_post(so, date(2025, 8, 2))
+        self._spa_pay_invoice(inv, date(2025, 8, 5))
+        self._flush_settlement(so)
+        self.assertEqual(so.spa_settled_date, date(2025, 8, 5))
+
+        r1 = self._partial_refund(inv, date(2025, 9, 3), qty_by_product={product: 1})
+        self._pay_open(r1, date(2025, 9, 10))
+        r2 = self._partial_refund(inv, date(2025, 10, 3), qty_by_product={product: 1})
+        self._pay_open(r2, date(2025, 10, 10))
+        self._flush_settlement(so)
+
+        self.assertEqual(so.spa_settled_date, date(2025, 8, 5), "origin frozen")
+        self.assertFalse(so.spa_is_settled)
+
+        pay_aug = self._payroll_for_month(2025, 8)
+        pay_aug.action_recompute_payroll_extras()
+        self.assertAlmostEqual(pay_aug.kpi_revenue_base, 300000.0)
+
+        pay_sep = self._payroll_for_month(2025, 9)
+        pay_sep.action_recompute_payroll_extras()
+        self.assertAlmostEqual(pay_sep.kpi_revenue_base, -100000.0)
+        self.assertAlmostEqual(
+            pay_sep.line_ids.filtered(lambda l: l.category == "sales_commission").amount,
+            -5000.0,
+        )
+
+        pay_oct = self._payroll_for_month(2025, 10)
+        pay_oct.action_recompute_payroll_extras()
+        self.assertAlmostEqual(pay_oct.kpi_revenue_base, -100000.0)
+        self.assertAlmostEqual(
+            pay_oct.line_ids.filtered(lambda l: l.category == "sales_commission").amount,
+            -5000.0,
+        )
+
+        # Origin month unchanged after both clawbacks exist.
+        pay_aug2 = self._payroll_for_month(2025, 8)
+        pay_aug2.action_recompute_payroll_extras()
+        self.assertAlmostEqual(pay_aug2.kpi_revenue_base, 300000.0)
+
+    def test_return_delivery_policy_product(self):
+        """invoice_policy='delivery', fully delivered + invoiced before the
+        partial return: the amount check (amount_to_invoice - Σ refunds) behaves
+        exactly like an order-policy line → closed-by-returns, net KPI/HH.
+
+        The amount check keys off ``amount_total - invoiced_gross`` (0 once the
+        order was fully invoiced), so a later physical restock (qty_delivered
+        dropping) does NOT reopen it. The genuinely-limited case is a
+        delivery-policy order that was NEVER fully delivered and then abandoned
+        after returning its delivered portion — there really are undelivered
+        units, so it correctly stays open (see
+        test_over_return_not_closed_by_returns) and would fall back to the
+        original bug only if the order is abandoned. SPA-DEC-2026-09-09-08.
+        """
+        product = self._make_policy_comm_product("Ret Deliv", 5.0, 200000, "delivery")
+        so = self._make_so_lines([(product, 200000, 2)])
+        so.order_line.qty_delivered = 2
+        inv = self._invoice_and_post(so, date(2025, 8, 3))
+
+        refund = self._partial_refund(inv, date(2025, 8, 4), qty_by_product={product: 1})
+        self._pay_open(inv, date(2025, 8, 5))
+        self._pay_open(refund, date(2025, 8, 6))
+        self._flush_settlement(so)
+
+        self.assertTrue(so._spa_order_is_closed_by_returns())
+        self.assertFalse(so.spa_is_settled)
+        self.assertEqual(so.spa_settled_date, date(2025, 8, 5))
+
+        pay = self._payroll_for_month(2025, 8)
+        pay.action_recompute_payroll_extras()
+        # gross 2·200000 = 400000 ; refund 1·200000 = 200000 ; net 200000
+        self.assertAlmostEqual(pay.kpi_revenue_base, 200000.0)
+
+        # Physical restock of the returned unit: accounting unchanged -> still closed.
+        so.order_line.qty_delivered = 1
+        so.invalidate_recordset()
+        self.assertTrue(so._spa_order_is_closed_by_returns())
+
+    def test_return_mixed_policy_order(self):
+        """One order-policy line + one fully-delivered delivery-policy line
+        (no tax); partial return on the order-policy line. HARD-CODED amounts.
+
+        gross = 2·100000 + 2·200000 = 600000 ; refund = 1·100000 = 100000
+        net KPI = 500000
+        net HH  = 2·100000·5% + 2·200000·10% − 1·100000·5%
+                = 10000 + 40000 − 5000 = 45000
+        """
+        p_order = self._make_policy_comm_product("Ret Mix O", 5.0, 100000, "order")
+        p_deliv = self._make_policy_comm_product("Ret Mix D", 10.0, 200000, "delivery")
+        so = self._make_so_lines([(p_order, 100000, 2), (p_deliv, 200000, 2)])
+        so.order_line.filtered(lambda l: l.product_id == p_deliv).qty_delivered = 2
+        inv = self._invoice_and_post(so, date(2025, 8, 3))
+
+        refund = self._partial_refund(
+            inv, date(2025, 8, 4), qty_by_product={p_order: 1}
+        )
+        self._pay_open(inv, date(2025, 8, 5))
+        self._pay_open(refund, date(2025, 8, 6))
+        self._flush_settlement(so)
+
+        self.assertTrue(so._spa_order_is_closed_by_returns())
+        self.assertFalse(so.spa_is_settled)
+        self.assertEqual(so.spa_settled_date, date(2025, 8, 5))
+
+        pay = self._payroll_for_month(2025, 8)
+        pay.action_recompute_payroll_extras()
+        self.assertAlmostEqual(pay.kpi_revenue_base, 500000.0)
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertAlmostEqual(comm.amount, 45000.0)
+
+
+@tagged("post_install", "-at_install", "spa_security")
+class TestSpaPayrollOperatorBookingForm(TransactionCase):
+    def test_operator_form_payroll_flags_readonly(self):
+        view = self.env.ref("booking_calendar.view_spa_service_booking_form_operator")
+        arch = self.env["spa.service.booking"].get_view(view_id=view.id, view_type="form")["arch"]
+        self.assertIn('name="spa_payroll_shift_kind"', arch)
+        self.assertIn('name="spa_payroll_customer_requested"', arch)
+        self.assertIn('readonly="1"', arch)
+
+
+@tagged("post_install", "-at_install")
+class TestSpaPayrollProductFormLayout(TransactionCase):
+    def test_payroll_payout_table_before_composite_sub_services(self):
+        view = self.env.ref("product.product_template_only_form_view")
+        arch = self.env["product.template"].get_view(view_id=view.id, view_type="form")["arch"]
+        payout_pos = arch.find('name="spa_payroll_profile_payout_line_ids"')
+        sub_pos = arch.find('name="spa_sub_service_ids"')
+        self.assertNotEqual(payout_pos, -1)
+        self.assertNotEqual(sub_pos, -1)
+        self.assertLess(payout_pos, sub_pos)
+        self.assertIn('name="group_spa_payroll_profile"', arch)
+        self.assertIn('name="group_spa_composite_service"', arch)
+

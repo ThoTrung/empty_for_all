@@ -23,17 +23,19 @@
 - **`wage_fixed` prorate** theo overlap HĐ ∩ kỳ: `wage × days_worked / days_period`; audit `wage_period_*` / `wage_days*`.
 - Categories ledger thêm `ranking_bonus`. Thưởng ca dài / khách đặt: **1 dòng tổng / loại**.
 - Chi tiết audit: `commission_line_ids` (HH theo SP), `kpi_line_ids` (theo SO/HĐ), `service_line_ids` (buổi); ledger HH/KPI/tiền công vẫn **1 dòng tổng** = sum detail.
-- KPI base: field `kpi_revenue_base` (audit).
+- KPI base: field `kpi_revenue_base` (audit). **Không** đọc `spa.dashboard.month.line` (snapshot Dashboard cache-only).
 - Dayoff / thâm niên: display; nghỉ dài ≥28 ngày trừ khỏi thâm niên.
 - `spa.product.payroll.profile.company_id` **optional** (trống = mọi công ty); domain trên SP: `| company_id=False | company_id=product.company_id`.
 - Hoa hồng bán: `%` trên `product.category` (+ walk parent); field SP `spa_sales_commission_percent` legacy ẩn UI.
-- HH/KPI: SO settled (residual HĐ = 0) hoặc HĐ không SO `paid`; kỳ = ngày đủ tiền (PAY-DEC-2026-07-26-11).
+- HH/KPI: SO settled; KPI/ranking = `_spa_recognized_amount_total` (net CK, trừ cọc) (PAY-DEC-2026-08-29-01). HH skip dòng CK toàn đơn. Eligibility `spa_settled_date` không đòi `spa_is_settled` (PAY-DEC-2026-08-28-01). CN gắn SO paid trong kỳ → clawback; phiếu `done` → activity.
 
 ## 4) View Architecture
 - Phiếu: sheet = định danh (NV/HĐ/kỳ); tab **Lương** = wage + tổng hợp tiền + ledger `line_ids` (1 dòng / loại); tab chi tiết = Hoa hồng SP, KPI, OT, **Buổi làm**, Ngày nghỉ. Smart button chỉ «Đặt lịch». PDF report binding.
 - Menu: Chốt xếp hạng kỳ, Kết quả xếp hạng, Đối soát ca, Giải thưởng, Nạp bậc mặc định.
 - Session form: hiện flag payroll (readonly nếu từ booking).
+- Booking form operator (**Lịch phục vụ**): flag ca/khách đặt readonly (`view_spa_staff_payroll_inherit_booking_form_operator`).
 - Employee HR Settings: thâm niên Spa.
+- Product template form: group `group_spa_payroll_profile` (Payroll Spa) **trước** `group_spa_composite_service`; bảng payout 50% cột trái (`colspan="2"`), help dưới bảng.
 
 ## 5) Security Model
 - Groups payroll user/manager (Spa Manager imply manager).
@@ -56,12 +58,12 @@ python3 odoo/odoo-bin -c conf/odoo_dev.conf -d drlai \
   --stop-after-init --http-port=8090
 ```
 Cover: no double-count service, multi-therapist split, booking→session sync, seniority, load tiers, workflow to_approve, legacy OT/service/colors.
-Commission/KPI cash-basis: category % walk; HĐ lẻ paid-date; SO May→July settle; partial pay=0; multi-% lines; KPI month; wrong salesperson; not invoiced; no SO/HĐ double-count; ranking sales; pct=0.
+Commission/KPI cash-basis: category % walk; HĐ lẻ paid-date; SO May→July settle; partial pay=0; multi-% lines; KPI month; wrong salesperson; not invoiced; no SO/HĐ double-count; ranking sales; pct=0; late refund clawback T7/T9; activity on done refund-month slip.
 Wage prorate mid-month start/end; commission/KPI detail sum = ledger; long-shift 1 line/session.
 
 ## 9) Known Pitfalls
 - Flag vẫn phụ thuộc thao tác người — dùng menu Đối soát ca.
-- KPI theo ngày đủ tiền / SO settled — không theo `invoice_date`.
+- KPI theo ngày đủ tiền / SO settled **net CK trừ cọc** (`_spa_recognized_amount_total`) — không theo `invoice_date` / không `amount_total` (có dòng cọc).
 - Seed năm ranking amount = 0 đến khi QL nhập.
 - Tier/prize mặc định: XML `noupdate` + `company_id` trống; user sửa không bị reset khi `-u`.
 

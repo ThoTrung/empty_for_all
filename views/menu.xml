@@ -96,6 +96,13 @@
               sequence="13"
               groups="spa_staff_payroll.group_spa_payroll_manager"/>
 
+    <menuitem id="menu_spa_staff_payroll_commission_report"
+              name="Thống kê hoa hồng"
+              parent="menu_spa_payroll_root"
+              action="action_spa_staff_payroll_commission_report"
+              sequence="15"
+              groups="spa_staff_payroll.group_spa_payroll_user,spa_staff_payroll.group_spa_payroll_manager"/>
+
     <menuitem id="menu_spa_payroll_session_flag_audit"
               name="Đối soát ca payroll"
               parent="menu_spa_payroll_root"

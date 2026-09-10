@@ -96,12 +96,45 @@
                             </p>
                         </page>
                         <page string="Hoa hồng SP" name="commission_lines">
-                            <field name="commission_line_ids" readonly="1">
-                                <tree create="0" delete="0">
+                            <group>
+                                <group string="Phòng khám">
+                                    <field name="commission_clinic_revenue"/>
+                                    <field name="commission_clinic_amount" class="fw-bold"/>
+                                </group>
+                                <group string="Spa">
+                                    <field name="commission_spa_revenue"/>
+                                    <field name="commission_spa_amount" class="fw-bold"/>
+                                </group>
+                            </group>
+                            <separator string="SP Phòng khám"/>
+                            <field name="commission_line_clinic_ids" readonly="1">
+                                <tree create="0" delete="0" limit="1000">
+                                    <field name="settle_date"/>
                                     <field name="product_id"/>
                                     <field name="categ_id"/>
                                     <field name="sale_order_id"/>
                                     <field name="move_id" optional="show"/>
+                                    <field name="partner_id" optional="show"/>
+                                    <field name="partner_code" optional="show"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit"/>
+                                    <field name="discount"/>
+                                    <field name="price_subtotal" sum="Thành tiền"/>
+                                    <field name="commission_percent"/>
+                                    <field name="commission_amount" sum="Hoa hồng"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                            <separator string="SP Spa"/>
+                            <field name="commission_line_spa_ids" readonly="1">
+                                <tree create="0" delete="0" limit="1000">
+                                    <field name="settle_date"/>
+                                    <field name="product_id"/>
+                                    <field name="categ_id"/>
+                                    <field name="sale_order_id"/>
+                                    <field name="move_id" optional="show"/>
+                                    <field name="partner_id" optional="show"/>
+                                    <field name="partner_code" optional="show"/>
                                     <field name="quantity"/>
                                     <field name="price_unit"/>
                                     <field name="discount"/>
@@ -114,6 +147,7 @@
                             <p class="text-muted">
                                 Chi tiết theo dòng SP (SO settled / HĐ lẻ paid). Tổng HH khớp dòng
                                 <b>sales_commission</b> trên tab «Lương».
+                                Bảng Spa gồm cả SP 'Cả hai' và SP chưa phân loại chi nhánh.
                             </p>
                         </page>
                         <page string="KPI" name="kpi_lines">

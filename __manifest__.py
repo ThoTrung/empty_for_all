@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Spa Staff Payroll",
-    "version": "17.0.1.1.0",
+    "version": "17.0.1.3.0",
     "category": "Human Resources",
     "summary": "Phiếu lương nhân viên Spa (dịch vụ theo buổi, làm thêm giờ, nghỉ)",
     "author": "Spa / booking_calendar integration",
@@ -31,6 +31,7 @@
         "views/spa_booking_payroll_views.xml",
         "views/spa_session_payroll_views.xml",
         "views/spa_payroll_ranking_views.xml",
+        "views/spa_staff_payroll_commission_report_views.xml",
         "views/res_config_settings_views.xml",
         "report/spa_staff_payroll_report.xml",
         "wizards/spa_staff_payroll_generate_wizard_views.xml",
