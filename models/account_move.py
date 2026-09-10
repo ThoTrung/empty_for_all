@@ -225,7 +225,7 @@ class AccountMove(models.Model):
                     )
             else:
                 move.rental_billing_explanation = (
-                    "Hợp đồng tính theo NGÀY: đơn giá một ngày = Giá thuê/ngày trên sản phẩm × tỷ lệ đơn giá trên HĐ. "
+                    "Hợp đồng tính theo NGÀY: đơn giá một ngày = Giá thuê/ngày trên vật tư × tỷ lệ đơn giá trên HĐ. "
                     "Nếu chưa nhập giá thuê/ngày, hệ thống quy đổi từ giá tháng (như chế độ theo tháng)."
                 )
 

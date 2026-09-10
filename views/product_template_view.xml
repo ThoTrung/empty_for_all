@@ -91,7 +91,7 @@
 
     <!-- ===== Products (Templates) ===== -->
     <record id="action_rental_product_templates" model="ir.actions.act_window">
-        <field name="name">Mẫu sản phẩm</field>
+        <field name="name">Vật tư</field>
         <field name="res_model">product.template</field>
         <!-- Reuse standard product views: kanban + list + form -->
         <field name="view_mode">kanban,tree,form</field>
@@ -119,13 +119,16 @@
             <xpath expr="//field[@name='barcode']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
+            <xpath expr="//label[@for='name']" position="attributes">
+                <attribute name="string">Tên vật tư</attribute>
+            </xpath>
             <xpath expr="//sheet" position="inside">
-                <separator string="Chi tiết sản phẩm" class="o_rental_section_color_1 o_rental_section_label"/>
+                <separator string="Chi tiết vật tư" class="o_rental_section_color_1 o_rental_section_label"/>
                 <group>
                     <group>
-                        <field name="categ_id"/>
+                        <field name="categ_id" string="Danh mục vật tư"/>
                         <field name="uom_id" domain="[('category_id.name','=','tbxd')]"/>  # Remember to create uom in inventory setting with category name is: tbxd - (thiết bị xây dựng)
-                        <field name="default_code"/>
+                        <field name="default_code" string="Mã vật tư"/>
                     </group>
                     <group>
                         <field name="order"/>

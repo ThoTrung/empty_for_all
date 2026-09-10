@@ -55,7 +55,7 @@ class RentalContract(models.Model):
         default="month",
         required=True,
         tracking=True,
-        help="Ảnh hưởng bảng thanh toán / hóa đơn: theo ngày dùng Giá thuê/ngày trên sản phẩm; "
+        help="Ảnh hưởng bảng thanh toán / hóa đơn: theo ngày dùng Giá thuê/ngày trên vật tư; "
              "theo tháng: (Giá thuê tháng / số ngày trong tháng kỳ lập hóa đơn) × số ngày × SL.",
     )
     monthly_day_basis = fields.Selection(
@@ -103,11 +103,11 @@ class RentalContract(models.Model):
         string="Kỳ thuê tối thiểu (tháng)",
         default=2,
         tracking=True,
-        help="Quy định thuê tối thiểu. Nếu trả sản phẩm trước khi đủ số tháng này (tính từ "
+        help="Quy định thuê tối thiểu. Nếu trả vật tư trước khi đủ số tháng này (tính từ "
              "ngày giao của lô tương ứng) thì vẫn tính tiền đủ kỳ tối thiểu. Đặt 0 để tắt.",
     )
     minimum_penalty_current_period_only = fields.Boolean(
-        string="Chỉ phạt sản phẩm thuê từ tháng này",
+        string="Chỉ phạt vật tư thuê từ tháng này",
         default=False,
         tracking=True,
         help="Khi bật: chỉ áp dụng phạt kỳ tối thiểu cho số lượng giao trong kỳ thanh toán "
@@ -237,7 +237,7 @@ class RentalContract(models.Model):
     rental_contract_line_ids = fields.One2many('rental.contract.line', 'contract_id', string="Dòng hợp đồng", copy=True, tracking=True)
 
     rr_transport_ids = fields.One2many('rr.transport', 'rental_contract_id', string='Vận chuyển', tracking=True)
-    rr_transport_line_ids = fields.One2many('rr.transport.line', 'rental_contract_id', string='Sản phẩm thuê', tracking=True)
+    rr_transport_line_ids = fields.One2many('rr.transport.line', 'rental_contract_id', string='Vật tư thuê', tracking=True)
     rr_transport_matrix_json = fields.Json(
         string='JSON bảng xác nhận KL',
         compute='_compute_rr_transport_matrix_html',
@@ -305,7 +305,7 @@ class RentalContract(models.Model):
     deposit = fields.Float(string='Đặt cọc', tracking=True)
     product_list_template_id = fields.Many2one(
         "rental.product.template.set",
-        string="Mẫu sản phẩm",
+        string="Mẫu vật tư",
         domain="[('company_id', '=', company_id)]",
         tracking=True,
         help="Chọn mẫu để tự động nạp sẵn danh sách product.template vào bảng báo giá.",
@@ -532,7 +532,7 @@ class RentalContract(models.Model):
         self.ensure_one()
         self._check_can_edit()
         if not self.product_list_template_id:
-            raise UserError(_("Vui lòng chọn mẫu sản phẩm trước khi nạp."))
+            raise UserError(_("Vui lòng chọn mẫu vật tư trước khi nạp."))
         self.write({
             "rental_contract_line_ids": (
                 [(5, 0, 0)]
@@ -1119,7 +1119,7 @@ class RentalContract(models.Model):
                     count += 1
 
                 if rc.get("leftover_present") or rc.get("penalty_rows") or rc.get("returned_rows"):
-                    self._write_subheader(ws, start_row + count, _("Đối ứng sản phẩm trả"))
+                    self._write_subheader(ws, start_row + count, _("Đối ứng vật tư trả"))
                     count += 1
                     for line in rc.get("leftover_present") or []:
                         content = _("%(name)s (dư từ lô %(d)s)") % {
@@ -1830,7 +1830,7 @@ class RentalContract(models.Model):
         for item in product_items:
             product = Product.browse(item['product_id'])
             if not product.exists():
-                raise UserError(_("Không tìm thấy sản phẩm (ID %s)") % item['product_id'])
+                raise UserError(_("Không tìm thấy vật tư (ID %s)") % item['product_id'])
 
             qty = item.get('qty', 0.0)
             # if qty <= 0:
@@ -2549,7 +2549,7 @@ class RentalContractLine(models.Model):
     partner_id = fields.Many2one(related='contract_id.a_party', store=True, readonly=True)
 
     product_tmpl_id = fields.Many2one(
-        'product.template', string="Sản phẩm", required=True,
+        'product.template', string="Vật tư", required=True,
         domain=[('sale_ok', '=', True), ('active', '=', True)]
     )
     name = fields.Text(string="Mô tả")
@@ -2572,7 +2572,7 @@ class RentalContractLine(models.Model):
     minimum_rental_months = fields.Integer(
         string="Kỳ tối thiểu (tháng)",
         default=0,
-        help="Ghi đè kỳ thuê tối thiểu riêng cho sản phẩm này. 0 = dùng theo hợp đồng.",
+        help="Ghi đè kỳ thuê tối thiểu riêng cho vật tư này. 0 = dùng theo hợp đồng.",
     )
     price_history_ids = fields.One2many(
         'rental.contract.line.price',
@@ -2597,7 +2597,7 @@ class RentalContractLine(models.Model):
             ])
             if duplicates:
                 raise ValidationError(_(
-                    "Sản phẩm «%s» đã có trên bảng báo giá của hợp đồng này."
+                    "Vật tư «%s» đã có trên bảng báo giá của hợp đồng này."
                 ) % (line.product_tmpl_id.display_name,))
 
     def _check_contract_can_edit_lines(self):
@@ -2678,7 +2678,7 @@ class RentalContractLinePrice(models.Model):
     currency_id = fields.Many2one(related='contract_line_id.currency_id', readonly=True)
     product_tmpl_id = fields.Many2one(
         related='contract_line_id.product_tmpl_id',
-        string="Sản phẩm",
+        string="Vật tư",
         store=True,
         readonly=True,
     )

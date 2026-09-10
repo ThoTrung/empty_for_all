@@ -4,7 +4,7 @@
         <field name="name">rental.product.template.set.tree</field>
         <field name="model">rental.product.template.set</field>
         <field name="arch" type="xml">
-            <tree string="Mẫu sản phẩm hợp đồng">
+            <tree string="Mẫu vật tư hợp đồng">
                 <field name="name"/>
                 <field name="company_id"/>
                 <field name="product_count"/>
@@ -17,7 +17,7 @@
         <field name="name">rental.product.template.set.form</field>
         <field name="model">rental.product.template.set</field>
         <field name="arch" type="xml">
-            <form string="Mẫu sản phẩm hợp đồng">
+            <form string="Mẫu vật tư hợp đồng">
                 <sheet>
                     <group>
                         <field name="name"/>
@@ -43,7 +43,7 @@
     </record>
 
     <record id="action_rental_product_template_set" model="ir.actions.act_window">
-        <field name="name">Mẫu sản phẩm hợp đồng</field>
+        <field name="name">Mẫu vật tư hợp đồng</field>
         <field name="res_model">rental.product.template.set</field>
         <field name="view_mode">tree,form</field>
         <field name="context">{}</field>

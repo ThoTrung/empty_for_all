@@ -42,7 +42,7 @@ class RentalStockXntWizard(models.TransientModel):
     )
     product_ids = fields.Many2many(
         "product.product",
-        string="Sản phẩm",
+        string="Vật tư",
         domain="[('type', '=', 'product')]",
     )
     line_ids = fields.One2many(
@@ -105,7 +105,7 @@ class RentalStockXntWizard(models.TransientModel):
         ws = wb.active
         ws.title = "XNT"
         ws.append([
-            _("Sản phẩm"),
+            _("Vật tư"),
             _("Biến thể"),
             _("ĐVT"),
             _("Dư đầu kỳ"),
@@ -174,7 +174,7 @@ class RentalStockXntWizardLine(models.TransientModel):
         ondelete="cascade",
     )
     product_id = fields.Many2one("product.product", string="Biến thể", required=True)
-    product_tmpl_id = fields.Many2one("product.template", string="Sản phẩm", required=True)
+    product_tmpl_id = fields.Many2one("product.template", string="Vật tư", required=True)
     uom_id = fields.Many2one("uom.uom", string="ĐVT")
     uom_name = fields.Char(string="ĐVT (text)")
     opening_qty = fields.Float(string="Dư đầu kỳ", digits="Product Unit of Measure")

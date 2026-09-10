@@ -148,7 +148,7 @@
               sequence="5"
               groups="rental.group_rental_staff"/>
     <menuitem id="menu_rental_product_template_set"
-              name="Mẫu sản phẩm hợp đồng"
+              name="Mẫu vật tư hợp đồng"
               parent="menu_setting_master"
               action="action_rental_product_template_set"
               sequence="6"

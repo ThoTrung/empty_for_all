@@ -125,7 +125,7 @@
     </record>
 
     <record id="action_rental_product_variants" model="ir.actions.act_window">
-        <field name="name">Biến thể sản phẩm</field>
+        <field name="name">Biến thể vật tư</field>
         <field name="res_model">product.product</field>
         <field name="view_mode">tree,form</field>
         <!-- Optional: only saleable variants -->

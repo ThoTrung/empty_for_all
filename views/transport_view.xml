@@ -184,7 +184,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Sản phẩm">
+                        <page string="Vật tư">
 <!--                            <field name="transport_line_ids" readonly="state in ['done', 'cancel']">-->
                             <field name="transport_line_ids" readonly="state in ['done', 'cancel']">
                                 <tree editable="bottom">

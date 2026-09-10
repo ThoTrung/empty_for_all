@@ -16,7 +16,7 @@
             <field name="name">05. Cho thuê — Người giao / nhận hàng</field>
             <field name="category_id" ref="rental.module_category_rental"/>
             <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
-            <field name="comment">Menu Cho thuê: chỉ mục Tồn kho (Sản phẩm / Biến thể chỉ xem; Xuất nhập kho + xác nhận phiếu kho theo phiếu được gán). Quyền kho chuẩn Odoo (stock user) để Validate; phiếu kho giới hạn bởi rule. Không gắn đồng thời Staff nếu cần tách quyền.</field>
+            <field name="comment">Menu Cho thuê: chỉ mục Tồn kho (Vật tư / Biến thể chỉ xem; Xuất nhập kho + xác nhận phiếu kho theo phiếu được gán). Quyền kho chuẩn Odoo (stock user) để Validate; phiếu kho giới hạn bởi rule. Không gắn đồng thời Staff nếu cần tách quyền.</field>
         </record>
 
         <record id="group_rental_leader" model="res.groups">

@@ -8,6 +8,6 @@ class UomUom(models.Model):
     is_linear_meter_variant = fields.Boolean(
         string="Biến thẻ theo mét dài",
         default=False,
-        help="Bật cho đơn vị gốc Mét dài. Sản phẩm dùng ĐVT này sẽ có cột Tổng MD "
+        help="Bật cho đơn vị gốc Mét dài. Vật tư dùng ĐVT này sẽ có cột Tổng MD "
              "trên bảng xác nhận khối lượng.",
     )

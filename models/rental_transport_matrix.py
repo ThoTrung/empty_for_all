@@ -113,7 +113,7 @@ class RentalTransportMatrix(models.Model):
 
     product_ids = fields.Many2many(
         "product.product",
-        string="Sản phẩm (biến thể)",
+        string="Vật tư (biến thể)",
         compute="_compute_matrix",
         store=True,
         readonly=True,

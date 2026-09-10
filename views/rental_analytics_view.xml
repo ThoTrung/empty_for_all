@@ -71,7 +71,7 @@
                             context="{'group_by': 'construction_work_id'}"/>
                     <filter name="group_uom" string="ĐVT"
                             context="{'group_by': 'uom_id'}"/>
-                    <filter name="group_product" string="Sản phẩm"
+                    <filter name="group_product" string="Vật tư"
                             context="{'group_by': 'product_tmpl_id'}"/>
                     <filter name="group_contract" string="Hợp đồng"
                             context="{'group_by': 'rental_contract_id'}"/>
@@ -201,7 +201,7 @@ action = env['rental.analytics.on.hire.line'].action_open_on_hire_detail()
                     <field name="product_id"/>
                     <field name="uom_id"/>
                     <field name="as_of_date"/>
-                    <filter name="group_product" string="Sản phẩm"
+                    <filter name="group_product" string="Vật tư"
                             context="{'group_by': 'product_tmpl_id'}"/>
                     <filter name="group_uom" string="ĐVT"
                             context="{'group_by': 'uom_id'}"/>

@@ -261,7 +261,7 @@ class RentalAnalyticsDashboard(models.AbstractModel):
 
         detail_action = {
             "type": "ir.actions.act_window",
-            "name": _("SL đang thuê theo sản phẩm"),
+            "name": _("SL đang thuê theo vật tư"),
             "res_model": "rental.analytics.on.hire.line",
             "view_mode": "graph,list,pivot",
             "views": [
@@ -277,7 +277,7 @@ class RentalAnalyticsDashboard(models.AbstractModel):
         }
         return {
             "key": "on_hire_by_product",
-            "title": _("SL sản phẩm đang thuê"),
+            "title": _("SL vật tư đang thuê"),
             "subtitle": _("Tính đến %s") % format_date(self.env, as_of),
             "computed_at": fields.Datetime.to_string(computed_at)
             if computed_at
@@ -290,7 +290,7 @@ class RentalAnalyticsDashboard(models.AbstractModel):
                 "rented_label": _("Đang thuê (billable)"),
                 "excess_label": _("Chuyển thừa"),
             },
-            "empty_message": _("Không có sản phẩm đang thuê tại ngày này."),
+            "empty_message": _("Không có vật tư đang thuê tại ngày này."),
             "chart": {
                 "type": "bar",
                 "labels": labels,
@@ -370,7 +370,7 @@ class RentalAnalyticsDashboard(models.AbstractModel):
         ]
         detail_action = {
             "type": "ir.actions.act_window",
-            "name": _("Tồn kho theo sản phẩm"),
+            "name": _("Tồn kho theo vật tư"),
             "res_model": "rental.analytics.stock.onhand.line",
             "view_mode": "graph,list,pivot",
             "views": [

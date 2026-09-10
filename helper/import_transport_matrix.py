@@ -494,7 +494,7 @@ class TransportMatrixProductResolver:
             parts.append(
                 _("Cột Excel: %(col)s (%(header)s)") % {
                     "col": col_letter,
-                    "header": header_hint or _("header sản phẩm"),
+                    "header": header_hint or _("header vật tư"),
                 }
             )
 
@@ -522,12 +522,12 @@ class TransportMatrixProductResolver:
                 )
             parts.append(
                 _("Hãy sửa tên ở header Excel (%(header)s) cho khớp một tên trong Odoo ở trên.") % {
-                    "header": header_hint or _("dòng header sản phẩm"),
+                    "header": header_hint or _("dòng header vật tư"),
                 }
             )
         else:
             parts.append(
-                _("Không có sản phẩm tương ứng «%(label)s» trong hệ thống.") % {
+                _("Không có vật tư tương ứng «%(label)s» trong hệ thống.") % {
                     "label": excel_label,
                 }
             )
@@ -902,7 +902,7 @@ def parse_transport_matrix_xlsx(file_bytes, env, contract=None):
     if not column_map:
         return {
             "rows": [],
-            "errors": [_("Không đọc được cột sản phẩm từ file Excel.")],
+            "errors": [_("Không đọc được cột vật tư từ file Excel.")],
             "warnings": [],
             "product_mapping_errors": [],
         }
@@ -1004,7 +1004,7 @@ def parse_transport_matrix_xlsx(file_bytes, env, contract=None):
             )
 
         if not lines and not row_errors:
-            warnings.append(_("Dòng %(row)s: không có sản phẩm, bỏ qua.") % {"row": row_idx})
+            warnings.append(_("Dòng %(row)s: không có vật tư, bỏ qua.") % {"row": row_idx})
             continue
 
         transport_type = "return" if has_negative else "delivery"

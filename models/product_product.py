@@ -17,7 +17,7 @@ class ProductProduct(models.Model):
         string="Đơn vị hiển thị (NV)",
         domain="[('category_id', '=?', staff_uom_category_id)]",
         help="Chỉ dùng để hiển thị cho nhân viên trên đơn hàng, phiếu vận chuyển, v.v. "
-             "Để trống thì dùng Đơn vị tính trên mẫu sản phẩm. Kho vẫn dùng ĐVT mẫu.",
+             "Để trống thì dùng Đơn vị tính trên mẫu vật tư. Kho vẫn dùng ĐVT mẫu.",
     )
 
     compensation_price = fields.Float(
@@ -115,6 +115,6 @@ class ProductAttributeValue(models.Model):
     default_price_multiplier = fields.Float(
         string="Hệ số giá mặc định",
         default=1.0,
-        help="Hệ số mặc định dùng để khởi tạo hệ số giá trên sản phẩm "
-             "khi giá trị thuộc tính này được thêm vào sản phẩm."
+        help="Hệ số mặc định dùng để khởi tạo hệ số giá trên vật tư "
+             "khi giá trị thuộc tính này được thêm vào vật tư."
     )

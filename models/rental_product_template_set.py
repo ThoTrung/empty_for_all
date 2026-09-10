@@ -6,7 +6,7 @@ from odoo.exceptions import ValidationError
 
 class RentalProductTemplateSet(models.Model):
     _name = "rental.product.template.set"
-    _description = "Mẫu sản phẩm hợp đồng"
+    _description = "Mẫu vật tư hợp đồng"
     _inherit = ["mc.group.mixin"]
     _order = "name, id"
 
@@ -15,11 +15,11 @@ class RentalProductTemplateSet(models.Model):
     line_ids = fields.One2many(
         "rental.product.template.set.line",
         "template_set_id",
-        string="Dòng sản phẩm",
+        string="Dòng vật tư",
         copy=True,
     )
     product_count = fields.Integer(
-        string="Số sản phẩm",
+        string="Số vật tư",
         compute="_compute_product_count",
         store=False,
     )
@@ -33,18 +33,18 @@ class RentalProductTemplateSet(models.Model):
     def _check_line_ids(self):
         for rec in self:
             if not rec.line_ids:
-                raise ValidationError(_("Bạn phải chọn ít nhất một sản phẩm cho mẫu."))
+                raise ValidationError(_("Bạn phải chọn ít nhất một vật tư cho mẫu."))
 
 
 class RentalProductTemplateSetLine(models.Model):
     _name = "rental.product.template.set.line"
-    _description = "Dòng sản phẩm của mẫu hợp đồng"
+    _description = "Dòng vật tư của mẫu hợp đồng"
     _order = "sequence, id"
 
     sequence = fields.Integer(default=10)
     template_set_id = fields.Many2one(
         "rental.product.template.set",
-        string="Mẫu sản phẩm hợp đồng",
+        string="Mẫu vật tư hợp đồng",
         required=True,
         ondelete="cascade",
         index=True,
@@ -63,7 +63,7 @@ class RentalProductTemplateSetLine(models.Model):
 
     product_tmpl_id = fields.Many2one(
         "product.template",
-        string="Sản phẩm",
+        string="Vật tư",
         required=True,
         domain=[("sale_ok", "=", True), ("active", "=", True)],
     )

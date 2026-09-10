@@ -36,7 +36,7 @@ class RentalRentedQtyWizard(models.TransientModel):
     )
     product_tmpl_id = fields.Many2one(
         "product.template",
-        string="Sản phẩm",
+        string="Vật tư",
     )
     only_active_contracts = fields.Boolean(
         string="Chỉ hợp đồng đang hiệu lực",
@@ -150,7 +150,7 @@ class RentalRentedQtyWizardLine(models.TransientModel):
     )
     product_tmpl_id = fields.Many2one(
         "product.template",
-        string="Sản phẩm",
+        string="Vật tư",
         required=True,
         readonly=True,
     )

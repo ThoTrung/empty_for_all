@@ -46,7 +46,7 @@
                             </tree>
                         </field>
                     </page>
-                    <page string="Lỗi mapping sản phẩm"
+                    <page string="Lỗi mapping vật tư"
                           invisible="not product_mapping_summary">
                         <field name="product_mapping_summary" nolabel="1" widget="text"/>
                     </page>

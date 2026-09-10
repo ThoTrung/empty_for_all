@@ -136,7 +136,7 @@ class Transport(models.Model):
         ('done', 'Hoàn thành'),
         ('cancel', 'Đã hủy'),
     ], string='Trạng thái', default='draft', tracking=13)
-    transport_line_ids = fields.One2many('rr.transport.line', 'transport_id', string="Sản phẩm trên xe")
+    transport_line_ids = fields.One2many('rr.transport.line', 'transport_id', string="Vật tư trên xe")
     picking_ids = fields.One2many(
         'stock.picking',
         'rental_transport_id',
@@ -530,7 +530,7 @@ class Transport(models.Model):
                 'tag': 'display_notification',
                 'params': {
                     'title': _("Đền bù"),
-                    'message': _("Tất cả sản phẩm hỏng/mất 100% nên không tạo phiếu nhập kho."),
+                    'message': _("Tất cả vật tư hỏng/mất 100% nên không tạo phiếu nhập kho."),
                     'type': 'success',
                     'sticky': False,
                 },
@@ -569,7 +569,7 @@ class Transport(models.Model):
         if not self.rental_contract_id:
             raise UserError(_("Chuyến xe chưa gắn hợp đồng."))
         if not self.transport_line_ids:
-            raise UserError(_("Thêm ít nhất một dòng sản phẩm trước khi tạo phiếu kho."))
+            raise UserError(_("Thêm ít nhất một dòng vật tư trước khi tạo phiếu kho."))
 
         scheduled_date = self.start_rental_or_return_date or fields.Datetime.now()
         company = self.company_id or self.rental_contract_id.company_id
@@ -596,7 +596,7 @@ class Transport(models.Model):
             lines = self._compensation_lines_to_stock()
             if not lines:
                 raise UserError(
-                    _("Tất cả sản phẩm hỏng/mất 100% nên không có gì để nhập kho.")
+                    _("Tất cả vật tư hỏng/mất 100% nên không có gì để nhập kho.")
                 )
 
         Move = self._rental_stock_model("stock.move")
@@ -731,7 +731,7 @@ class Transport(models.Model):
 class TransportLine(models.Model):
     _name = "rr.transport.line"
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _description = "Sản phẩm trên chuyến xe"
+    _description = "Vật tư trên chuyến xe"
     _order = "product_tmpl_id, id"
 
     transport_id = fields.Many2one('rr.transport', string="Chuyến xe", ondelete='cascade', required=True)
@@ -740,7 +740,7 @@ class TransportLine(models.Model):
                                        readonly=True)
     rental_contract_id = fields.Many2one(related="transport_id.rental_contract_id", store=True)
     start_rental_or_return_date = fields.Date(related="transport_id.start_rental_or_return_date", store=True)
-    product_id = fields.Many2one('product.product', string="Sản phẩm", required=True, tracking=True)
+    product_id = fields.Many2one('product.product', string="Vật tư", required=True, tracking=True)
     product_tmpl_id = fields.Many2one(
         related='product_id.product_tmpl_id',
         store=True,
@@ -789,14 +789,14 @@ class TransportLine(models.Model):
         string="% Đền bù",
         default='100',
         tracking=True,
-        help="Tỉ lệ hỏng/đền bù của sản phẩm (chỉ dùng cho phiếu Đền bù). "
+        help="Tỉ lệ hỏng/đền bù của vật tư (chỉ dùng cho phiếu Đền bù). "
              "100% = mất/hỏng hoàn toàn (không nhập lại kho).",
     )
     fine_amount = fields.Float(
         string="Tổng tiền phạt",
         default=0.0,
         tracking=True,
-        help="Tiền đền bù = Số lượng × giá đền bù 1 sản phẩm × % đền bù. "
+        help="Tiền đền bù = Số lượng × giá đền bù 1 vật tư × % đền bù. "
              "Mặc định tính tự động, cho phép nhân viên sửa.",
     )
     name = fields.Char(string="Mô tả")

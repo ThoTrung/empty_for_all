@@ -20,7 +20,7 @@ class RentalAnalyticsOnHireLine(models.Model):
     """
 
     _name = "rental.analytics.on.hire.line"
-    _description = "Thống kê: sản phẩm đang thuê theo ngày"
+    _description = "Thống kê: vật tư đang thuê theo ngày"
     _order = "partner_company_id, construction_work_id, rental_contract_id, product_tmpl_id"
     _rec_name = "product_tmpl_id"
 
@@ -66,7 +66,7 @@ class RentalAnalyticsOnHireLine(models.Model):
     )
     product_tmpl_id = fields.Many2one(
         "product.template",
-        string="Sản phẩm",
+        string="Vật tư",
         required=True,
         index=True,
         ondelete="cascade",

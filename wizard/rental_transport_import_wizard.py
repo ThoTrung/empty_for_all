@@ -70,7 +70,7 @@ class RentalTransportImportWizard(models.TransientModel):
     )
     summary = fields.Text(string="Tóm tắt", readonly=True)
     product_mapping_summary = fields.Text(
-        string="Lỗi mapping sản phẩm",
+        string="Lỗi mapping vật tư",
         readonly=True,
     )
     created_transport_ids = fields.Many2many(
@@ -153,7 +153,7 @@ class RentalTransportImportWizard(models.TransientModel):
             summary_lines.append(_("Cảnh báo: %(n)s") % {"n": len(warnings)})
         if product_mapping_summary:
             summary_lines.append(
-                _("Có %(n)s cột sản phẩm không khớp — xem tab «Lỗi mapping sản phẩm».") % {
+                _("Có %(n)s cột vật tư không khớp — xem tab «Lỗi mapping vật tư».") % {
                     "n": len(parsed.get("product_mapping_errors") or []),
                 }
             )
@@ -178,7 +178,7 @@ class RentalTransportImportWizard(models.TransientModel):
         if mapping_errors:
             raise UserError(
                 _(
-                    "Không thể import: có %(n)s sản phẩm trong Excel không khớp với "
+                    "Không thể import: có %(n)s vật tư trong Excel không khớp với "
                     "hệ thống. Hãy sửa tên ở header Excel cho khớp rồi import lại.\n\n%(detail)s"
                 ) % {
                     "n": len(mapping_errors),

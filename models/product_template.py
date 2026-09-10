@@ -17,7 +17,7 @@ class ProductTemplate(models.Model):
         string="Giá thuê theo ngày (mẫu)",
         digits="Product Price",
         tracking=True,
-        help="Giá thuê một ngày trên mẫu sản phẩm. Biến thể được quy đổi theo tỷ lệ Giá bán/Giá mẫu.",
+        help="Giá thuê một ngày trên mẫu vật tư. Biến thể được quy đổi theo tỷ lệ Giá bán/Giá mẫu.",
     )
 
     use_variant_multiplier = fields.Boolean(

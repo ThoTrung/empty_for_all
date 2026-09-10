@@ -47,7 +47,7 @@ class RentalAnalyticsStockOnhandLine(models.Model):
     )
     product_tmpl_id = fields.Many2one(
         "product.template",
-        string="Sản phẩm",
+        string="Vật tư",
         required=True,
         index=True,
         ondelete="cascade",

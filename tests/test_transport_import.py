@@ -226,7 +226,7 @@ class TestTransportImport(TransactionCase):
         self.assertTrue(parsed["product_mapping_errors"])
         detail = parsed["product_mapping_errors"][0]["detail"]
         self.assertIn("SP Không Tồn Tại", detail)
-        self.assertIn("không có sản phẩm tương ứng", detail.lower())
+        self.assertIn("không có vật tư tương ứng", detail.lower())
 
     def test_product_in_other_company_is_mapping_error(self):
         other_company = self.env["res.company"].create({"name": "Công ty khác Import"})
@@ -247,7 +247,7 @@ class TestTransportImport(TransactionCase):
         self.assertTrue(parsed["product_mapping_errors"])
         detail = parsed["product_mapping_errors"][0]["detail"]
         self.assertIn("SP Công Ty Khác", detail)
-        self.assertIn("không có sản phẩm tương ứng", detail.lower())
+        self.assertIn("không có vật tư tương ứng", detail.lower())
         for row in parsed["rows"]:
             self.assertFalse(row["lines"])
 
