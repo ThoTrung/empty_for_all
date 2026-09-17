@@ -16,6 +16,7 @@
                 <field name="amount_service" optional="show" sum="Cộng dịch vụ"/>
                 <field name="amount_total_payable" sum="Tổng phải trả"/>
                 <field name="state"/>
+                <field name="currency_id" column_invisible="1"/>
             </tree>
         </field>
     </record>
