@@ -144,10 +144,22 @@ class SpaStaffPayroll(models.Model):
         currency_field="currency_id",
         compute="_compute_commission_split",
     )
+    amount_commission_total = fields.Monetary(
+        string="Tổng Hoa hồng",
+        currency_field="currency_id",
+        compute="_compute_commission_split",
+        store=True,
+    )
     kpi_line_ids = fields.One2many(
         "spa.staff.payroll.kpi.line",
         "payroll_id",
         string="Chi tiết KPI",
+    )
+    amount_kpi_total = fields.Monetary(
+        string="Tổng KPI",
+        currency_field="currency_id",
+        compute="_compute_kpi_total",
+        store=True,
     )
 
     amount_payroll_lines = fields.Monetary(
@@ -326,6 +338,12 @@ class SpaStaffPayroll(models.Model):
             rec.commission_clinic_amount = sum(clinic.mapped('commission_amount'))
             rec.commission_spa_revenue = sum(spa.mapped('price_subtotal'))
             rec.commission_spa_amount = sum(spa.mapped('commission_amount'))
+            rec.amount_commission_total = rec.commission_clinic_amount + rec.commission_spa_amount
+
+    @api.depends("kpi_line_ids.kpi_amount")
+    def _compute_kpi_total(self):
+        for rec in self:
+            rec.amount_kpi_total = sum(rec.kpi_line_ids.mapped("kpi_amount"))
 
     @api.model_create_multi
     def create(self, vals_list):

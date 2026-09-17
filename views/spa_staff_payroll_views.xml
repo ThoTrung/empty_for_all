@@ -9,10 +9,12 @@
                 <field name="employee_id"/>
                 <field name="date_from"/>
                 <field name="date_to"/>
-                <field name="wage_fixed"/>
-                <field name="amount_service"/>
-                <field name="amount_overtime"/>
-                <field name="amount_total_payable"/>
+                <field name="wage_fixed" optional="hide" sum="Lương cố định"/>
+                <field name="amount_commission_total" string="Tổng Hoa hồng" optional="show" sum="Tổng Hoa hồng"/>
+                <field name="amount_kpi_total" string="Tổng KPI" optional="show" sum="Tổng KPI"/>
+                <field name="amount_overtime" optional="show" sum="Cộng làm thêm"/>
+                <field name="amount_service" optional="show" sum="Cộng dịch vụ"/>
+                <field name="amount_total_payable" sum="Tổng phải trả"/>
                 <field name="state"/>
             </tree>
         </field>
