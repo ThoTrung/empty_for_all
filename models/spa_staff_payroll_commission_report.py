@@ -37,6 +37,7 @@ class SpaStaffPayrollCommissionReport(models.Model):
     move_id = fields.Many2one("account.move", string="Hóa đơn", readonly=True)
     partner_id = fields.Many2one("res.partner", string="Khách hàng", readonly=True)
     quantity = fields.Float(string="Số lượng", readonly=True)
+    order_discount_share = fields.Monetary(string="CK HD", currency_field="currency_id", readonly=True)
     price_subtotal = fields.Monetary(string="Thành tiền", currency_field="currency_id", readonly=True)
     commission_percent = fields.Float(string="% HH", readonly=True)
     commission_amount = fields.Monetary(string="Hoa hồng", currency_field="currency_id", readonly=True)
@@ -71,6 +72,7 @@ class SpaStaffPayrollCommissionReport(models.Model):
                 cl.move_id AS move_id,
                 COALESCE(so.partner_id, am.partner_id) AS partner_id,
                 cl.quantity AS quantity,
+                cl.order_discount_share AS order_discount_share,
                 cl.price_subtotal AS price_subtotal,
                 cl.commission_percent AS commission_percent,
                 cl.commission_amount AS commission_amount,

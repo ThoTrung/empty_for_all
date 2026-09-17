@@ -57,6 +57,7 @@
                     <field name="sale_order_id" optional="show"/>
                     <field name="partner_id" optional="hide"/>
                     <field name="quantity" sum="Số lượng" optional="hide"/>
+                    <field name="order_discount_share" sum="CK HD" optional="hide"/>
                     <field name="price_subtotal" sum="Thành tiền" optional="show"/>
                     <field name="commission_percent" avg="% HH TB" optional="show"/>
                     <field name="commission_amount" sum="Hoa hồng"/>

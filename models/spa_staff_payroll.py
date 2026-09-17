@@ -714,42 +714,26 @@ class SpaStaffPayroll(models.Model):
                 result |= move
         return result
 
-    def _spa_global_discount_share_untaxed(self, line):
-        """Phần chiết khấu toàn đơn/hoá đơn phân bổ cho ``line``, cơ sở untaxed.
-
-        Không tái dùng field ``global_discount_share`` có sẵn (sale_order.py)
-        vì field đó nhân tổng CK theo ``price_total`` (có thuế) với tỉ trọng
-        theo ``price_subtotal`` (không thuế) — lệch cơ sở thuế. Ở đây tính lại
-        nhất quán trên untaxed để trừ thẳng vào ``price_subtotal`` khi tính
-        hoa hồng. Giá trị trả về ÂM (hoặc 0 nếu không có CK toàn đơn).
-        """
-        siblings = line.order_id.order_line if "order_id" in line._fields and line.order_id \
-            else line.move_id.invoice_line_ids
-        base_lines = siblings.filtered(lambda l: not l.is_global_discount and not l.display_type)
-        total = sum(base_lines.mapped("price_subtotal"))
-        if not total:
-            return 0.0
-        discount_untaxed = sum(
-            siblings.filtered(lambda l: l.is_global_discount).mapped("price_subtotal")
-        )
-        return discount_untaxed * (line.price_subtotal / total)
-
     def _spa_commission_detail_vals_for_sale_order(self, order):
-        """Detail rows for SO product lines with category commission % > 0."""
+        """Detail rows for SO product lines with category commission % > 0.
+
+        Giảm giá cấp đơn (CK HD, điểm, voucher) không tính HH riêng mà được phân bổ
+        (untaxed) vào từng dòng hàng — PAY-DEC-2026-09-16-01.
+        """
         self.ensure_one()
         rows = []
+        share_map = order._spa_order_discount_share_map()
         for line in order.order_line:
             if line.display_type or not line.product_id:
                 continue
-            if getattr(line, "is_downpayment", False):
-                continue
-            if getattr(line, "is_global_discount", False):
+            if line.is_downpayment or line._spa_is_order_level_discount():
                 continue
             tmpl = line.product_id.product_tmpl_id
             pct = float(tmpl._spa_get_sales_commission_percent() or 0.0)
             if not pct:
                 continue
-            subtotal = float(line.price_subtotal or 0.0) + self._spa_global_discount_share_untaxed(line)
+            share = share_map.get(line.id, 0.0)
+            subtotal = float(line.price_subtotal or 0.0) + share
             rows.append({
                 "payroll_id": self.id,
                 "product_id": line.product_id.id,
@@ -762,6 +746,7 @@ class SpaStaffPayroll(models.Model):
                 "quantity": float(line.product_uom_qty or 0.0),
                 "price_unit": float(line.price_unit or 0.0),
                 "discount": float(line.discount or 0.0),
+                "order_discount_share": share,
                 "price_subtotal": subtotal,
                 "commission_percent": pct,
                 "commission_amount": subtotal * (pct / 100.0),
@@ -776,18 +761,18 @@ class SpaStaffPayroll(models.Model):
         self.ensure_one()
         rows = []
         sign = -1.0 if move.move_type == "out_refund" else 1.0
+        share_map = move._spa_order_discount_share_map()
         for line in move.invoice_line_ids.filtered(lambda l: l.display_type == "product"):
             if not line.product_id:
                 continue
-            if getattr(line, "is_global_discount", False):
-                continue
-            if getattr(line, "is_downpayment", False):
+            if line.is_downpayment or line._spa_is_order_level_discount():
                 continue
             tmpl = line.product_id.product_tmpl_id
             pct = float(tmpl._spa_get_sales_commission_percent() or 0.0)
             if not pct:
                 continue
-            subtotal = (float(line.price_subtotal or 0.0) + self._spa_global_discount_share_untaxed(line)) * sign
+            share = share_map.get(line.id, 0.0) * sign
+            subtotal = float(line.price_subtotal or 0.0) * sign + share
             rows.append({
                 "payroll_id": self.id,
                 "product_id": line.product_id.id,
@@ -800,6 +785,7 @@ class SpaStaffPayroll(models.Model):
                 "quantity": float(line.quantity or 0.0) * sign,
                 "price_unit": float(line.price_unit or 0.0),
                 "discount": float(line.discount or 0.0),
+                "order_discount_share": share,
                 "price_subtotal": subtotal,
                 "commission_percent": pct,
                 "commission_amount": subtotal * (pct / 100.0),
@@ -825,11 +811,11 @@ class SpaStaffPayroll(models.Model):
         self.ensure_one()
         net = 0.0
         for order in self._spa_sale_orders_settled_in_period(user):
-            net += float(order._spa_recognized_amount_total() or 0.0)
+            net += float(order._spa_recognized_amount_untaxed() or 0.0)
         for move in self._spa_standalone_paid_invoices_in_period(user, include_refunds=True):
-            net += float(move.amount_total_signed or 0.0)
+            net += float(move.amount_untaxed_signed or 0.0)
         for move in self._spa_so_linked_refunds_paid_in_period(user):
-            net += float(move.amount_total_signed or 0.0)
+            net += float(move.amount_untaxed_signed or 0.0)
         return net
 
     @api.model
@@ -1084,11 +1070,11 @@ class SpaStaffPayroll(models.Model):
 
             net_rev = 0.0
             for order in orders:
-                net_rev += float(order._spa_recognized_amount_total() or 0.0)
+                net_rev += float(order._spa_recognized_amount_untaxed() or 0.0)
             for move in standalone_kpi_inv:
-                net_rev += float(move.amount_total_signed or 0.0)
+                net_rev += float(move.amount_untaxed_signed or 0.0)
             for move in so_refunds:
-                net_rev += float(move.amount_total_signed or 0.0)
+                net_rev += float(move.amount_untaxed_signed or 0.0)
 
             rec.kpi_revenue_base = net_rev
             tiers = KpiTier.search([
@@ -1100,7 +1086,7 @@ class SpaStaffPayroll(models.Model):
 
             kpi_detail = []
             for order in orders:
-                rev = float(order._spa_recognized_amount_total() or 0.0)
+                rev = float(order._spa_recognized_amount_untaxed() or 0.0)
                 kpi_detail.append({
                     "payroll_id": rec.id,
                     "sale_order_id": order.id,
@@ -1111,7 +1097,7 @@ class SpaStaffPayroll(models.Model):
                     "kpi_amount": rev * (kpi_pct / 100.0) if kpi_pct else 0.0,
                 })
             for move in standalone_kpi_inv:
-                rev = float(move.amount_total_signed or 0.0)
+                rev = float(move.amount_untaxed_signed or 0.0)
                 kpi_detail.append({
                     "payroll_id": rec.id,
                     "sale_order_id": False,
@@ -1122,7 +1108,7 @@ class SpaStaffPayroll(models.Model):
                     "kpi_amount": rev * (kpi_pct / 100.0) if kpi_pct else 0.0,
                 })
             for move in so_refunds:
-                rev = float(move.amount_total_signed or 0.0)
+                rev = float(move.amount_untaxed_signed or 0.0)
                 so_link = rec._spa_invoice_linked_sale_orders(move)[:1]
                 kpi_detail.append({
                     "payroll_id": rec.id,

@@ -100,6 +100,60 @@ class TestSpaStaffPayroll(TransactionCase):
         cls.product_b = cls.product_tmpl_b.product_variant_id
         cls.bed = cls.env["spa.bed"].create({"name": "Payroll Test Bed"})
 
+        # PAY-DEC-2026-09-16-01: fixtures cho điểm/voucher — reward product không thuế,
+        # không gán category (nhận % HH mặc định của "All" = 0 trừ khi test tự đổi).
+        cls.reward_product = cls.env["product.product"].create({
+            "name": "Loyalty Reward (Payroll test)",
+            "detailed_type": "service",
+            "list_price": 1,
+            "taxes_id": [(6, 0, [])],
+        })
+        cls.env["ir.config_parameter"].sudo().set_param(
+            "spa_loyalty.reward_product_id", str(cls.reward_product.id)
+        )
+
+    def _grant_points(self, order, points):
+        """Cấp điểm để test đổi điểm — ledger link ``order`` (đã confirm) để point_balance tính vào."""
+        self.env["spa.loyalty.ledger"].create({
+            "partner_id": order.partner_id.id,
+            "point": points,
+            "sale_order_ids": [(4, order.id)],
+        })
+        order.partner_id.invalidate_recordset(["point_balance"])
+
+    def _redeem_points(self, so, points):
+        self._grant_points(so, points)
+        wiz = self.env["spa.redeem.points.wizard"].create({
+            "sale_order_id": so.id,
+            "point_to_redeem": points,
+        })
+        wiz.action_apply()
+        so.invalidate_recordset()
+
+    def _apply_amount_off_voucher(self, so, amount):
+        template = self.env["spa.voucher"].create({
+            "name": "Amount off (payroll test)",
+            "voucher_kind": "order",
+            "benefit_type": "amount_off",
+            "value": amount,
+            "validity_mode": "days_after_issue",
+            "validity_days": 30,
+        })
+        voucher = self.env["spa.partner.voucher"].create({
+            "partner_id": so.partner_id.id,
+            "template_id": template.id,
+            "source_type": "birthday",
+            "source_year": 2025,
+            "source_month": 8,
+        })
+        wiz = self.env["spa.apply.voucher.wizard"].create({
+            "sale_order_id": so.id,
+            "voucher_id": voucher.id,
+        })
+        wiz.action_apply()
+        so.invalidate_recordset()
+        return voucher
+
     def _ensure_shift_lines(self, start_dt, line_specs):
         """line_specs: [(user_ids, start_h, dur_h), ...]"""
         local = fields.Datetime.context_timestamp(self.env.user, start_dt)
@@ -727,20 +781,21 @@ class TestSpaStaffPayroll(TransactionCase):
         })
 
     def _expected_so_commission(self, so):
+        """Công thức tính lại độc lập (không gọi code production)."""
         base_lines = so.order_line.filtered(
-            lambda l: not l.is_global_discount and not l.display_type
+            lambda l: not l._spa_is_order_level_discount()
+            and not l.display_type
+            and not l.is_downpayment
         )
         base_total = sum(base_lines.mapped("price_subtotal"))
         discount_untaxed = sum(
-            so.order_line.filtered(lambda l: l.is_global_discount).mapped("price_subtotal")
+            so.order_line.filtered(lambda l: l._spa_is_order_level_discount()).mapped("price_subtotal")
         )
         total = 0.0
         for line in so.order_line:
             if line.display_type or not line.product_id:
                 continue
-            if getattr(line, "is_downpayment", False):
-                continue
-            if getattr(line, "is_global_discount", False):
+            if line.is_downpayment or line._spa_is_order_level_discount():
                 continue
             pct = float(line.product_id.product_tmpl_id._spa_get_sales_commission_percent() or 0.0)
             if not pct:
@@ -828,10 +883,10 @@ class TestSpaStaffPayroll(TransactionCase):
         self._spa_pay_invoice(inv, date(2025, 7, 15))
         pay_jul = self._payroll_for_month(2025, 7)
         pay_jul.action_recompute_payroll_extras()
-        self.assertAlmostEqual(pay_jul.kpi_revenue_base, float(so.amount_total))
+        self.assertAlmostEqual(pay_jul.kpi_revenue_base, so._spa_recognized_amount_untaxed())
         kpi = pay_jul.line_ids.filtered(lambda l: l.category == "kpi_revenue")
         self.assertEqual(len(kpi), 1)
-        self.assertAlmostEqual(kpi.amount, float(so.amount_total) * 0.01)
+        self.assertAlmostEqual(kpi.amount, so._spa_recognized_amount_untaxed() * 0.01)
 
     def test_sales_commission_standalone_invoice_paid_date_not_invoice_date(self):
         """T4: standalone HĐ dated May, paid July → HH in July only."""
@@ -1162,7 +1217,7 @@ class TestSpaStaffPayroll(TransactionCase):
         self.assertEqual(len(jul_comm), 1)
         jul_comm_amt = jul_comm.amount
         jul_kpi_base = pay_jul.kpi_revenue_base
-        self.assertAlmostEqual(jul_kpi_base, so.amount_total)
+        self.assertAlmostEqual(jul_kpi_base, so._spa_recognized_amount_untaxed())
         pay_jul.action_confirm()
         self.assertEqual(pay_jul.state, "done")
 
@@ -1189,14 +1244,14 @@ class TestSpaStaffPayroll(TransactionCase):
 
         pay_oct = self._payroll_for_month(2025, 10)
         pay_oct.action_recompute_payroll_extras()
-        self.assertAlmostEqual(pay_oct.kpi_revenue_base, float(refund.amount_total_signed))
+        self.assertAlmostEqual(pay_oct.kpi_revenue_base, float(refund.amount_untaxed_signed))
         oct_comm = pay_oct.line_ids.filtered(lambda l: l.category == "sales_commission")
         self.assertTrue(oct_comm)
         self.assertLess(oct_comm.amount, 0)
 
         pay_jul_draft = self._payroll_for_month(2025, 7)
         pay_jul_draft.action_recompute_payroll_extras()
-        self.assertAlmostEqual(pay_jul_draft.kpi_revenue_base, so.amount_total)
+        self.assertAlmostEqual(pay_jul_draft.kpi_revenue_base, so._spa_recognized_amount_untaxed())
         self.assertAlmostEqual(
             pay_jul_draft.line_ids.filtered(lambda l: l.category == "sales_commission").amount,
             jul_comm_amt,
@@ -1245,7 +1300,7 @@ class TestSpaStaffPayroll(TransactionCase):
 
         pay = self._payroll_for_month(2025, 7)
         pay.action_recompute_payroll_extras()
-        recognized = so._spa_recognized_amount_total()
+        recognized = so._spa_recognized_amount_untaxed()
         self.assertAlmostEqual(pay.kpi_revenue_base, recognized)
         self.assertAlmostEqual(
             pay._spa_net_invoice_revenue_for_sales_user(self.user),
@@ -1258,6 +1313,212 @@ class TestSpaStaffPayroll(TransactionCase):
         self.assertFalse(
             pay.commission_line_ids.filtered(lambda l: l.product_id == ck)
         )
+
+    def test_commission_prorates_points_redemption_like_global_discount(self):
+        """PAY-DEC-2026-09-16-01: đổi điểm phải cho HH giống hệt CK toàn đơn cùng số tiền
+        (test trên chính khớp với test global-discount ở trên: 2,000,000 × 5% sau khi
+        trừ 200,000 = (2,000,000 - 200,000) × 5% = 90,000)."""
+        product = self._make_comm_product("SO Points prod", 5.0, 2000000)
+        product.taxes_id = [(6, 0, [])]
+        so, _inv = self._make_so_with_invoice(
+            [(product, 2000000)], invoice_date=date(2025, 7, 1), create_invoice=False,
+        )
+        self._redeem_points(so, 200)  # 200 điểm × 1000đ = 200,000đ
+        self.assertTrue(
+            so.order_line.filtered(lambda l: l.spa_is_order_discount_line),
+            "wizard phải gán cờ spa_is_order_discount_line",
+        )
+        inv = so._create_invoices()
+        inv.write({"invoice_date": date(2025, 7, 1), "invoice_user_id": self.user.id})
+        inv.action_post()
+        self._spa_pay_invoice(inv, date(2025, 7, 15))
+
+        pay = self._payroll_for_month(2025, 7)
+        pay.action_recompute_payroll_extras()
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertAlmostEqual(comm.amount, (2000000.0 - 200000.0) * 0.05)
+        self.assertFalse(
+            pay.commission_line_ids.filtered(lambda l: l.product_id == self.reward_product),
+            "dòng điểm không được sinh commission line riêng",
+        )
+        self.assertAlmostEqual(
+            pay.kpi_revenue_base, so._spa_recognized_amount_untaxed()
+        )
+
+    def test_commission_prorates_amount_off_voucher(self):
+        """Voucher giảm tiền dùng cùng cơ chế reward-product — phải cho kết quả giống điểm."""
+        product = self._make_comm_product("SO Voucher prod", 10.0, 1000000)
+        product.taxes_id = [(6, 0, [])]
+        so, _inv = self._make_so_with_invoice(
+            [(product, 1000000)], invoice_date=date(2025, 7, 1), create_invoice=False,
+        )
+        self._apply_amount_off_voucher(so, 100000)
+        self.assertTrue(so.order_line.filtered(lambda l: l.spa_is_order_discount_line))
+        inv = so._create_invoices()
+        inv.write({"invoice_date": date(2025, 7, 1), "invoice_user_id": self.user.id})
+        inv.action_post()
+        self._spa_pay_invoice(inv, date(2025, 7, 15))
+
+        pay = self._payroll_for_month(2025, 7)
+        pay.action_recompute_payroll_extras()
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertAlmostEqual(comm.amount, (1000000.0 - 100000.0) * 0.10)
+
+    def test_commission_global_discount_and_points_together(self):
+        """CK toàn đơn + điểm cùng đơn: mẫu số phân bổ phải loại CẢ HAI loại giảm giá
+        (hồi quy lỗi 'mẫu số gồm cả dòng điểm' — PAY-DEC-2026-09-16-01).
+
+        2 SP × 1,000,000 (10%), CK -100,000, điểm -50,000.
+        Đúng: (2,000,000 - 150,000) × 10% = 185,000.
+        """
+        p1 = self._make_comm_product("Combo A", 10.0, 1000000)
+        p1.taxes_id = [(6, 0, [])]
+        p2 = self._make_comm_product("Combo B", 10.0, 1000000)
+        p2.taxes_id = [(6, 0, [])]
+        ck = self._make_comm_product("Combo CK", 10.0, 0)
+        ck.taxes_id = [(6, 0, [])]
+        so = self.env["sale.order"].create({
+            "partner_id": self.partner.id,
+            "user_id": self.user.id,
+            "company_id": self.company.id,
+            "order_line": [
+                (0, 0, {"product_id": p1.id, "product_uom_qty": 1, "price_unit": 1000000}),
+                (0, 0, {"product_id": p2.id, "product_uom_qty": 1, "price_unit": 1000000}),
+                (0, 0, {
+                    "product_id": ck.id, "name": "CK HD", "product_uom_qty": 1,
+                    "price_unit": -100000, "is_global_discount": True,
+                }),
+            ],
+        })
+        so.action_confirm()
+        self._redeem_points(so, 50)  # -50,000đ
+        inv = so._create_invoices()
+        inv.write({"invoice_date": date(2025, 7, 1), "invoice_user_id": self.user.id})
+        inv.action_post()
+        self._spa_pay_invoice(inv, date(2025, 7, 15))
+
+        pay = self._payroll_for_month(2025, 7)
+        pay.action_recompute_payroll_extras()
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertAlmostEqual(comm.amount, 185000.0)
+
+    def test_reward_product_under_parent_category_not_double_deducted(self):
+        """SP thưởng thuộc danh mục con của danh mục có % HH > 0 — dòng điểm vẫn phải bị
+        skip tường minh, không được vừa cộng share vừa tự sinh commission âm."""
+        parent_categ = self.env["product.category"].create({
+            "name": "Reward parent categ (10%)",
+            "spa_sales_commission_percent": 10.0,
+        })
+        self.reward_product.product_tmpl_id.categ_id = self.env["product.category"].create({
+            "name": "Reward child categ (0%)",
+            "parent_id": parent_categ.id,
+            "spa_sales_commission_percent": 0.0,
+        })
+        product = self._make_comm_product("Parent categ prod", 10.0, 2000000)
+        product.taxes_id = [(6, 0, [])]
+        so, _inv = self._make_so_with_invoice(
+            [(product, 2000000)], invoice_date=date(2025, 7, 1), create_invoice=False,
+        )
+        self._redeem_points(so, 200)
+        inv = so._create_invoices()
+        inv.write({"invoice_date": date(2025, 7, 1), "invoice_user_id": self.user.id})
+        inv.action_post()
+        self._spa_pay_invoice(inv, date(2025, 7, 15))
+
+        pay = self._payroll_for_month(2025, 7)
+        pay.action_recompute_payroll_extras()
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertAlmostEqual(comm.amount, (2000000.0 - 200000.0) * 0.10)
+        self.assertFalse(
+            pay.commission_line_ids.filtered(lambda l: l.product_id == self.reward_product)
+        )
+
+    def test_invoice_branch_prorates_order_level_discount(self):
+        """Hồi quy: helper phân bổ từng trả 0 trên nhánh hóa đơn (display_type='product'
+        trên AML khác SOL) — hóa đơn lẻ có CK toàn đơn phải trừ đúng vào HH."""
+        product = self._make_comm_product("Standalone CK prod", 5.0, 1000000)
+        product.taxes_id = [(6, 0, [])]
+        ck = self._make_comm_product("Standalone CK bait", 5.0, 0)
+        ck.taxes_id = [(6, 0, [])]
+        inv = self.env["account.move"].with_context(
+            spa_allow_invoice_without_so=True
+        ).create({
+            "move_type": "out_invoice",
+            "partner_id": self.partner.id,
+            "invoice_date": date(2025, 7, 1),
+            "invoice_user_id": self.user.id,
+            "company_id": self.company.id,
+            "invoice_line_ids": [
+                (0, 0, {
+                    "product_id": product.id, "quantity": 1, "price_unit": 1000000,
+                    "name": product.display_name,
+                }),
+                (0, 0, {
+                    "product_id": ck.id, "quantity": 1, "price_unit": -100000,
+                    "name": "CK HD", "is_global_discount": True,
+                }),
+            ],
+        })
+        inv.action_post()
+        self._spa_pay_invoice(inv, date(2025, 7, 18))
+
+        pay = self._payroll_for_month(2025, 7)
+        pay.action_recompute_payroll_extras()
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertAlmostEqual(comm.amount, (1000000.0 - 100000.0) * 0.05)
+
+    def test_partial_credit_note_of_points_order_claws_back_net(self):
+        """Hoàn 1 phần đơn dùng điểm, sang tháng sau: số hoàn = giá net, HH thu hồi net."""
+        p_a = self._make_policy_comm_product("Refund Points A", 5.0, 500000, "order")
+        p_b = self._make_policy_comm_product("Refund Points B", 5.0, 500000, "order")
+        so = self._make_so_lines([(p_a, 500000, 1), (p_b, 500000, 1)])
+        self._redeem_points(so, 100)  # -100,000đ trên tổng 1,000,000đ = -10%
+        inv = self._invoice_and_post(so, date(2025, 8, 3))
+        self._spa_pay_invoice(inv, date(2025, 8, 5))
+        self._flush_settlement(so)
+
+        pay_aug = self._payroll_for_month(2025, 8)
+        pay_aug.action_recompute_payroll_extras()
+        # net = (500000+500000-100000) × 5% = 45,000
+        self.assertAlmostEqual(
+            pay_aug.line_ids.filtered(lambda l: l.category == "sales_commission").amount,
+            45000.0,
+        )
+
+        refund = self._partial_refund(inv, date(2025, 9, 3), qty_by_product={p_a: 1})
+        refund_reward_lines = refund.invoice_line_ids.filtered(
+            lambda l: l.spa_is_order_discount_line
+        )
+        self.assertTrue(refund_reward_lines, "credit note phải giữ/ sinh lại dòng điểm phân bổ")
+        # Hoàn 1/2 hàng → phân bổ 1/2 số điểm: -50,000đ. Refund net = 500000-50000=450000.
+        self.assertAlmostEqual(sum(refund_reward_lines.mapped("price_subtotal")), -50000.0)
+        self._pay_open(refund, date(2025, 9, 10))
+        self._flush_settlement(so)
+
+        pay_sep = self._payroll_for_month(2025, 9)
+        pay_sep.action_recompute_payroll_extras()
+        self.assertAlmostEqual(pay_sep.kpi_revenue_base, -450000.0)
+        self.assertAlmostEqual(
+            pay_sep.line_ids.filtered(lambda l: l.category == "sales_commission").amount,
+            -450000.0 * 0.05,
+        )
+
+    def test_full_credit_note_of_points_order_nets_to_zero(self):
+        """Hoàn toàn bộ đơn dùng điểm trong cùng tháng → HH và KPI net = 0."""
+        product = self._make_policy_comm_product("Full Refund Points", 5.0, 1000000, "order")
+        so = self._make_so_lines([(product, 1000000, 1)])
+        self._redeem_points(so, 100)
+        inv = self._invoice_and_post(so, date(2025, 8, 3))
+        refund = self._partial_refund(inv, date(2025, 8, 4))  # full reversal
+        self._pay_open(inv, date(2025, 8, 5))
+        self._pay_open(refund, date(2025, 8, 6))
+        self._flush_settlement(so)
+
+        pay = self._payroll_for_month(2025, 8)
+        pay.action_recompute_payroll_extras()
+        self.assertAlmostEqual(pay.kpi_revenue_base, 0.0)
+        comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertFalse(comm, "gross net 900,000 × 5% cộng thu hồi -900,000 × 5% = 0")
 
     def _make_card_from_sale_order(self, product, so, total_sessions, used_sessions):
         """Get (or create) the treatment card for this SO line.

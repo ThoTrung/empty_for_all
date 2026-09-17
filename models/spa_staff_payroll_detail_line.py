@@ -67,9 +67,15 @@ class SpaStaffPayrollCommissionLine(models.Model):
     quantity = fields.Float(string="Số lượng", digits="Product Unit of Measure")
     price_unit = fields.Float(string="Đơn giá", digits="Product Price")
     discount = fields.Float(string="Chiết khấu (%)", digits="Discount")
+    order_discount_share = fields.Monetary(
+        string="CK HD",
+        currency_field="currency_id",
+        help="Phần CK toàn đơn / điểm / voucher phân bổ vào dòng (chưa thuế, âm).",
+    )
     price_subtotal = fields.Monetary(
         string="Thành tiền",
         currency_field="currency_id",
+        help="Thành tiền chưa thuế sau khi trừ CK HD — cơ sở tính hoa hồng.",
     )
     commission_percent = fields.Float(string="% HH")
     commission_amount = fields.Monetary(
@@ -116,7 +122,8 @@ class SpaStaffPayrollKpiLine(models.Model):
     revenue_amount = fields.Monetary(
         string="Doanh thu",
         currency_field="currency_id",
-        help="Doanh thu nguồn (SO recognized net CK trừ cọc, hoặc HĐ amount_total_signed).",
+        help="Doanh thu nguồn chưa thuế (SO recognized net CK/điểm/voucher trừ cọc, "
+        "hoặc HĐ amount_untaxed_signed).",
     )
     kpi_percent = fields.Float(string="% KPI kỳ")
     kpi_amount = fields.Monetary(

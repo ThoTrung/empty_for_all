@@ -119,6 +119,7 @@
                                     <field name="quantity"/>
                                     <field name="price_unit"/>
                                     <field name="discount"/>
+                                    <field name="order_discount_share" sum="CK HD" optional="show"/>
                                     <field name="price_subtotal" sum="Thành tiền"/>
                                     <field name="commission_percent"/>
                                     <field name="commission_amount" sum="Hoa hồng"/>
@@ -138,6 +139,7 @@
                                     <field name="quantity"/>
                                     <field name="price_unit"/>
                                     <field name="discount"/>
+                                    <field name="order_discount_share" sum="CK HD" optional="show"/>
                                     <field name="price_subtotal" sum="Thành tiền"/>
                                     <field name="commission_percent"/>
                                     <field name="commission_amount" sum="Hoa hồng"/>
