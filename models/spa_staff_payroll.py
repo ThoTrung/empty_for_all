@@ -636,11 +636,9 @@ class SpaStaffPayroll(models.Model):
             ("user_id", "=", user.id),
             ("state", "in", ("sale", "done")),
         ]
-        if "is_card_return_order" in Order._fields:
-            # Đơn trả thẻ (spa.card.upgrade.wizard, upgrade_option='return')
-            # được claw-back đúng 1 lần qua nhánh so_refunds (credit note
-            # liên kết) — loại khỏi đây để tránh tính trùng 2 lần.
-            domain.append(("is_card_return_order", "=", False))
+        # Đơn âm (trả thẻ / nâng cấp thẻ xuống gói rẻ hơn) được tính đúng 1 lần
+        # tại đây; credit note "của chính đơn" bị bỏ qua ở so_refunds
+        # (PAY-DEC-2026-09-17-01).
         if "spa_settled_date" in Order._fields:
             domain += [
                 ("spa_settled_date", ">=", start),
@@ -680,6 +678,8 @@ class SpaStaffPayroll(models.Model):
         for move in moves:
             orders = self._spa_invoice_linked_sale_orders(move)
             if not orders:
+                continue
+            if move._spa_is_order_self_refund():
                 continue
             if user.id not in orders.mapped("user_id").ids:
                 continue
@@ -832,7 +832,9 @@ class SpaStaffPayroll(models.Model):
         if not todo:
             return
         refunds = moves.filtered(
-            lambda m: m.move_type == "out_refund" and m.state == "posted"
+            lambda m: m.move_type == "out_refund"
+            and m.state == "posted"
+            and not m._spa_is_order_self_refund()
         )
         for move in refunds:
             paid_date = False

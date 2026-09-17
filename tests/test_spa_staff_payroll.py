@@ -1641,10 +1641,8 @@ class TestSpaStaffPayroll(TransactionCase):
         refund_value = 1000000.0 - used_value
 
         # Trả thẻ được thanh toán ở THÁNG KHÁC (7) để đo riêng claw-back, tách
-        # khỏi hoa hồng tháng 6 (giống pattern late-refund) — nếu double-count
-        # xảy ra thì nhánh "orders" (đã loại is_card_return_order) sẽ KHÔNG
-        # còn đóng góp, nên số liệu tháng 7 chỉ phản ánh đúng 1 lần claw-back
-        # từ nhánh so_refunds nếu fix đúng; sai sẽ lệch hẳn (double).
+        # khỏi hoa hồng tháng 6. SO trả thẻ (tổng âm) tính qua nhánh "orders";
+        # credit note của chính SO bị bỏ ở so_refunds (PAY-DEC-2026-09-17-01).
         return_inv = return_so._create_invoices(final=True)
         return_inv.write({"invoice_date": date(2025, 7, 1), "invoice_user_id": so.user_id.id})
         return_inv.action_post()
@@ -1663,10 +1661,96 @@ class TestSpaStaffPayroll(TransactionCase):
         pay_jul.action_recompute_payroll_extras()
         comm2 = pay_jul.line_ids.filtered(lambda l: l.category == "sales_commission")
         self.assertTrue(comm2)
-        # Đúng 1 lần claw-back = -pct * refund_value, KHÔNG phải gấp đôi
-        # (trước khi sửa, cả nhánh "orders" lẫn "so_refunds" cùng tính, ra
-        # tổng khác hẳn giá trị này).
+        # Đúng 1 lần claw-back = -pct * refund_value, KHÔNG phải gấp đôi.
         self.assertAlmostEqual(comm2.amount, -refund_value * 0.05, delta=1.0)
+
+    def _make_negative_upgrade_so(self, product, price, credit, pay_date, is_return=False):
+        """SO kiểu «Nâng cấp thẻ» (wizard nhánh replace): gói mới + CK toàn đơn
+        lớn hơn giá gói → tổng âm, HĐ duy nhất là credit note tự chuyển."""
+        so = self.env["sale.order"].create({
+            "partner_id": self.partner.id,
+            "user_id": self.user.id,
+            "company_id": self.company.id,
+            "origin": "Nâng cấp thẻ TEST",
+            "is_card_return_order": is_return,
+        })
+        line = self.env["sale.order.line"].create({
+            "order_id": so.id,
+            "product_id": product.id,
+            "product_uom_qty": 1,
+            "price_unit": price,
+            "tax_id": [(6, 0, [])],
+        })
+        disc_wiz = self.env["sale.order.discount"].new({"sale_order_id": so.id})
+        disc_vals = disc_wiz._prepare_discount_line_values(
+            product=disc_wiz._get_discount_product(),
+            amount=credit,
+            taxes=line.tax_id,
+            description="Khấu trừ giá trị quy đổi thẻ cũ",
+        )
+        disc_vals["is_global_discount"] = True
+        self.env["sale.order.line"].create(disc_vals)
+        so.action_confirm()
+        self.assertLess(so.amount_total, 0)
+        refund = so._create_invoices(final=True)
+        refund.write({"invoice_date": pay_date, "invoice_user_id": self.user.id})
+        refund.action_post()
+        self.assertEqual(refund.move_type, "out_refund")
+        self.assertTrue(refund._spa_is_order_self_refund())
+        self._spa_pay_move(refund, pay_date)
+        self._flush_settlement(so)
+        self.assertEqual(so.spa_settled_date, pay_date)
+        return so, refund
+
+    def _assert_negative_so_counted_once(self, so, refund, payroll):
+        self.assertAlmostEqual(payroll.kpi_revenue_base, so._spa_recognized_amount_untaxed())
+        self.assertAlmostEqual(payroll.kpi_revenue_base, float(so.amount_untaxed))
+        self.assertEqual(payroll.kpi_line_ids.sale_order_id, so)
+        self.assertFalse(payroll.kpi_line_ids.move_id)
+        self.assertFalse(payroll.commission_line_ids.filtered(lambda l: l.move_id == refund))
+        comm = payroll.line_ids.filtered(lambda l: l.category == "sales_commission")
+        self.assertAlmostEqual(comm.amount, self._expected_so_commission(so), delta=1.0)
+        self.assertLess(comm.amount, 0)
+
+    def test_negative_upgrade_order_counted_once(self):
+        """Nâng cấp thẻ xuống gói rẻ hơn: SO âm tính 1 lần, credit note của
+        chính SO không bị trừ thêm (PAY-DEC-2026-09-17-01)."""
+        product = self._make_comm_product("Upgrade Negative", 5.0, 400000)
+        so, refund = self._make_negative_upgrade_so(
+            product, 400000, 1000000, date(2025, 8, 2)
+        )
+        pay = self._payroll_for_month(2025, 8)
+        pay.action_recompute_payroll_extras()
+        self._assert_negative_so_counted_once(so, refund, pay)
+        self.assertAlmostEqual(
+            pay.line_ids.filtered(lambda l: l.category == "sales_commission").amount,
+            -600000 * 0.05,
+            delta=1.0,
+        )
+
+    def test_negative_card_return_order_counted_once_any_flag(self):
+        """Đơn trả thẻ cũ có cờ NULL/False hay mới có cờ True đều tính 1 lần."""
+        product = self._make_comm_product("Return Negative", 5.0, 300000)
+        for month, flag in ((8, False), (9, True)):
+            so, refund = self._make_negative_upgrade_so(
+                product, 300000, 800000, date(2025, month, 3), is_return=flag
+            )
+            pay = self._payroll_for_month(2025, month)
+            pay.action_recompute_payroll_extras()
+            self._assert_negative_so_counted_once(so, refund, pay)
+
+    def test_self_refund_no_late_refund_activity(self):
+        product = self._make_comm_product("Upgrade No Activity", 5.0, 400000)
+        pay_aug = self._payroll_for_month(2025, 8)
+        pay_aug.action_confirm()
+        self.assertEqual(pay_aug.state, "done")
+        self._make_negative_upgrade_so(product, 400000, 1000000, date(2025, 8, 2))
+        acts = self.env["mail.activity"].search([
+            ("res_model", "=", "spa.staff.payroll"),
+            ("res_id", "=", pay_aug.id),
+            ("summary", "=", "Hoàn tiền sau khi phiếu lương đã khóa"),
+        ])
+        self.assertFalse(acts)
 
     def test_late_refund_activity_on_done_refund_month_payslip(self):
         product = self._make_comm_product("SO Refund Activity", 5.0, 100000)

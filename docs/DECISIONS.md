@@ -172,6 +172,16 @@ Track architecture and implementation decisions so future agents keep consistenc
 - Decision: compute/display trên employee + phiếu; không cộng tiền.
 - Related: `hr_employee_seniority.py`
 
+### [PAY-DEC-2026-09-17-01] Credit note "của chính đơn âm" không claw-back lần 2; bỏ lọc `is_card_return_order`
+- Date: 2026-09-17
+- Status: accepted (thay thế mục 2 của PAY-DEC-2026-09-03-01)
+- Context: SO có tổng âm (nâng cấp thẻ xuống gói rẻ hơn — S50508/S50511; trả thẻ; SO âm tạo tay) chỉ có 1 hoá đơn là `out_refund` do core Odoo tự chuyển HĐ âm (`sale/models/sale_order.py:1382`). Payroll tính khoản âm này 2 lần: nhánh `orders` (SO) + nhánh `so_refunds` (credit note). Phiếu 20 (user 238, T8/2026): KPI -77.28M thay vì -38.64M; HH -966k thay vì -1.932M (dòng RINV còn ra số dương vì share map không phân bổ CK khi base âm). 23/24 SO trả thẻ âm có `is_card_return_order` NULL (không backfill) nên cũng bị trùng. Báo cáo doanh thu đơn/SP cùng lỗi.
+- Decision: `account.move._spa_is_order_self_refund()` = `out_refund` + không có `reversed_entry_id` + có SO liên kết + mọi SO liên kết `amount_total < 0` (strict). Credit note loại này bị bỏ ở `_spa_so_linked_refunds_paid_in_period`, `_spa_notify_late_refund_on_locked_payslips`, và `_spa_where_refund_adjustment` (SQL tương đương). Bỏ lọc `is_card_return_order` ở `_spa_sale_orders_settled_in_period` — mọi SO âm tính đúng 1 lần qua nhánh SO (cùng số, cùng tháng: settled date = ngày credit note trả đủ). Field giữ lại chỉ để nhận diện.
+- Data check (DB `spa`, 2026-09-17): 431 credit note liên kết SO đều là reversal; 40 credit note không reversal đều nằm trên SO âm, không SO nào có `out_invoice`, tất cả có `spa_settled_date`. Không có phiếu `done` bị ảnh hưởng. Không cần migration.
+- Known limits: credit note không-reversal phát sinh thêm ở tháng sau trên SO âm bị bỏ qua (chỉ vào khi tính lại tháng settle của SO); sửa tổng SO sau khi settle có thể đổi phân loại.
+- Alternatives considered: chỉ dựa `reversed_entry_id` (sai với credit note tự chuyển trên SO dương); cờ mới + backfill (SO âm tạo tay không có cờ); giữ nhánh refund cho trả thẻ + backfill cờ theo `origin` (lệch với báo cáo, bỏ sót SO âm tạo tay); sửa share map cho base âm (không cần sau khi bỏ credit note, ảnh hưởng báo cáo).
+- Related files/modules: `spa/models/account_move.py`, `spa/models/spa_revenue_report_mixin.py`, `spa/models/sale_order.py` (help), `spa_staff_payroll/models/spa_staff_payroll.py`, tests ở `spa/tests/test_spa_revenue_report.py`, `spa_staff_payroll/tests/test_spa_staff_payroll.py`.
+
 ### [PAY-DEC-2026-09-16-01] Điểm/voucher trừ tiền phân bổ vào HH/KPI như CK toàn đơn; KPI chuyển sang untaxed
 - Date: 2026-09-16
 - Status: accepted
