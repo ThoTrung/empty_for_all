@@ -9,6 +9,7 @@
                 <field name="employee_id"/>
                 <field name="date_from"/>
                 <field name="date_to"/>
+                <field name="kpi_revenue_base" string="Tổng doanh thu" optional="show" sum="Tổng doanh thu"/>
                 <field name="wage_fixed" optional="hide" sum="Lương cố định"/>
                 <field name="amount_commission_total" string="Tổng Hoa hồng" optional="show" sum="Tổng Hoa hồng"/>
                 <field name="amount_kpi_total" string="Tổng KPI" optional="show" sum="Tổng KPI"/>
