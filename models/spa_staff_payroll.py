@@ -1271,6 +1271,26 @@ class SpaStaffPayroll(models.Model):
         return True
 
     def action_draft(self):
+        """Mở lại nháp: chỉ quản lý lương được phép.
+
+        Mở lại phiếu đã ``done`` rồi bấm "Tính các khoản" sẽ xóa sạch và dựng lại
+        toàn bộ dòng hoa hồng từ dữ liệu *hiện tại* (giá, % hoa hồng, ngày thu đủ),
+        nên số trả ra có thể khác số đã duyệt và đã chi. Giữ nút này cho quản lý,
+        không để nhân viên tự mở (nút "Xác nhận" vốn đã giới hạn nhóm này).
+        """
+        for rec in self:
+            if rec.state == "draft":
+                continue
+            if not rec.env.user.has_group(
+                "spa_staff_payroll.group_spa_payroll_manager"
+            ):
+                raise UserError(
+                    _(
+                        "Chỉ quản lý lương mới được mở lại nháp phiếu %s "
+                        "(đang ở trạng thái %s)."
+                    )
+                    % (rec.name or "", rec.state)
+                )
         self.write({"state": "draft"})
 
     def action_cancel(self):

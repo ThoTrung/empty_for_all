@@ -6,7 +6,7 @@ from unittest import SkipTest
 from unittest.mock import patch
 
 from odoo import fields
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
 
@@ -2112,7 +2112,43 @@ class TestSpaStaffPayroll(TransactionCase):
         comm = pay.line_ids.filtered(lambda l: l.category == "sales_commission")
         self.assertAlmostEqual(comm.amount, 45000.0)
 
+    def test_action_draft_requires_payroll_manager(self):
+        """Mở lại nháp phiếu đã duyệt chỉ dành cho quản lý lương.
 
+        Nút "Xác nhận" vốn đã giới hạn nhóm ``group_spa_payroll_manager`` nhưng
+        ``action_draft`` trước đây không guard gì — nhân viên không duyệt được phiếu
+        nhưng lại mở lại nháp được phiếu ``done``, rồi bấm "Tính các khoản" sẽ dựng
+        lại toàn bộ dòng hoa hồng từ dữ liệu hiện tại (giá / % có thể đã đổi).
+        """
+        payroll = self.env["spa.staff.payroll"].create({
+            "employee_id": self.employee.id,
+            "date_from": date(2026, 1, 1),
+            "date_to": date(2026, 1, 31),
+        })
+        payroll.action_confirm()
+        self.assertEqual(payroll.state, "done")
+
+        staff = self.env["res.users"].create({
+            "name": "Nhan vien khong phai quan ly luong",
+            "login": "payroll_non_manager_test",
+            "email": "payroll_non_manager@test.local",
+            "groups_id": [(6, 0, [self.env.ref("base.group_user").id])],
+        })
+        with self.assertRaises(UserError):
+            payroll.with_user(staff).action_draft()
+        self.assertEqual(payroll.state, "done")
+
+        manager = self.env["res.users"].create({
+            "name": "Quan ly luong",
+            "login": "payroll_manager_test",
+            "email": "payroll_manager@test.local",
+            "groups_id": [(6, 0, [
+                self.env.ref("base.group_user").id,
+                self.env.ref("spa_staff_payroll.group_spa_payroll_manager").id,
+            ])],
+        })
+        payroll.with_user(manager).action_draft()
+        self.assertEqual(payroll.state, "draft")
 @tagged("post_install", "-at_install", "spa_security")
 class TestSpaPayrollOperatorBookingForm(TransactionCase):
     def test_operator_form_payroll_flags_readonly(self):
@@ -2135,4 +2171,5 @@ class TestSpaPayrollProductFormLayout(TransactionCase):
         self.assertLess(payout_pos, sub_pos)
         self.assertIn('name="group_spa_payroll_profile"', arch)
         self.assertIn('name="group_spa_composite_service"', arch)
+
 
