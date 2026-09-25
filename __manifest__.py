@@ -32,6 +32,7 @@
         "views/spa_session_payroll_views.xml",
         "views/spa_payroll_ranking_views.xml",
         "views/spa_staff_payroll_commission_report_views.xml",
+        "views/spa_staff_payroll_commission_export_views.xml",
         "views/res_config_settings_views.xml",
         "report/spa_staff_payroll_report.xml",
         "wizards/spa_staff_payroll_generate_wizard_views.xml",

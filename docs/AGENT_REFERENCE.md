@@ -60,11 +60,13 @@ python3 odoo/odoo-bin -c conf/odoo_dev.conf -d drlai \
 Cover: no double-count service, multi-therapist split, booking→session sync, seniority, load tiers, workflow to_approve, legacy OT/service/colors.
 Commission/KPI cash-basis: category % walk; HĐ lẻ paid-date; SO May→July settle; partial pay=0; multi-% lines; KPI month; wrong salesperson; not invoiced; no SO/HĐ double-count; ranking sales; pct=0; late refund clawback T7/T9; activity on done refund-month slip.
 Wage prorate mid-month start/end; commission/KPI detail sum = ledger; long-shift 1 line/session.
+Multi-branch (1 user, 2 employee/company): session pay split by card→SO company; Excel HH export gộp chi nhánh (access, no-user payslip).
 
 ## 9) Known Pitfalls
 - Flag vẫn phụ thuộc thao tác người — dùng menu Đối soát ca.
 - KPI theo ngày đủ tiền / SO settled **net CK trừ cọc** (`_spa_recognized_amount_total`) — không theo `invoice_date` / không `amount_total` (có dòng cọc).
 - Seed năm ranking amount = 0 đến khi QL nhập.
+- NV nhiều chi nhánh: buổi làm không có company — suy qua thẻ→SO, fallback công ty mặc định user (PAY-DEC-2026-09-25-01).
 - Tier/prize mặc định: XML `noupdate` + `company_id` trống; user sửa không bị reset khi `-u`.
 
 ## 10) Change Protocol

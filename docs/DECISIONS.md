@@ -16,6 +16,24 @@ Track architecture and implementation decisions so future agents keep consistenc
 
 ## Decisions
 
+### [PAY-DEC-2026-09-25-01] Buổi làm của NV nhiều chi nhánh chỉ tính cho 1 chi nhánh
+- Date: 2026-09-25
+- Status: accepted
+- Context: 1 người làm 2 chi nhánh = 2 `hr.employee` (mỗi `res.company` 1 bản) chung 1 `res.users` → 2 phiếu cùng kỳ. Tiền công buổi, thưởng ca dài/khách đặt, hỗ trợ ăn trưa tìm `spa.treatment.session` theo `therapist_ids` bằng `sudo()` và không lọc công ty (session không có `company_id`) → cả 2 phiếu nhận cùng một buổi, `amount_total_payable` bị cộng 2 lần. DB `drlai`: user 228/244/41796 đang ở tình huống này; ~75% buổi của họ suy được công ty qua thẻ → SO, ~25% không (thẻ chưa gắn SO / không có thẻ).
+- Decision: `_spa_filter_sessions_for_company()` áp dụng ở `action_recompute_service_lines`, `_spa_compute_session_service_payout_lines`, `_spa_recompute_long_shift_and_requested_bonuses`, `_spa_recompute_lunch_support_lines`. Chỉ khi user có NV ở ≥2 công ty: công ty buổi = `card_id.sale_order_id.company_id`; không suy được → công ty mặc định của user (`res.users.company_id`, chủ dự án chọn), nếu công ty đó không phải công ty NV thì lấy công ty NV id nhỏ nhất. SO ở công ty NV không làm → cũng dùng fallback (không mất buổi). Chỉ chia khi đã có phiếu chồng kỳ (chưa hủy) ở chi nhánh kia; user 1 công ty, phiếu lệch công ty NV, hoặc chưa có phiếu chi nhánh kia → giữ nguyên hành vi cũ (tránh buổi của chi nhánh kia không được trả ở đâu).
+- Consequences: phiếu draft của NV nhiều chi nhánh chỉ đổi số khi đã có phiếu chi nhánh kia và bấm "Tính các khoản" — tạo phiếu chi nhánh thứ 2 sau thì phải tính lại phiếu thứ 1; phiếu `done` không hồi tố. Hỗ trợ ăn trưa tính phút/ngày theo buổi của từng chi nhánh (1 ngày làm cả 2 nơi có thể không đủ ngưỡng ở nơi nào). Ranking (`spa_payroll_ranking_wizard`) chưa đổi.
+- Alternatives considered: theo loại SP (PK/Spa) — cần map loại → công ty; bỏ buổi không suy được — rủi ro thiếu lương.
+- Related files/modules: `models/spa_staff_payroll.py`, `tests/test_spa_staff_payroll.py::TestSpaPayrollMultiBranch`.
+
+### [PAY-DEC-2026-09-25-02] Xuất Excel hoa hồng SP gộp chi nhánh
+- Date: 2026-09-25
+- Status: accepted
+- Context: cần 1 file Excel cho 1 NV gồm danh sách SP + hoa hồng ở cả 2 chi nhánh. Quy trình: 1 agent nghiên cứu + 1 agent review khắt khe, chủ dự án chốt: chỉ hoa hồng + SP (không bảng lương).
+- Decision: `spa.staff.payroll.action_export_commission_xlsx_merged()` (chỉ `group_spa_payroll_manager`) — nút trên form + action trên list. Gộp phiếu theo `user_id` + cùng `date_from`/`date_to` + `state != cancel` (không user → chỉ phiếu đó); tìm bằng ORM với `allowed_company_ids = env.user.company_ids` (không `sudo`, record rule vẫn áp dụng); phiếu ở công ty user không có quyền chỉ đếm (`sudo().search_count`) để ghi cảnh báo. Mỗi NV 1 sheet: danh sách phiếu, tổng hợp HH theo công ty (tách SP Spa / Phòng khám), chi tiết từng dòng HH + cộng theo công ty + tổng. Cột "Công ty/Chi nhánh" (res.company) tách khỏi "Loại SP" (`product_branch`). File qua transient `spa.staff.payroll.commission.export` (không ir.attachment).
+- Consequences: không cộng lương giữa chi nhánh trong file. Tiền đầy đủ VND (không chia 1000).
+- Alternatives considered: wizard chọn nhiều NV + menu riêng (thừa so với nhu cầu); group-by user trong báo cáo pivot (phụ thuộc switcher công ty, layout kém).
+- Related files/modules: `models/spa_staff_payroll_commission_export.py`, `views/spa_staff_payroll_commission_export_views.xml`, `views/spa_staff_payroll_views.xml`, `security/ir.model.access.csv`.
+
 ### [PAY-DEC-2026-09-09-01] Đơn có trả hàng ("closed by returns") vẫn vào KPI/HH
 - Date: 2026-09-09
 - Status: accepted

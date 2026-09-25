@@ -19,6 +19,18 @@ Use this file for short session-level handoff notes.
 
 ## Entries
 
+### 2026-09-25 - Xuất Excel hoa hồng gộp chi nhánh + chặn buổi làm tính 2 phiếu
+- Goal: NV thuộc 2 chi nhánh (2 hr.employee chung 1 user) xuất 1 file Excel gồm SP + hoa hồng cả 2 chi nhánh; sửa tiền công buổi/ca/ăn trưa bị tính trên cả 2 phiếu.
+- Changes made: xem [PAY-DEC-2026-09-25-01], [PAY-DEC-2026-09-25-02].
+- Files touched: `models/spa_staff_payroll.py`, `models/spa_staff_payroll_commission_export.py` (new), `models/__init__.py`, `views/spa_staff_payroll_commission_export_views.xml` (new), `views/spa_staff_payroll_views.xml`, `security/ir.model.access.csv`, `__manifest__.py`, `tests/test_spa_staff_payroll.py`.
+- Validation done: trên bản sao `drlai` (`drlai_payroll_export_test`): `--test-tags=/spa_staff_payroll` → 0 failed / 0 error / 66 tests (8 test mới `TestSpaPayrollMultiBranch`). So sánh buổi cũ/mới trên mọi phiếu thật: 0 phiếu đổi (NV 2 chi nhánh hiện chỉ có phiếu CN SPA → giữ đủ buổi). Kiểm dữ liệu thật: user 228 kỳ 08/2026 — buổi chia 37 (CN SPA) / 24 (CN phòng khám) thay vì 61 mỗi phiếu; file Excel gồm PL/26/0010 + phiếu CN phòng khám, tổng HH khớp `amount_commission_total`.
+- Dependency impact check:
+  - Dependents reviewed: record rule công ty (`security/spa_staff_payroll_rules.xml`), ranking wizard (chưa lọc công ty, không đổi).
+  - Contract compatibility result: không đổi field/XML id sẵn có; thêm model transient + server action.
+  - Regression tests/manual checks run: toàn bộ test module.
+- Open risks: tạo phiếu chi nhánh thứ 2 sau phiếu thứ 1 → phải tính lại phiếu thứ 1 (nếu đã done thì điều chỉnh tay); ranking đếm buổi chưa theo công ty.
+- Next suggested steps: tính lại phiếu draft kỳ hiện tại cho user 228/244/41796; cân nhắc lọc công ty cho ranking.
+
 ### 2026-09-16 - Điểm/voucher trừ tiền phân bổ vào HH/KPI/doanh thu như CK toàn đơn; KPI → untaxed
 - Goal: KH dùng điểm hoặc voucher giảm tiền/% phải bị trừ khỏi cơ sở tính hoa hồng (HH), KPI, và doanh thu theo SP — giống hệt CK toàn đơn (`is_global_discount`, PAY-DEC-2026-09-03-01). Quy trình: 1 agent nghiên cứu (đọc code, đối chiếu `input_claude_data/T8.26-Phương spa_new.xlsx`) + 1 agent review độc lập tự đọc lại code xác nhận, rồi chủ dự án chốt scope (điểm + voucher, báo cáo SP phân bổ như CK, sửa credit note tại nguồn, giữ nguyên chính sách tích điểm, KPI chuyển sang chưa thuế).
 - Changes made:

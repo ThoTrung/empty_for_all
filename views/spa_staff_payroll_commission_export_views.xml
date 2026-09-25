@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_spa_staff_payroll_commission_export_form" model="ir.ui.view">
+        <field name="name">spa.staff.payroll.commission.export.form</field>
+        <field name="model">spa.staff.payroll.commission.export</field>
+        <field name="arch" type="xml">
+            <form string="Xuất Excel hoa hồng (gộp chi nhánh)">
+                <div class="alert alert-info mb-3" role="alert">
+                    File gồm hoa hồng SP của nhân viên ở tất cả chi nhánh bạn có quyền (cùng kỳ phiếu).
+                    File chỉ để tải về máy; hệ thống không lưu file trên máy chủ.
+                </div>
+                <group>
+                    <field name="file_name" readonly="1"/>
+                    <field name="file_data" filename="file_name" readonly="1"/>
+                </group>
+                <footer>
+                    <button string="Đóng" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_spa_staff_payroll_export_commission_merged" model="ir.actions.server">
+        <field name="name">Xuất Excel hoa hồng (gộp chi nhánh)</field>
+        <field name="model_id" ref="spa_staff_payroll.model_spa_staff_payroll"/>
+        <field name="binding_model_id" ref="spa_staff_payroll.model_spa_staff_payroll"/>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('spa_staff_payroll.group_spa_payroll_manager'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_export_commission_xlsx_merged()</field>
+    </record>
+</odoo>

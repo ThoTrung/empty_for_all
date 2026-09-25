@@ -34,6 +34,7 @@
                     <button name="action_confirm" string="Xác nhận" type="object" class="btn-primary" invisible="state != 'to_approve'" groups="spa_staff_payroll.group_spa_payroll_manager"/>
                     <button name="action_draft" string="Mở lại nháp" type="object" invisible="state not in ('done', 'to_approve', 'cancel')" groups="spa_staff_payroll.group_spa_payroll_manager"/>
                     <button name="action_cancel" string="Hủy" type="object" invisible="state not in ('draft', 'to_approve')"/>
+                    <button name="action_export_commission_xlsx_merged" string="Xuất Excel hoa hồng (gộp chi nhánh)" type="object" class="btn-secondary" invisible="state == 'cancel'" groups="spa_staff_payroll.group_spa_payroll_manager"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,to_approve,done"/>
                 </header>
                 <sheet>

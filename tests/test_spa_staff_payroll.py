@@ -2173,3 +2173,253 @@ class TestSpaPayrollProductFormLayout(TransactionCase):
         self.assertIn('name="group_spa_composite_service"', arch)
 
 
+
+
+@tagged("post_install", "-at_install")
+class TestSpaPayrollMultiBranch(TransactionCase):
+    """1 người làm 2 chi nhánh = 2 hr.employee chung 1 res.users (PAY-DEC-2026-09-25-01/02)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        if "hr.employee" not in cls.env.registry:
+            raise SkipTest("hr is not installed in this database")
+        cls.company_a = cls.env.company
+        cls.company_b = cls.env["res.company"].create({
+            "name": "Chi nhanh B (payroll test)",
+            "currency_id": cls.company_a.currency_id.id,
+        })
+        both = [(6, 0, [cls.company_a.id, cls.company_b.id])]
+        cls.user = cls.env["res.users"].create({
+            "name": "Therapist Two Branches",
+            "login": "therapist_two_branches_test",
+            "email": "t2b@test.local",
+            "company_id": cls.company_a.id,
+            "company_ids": both,
+            "groups_id": [(6, 0, [cls.env.ref("base.group_user").id])],
+        })
+        cls.emp_a = cls.env["hr.employee"].create({
+            "name": "Therapist Two Branches",
+            "user_id": cls.user.id,
+            "company_id": cls.company_a.id,
+        })
+        cls.emp_b = cls.env["hr.employee"].create({
+            "name": "Therapist Two Branches",
+            "user_id": cls.user.id,
+            "company_id": cls.company_b.id,
+        })
+        cls.partner = cls.env["res.partner"].create({"name": "Multi-branch Partner"})
+        cls.product = cls.env["product.product"].create({
+            "name": "Multi-branch Service",
+            "detailed_type": "service",
+            "list_price": 1000000,
+            "service_employee_salary": 200000,
+        })
+        manager_group = cls.env.ref("spa_staff_payroll.group_spa_payroll_manager")
+        cls.manager_both = cls.env["res.users"].create({
+            "name": "Payroll Manager Both",
+            "login": "payroll_manager_both_test",
+            "email": "pmb@test.local",
+            "company_id": cls.company_a.id,
+            "company_ids": both,
+            "groups_id": [(6, 0, [cls.env.ref("base.group_user").id, manager_group.id])],
+        })
+        cls.manager_a = cls.env["res.users"].create({
+            "name": "Payroll Manager A",
+            "login": "payroll_manager_a_test",
+            "email": "pma@test.local",
+            "company_id": cls.company_a.id,
+            "company_ids": [(6, 0, [cls.company_a.id])],
+            "groups_id": [(6, 0, [cls.env.ref("base.group_user").id, manager_group.id])],
+        })
+
+    def _payroll(self, employee, company):
+        return self.env["spa.staff.payroll"].create({
+            "employee_id": employee.id,
+            "company_id": company.id,
+            "currency_id": company.currency_id.id,
+            "date_from": date(2026, 8, 1),
+            "date_to": date(2026, 8, 31),
+        })
+
+    def _comm_line(self, payroll, amount, branch="spa"):
+        return self.env["spa.staff.payroll.commission.line"].create({
+            "payroll_id": payroll.id,
+            "product_id": self.product.id,
+            "product_branch": branch,
+            "partner_id": self.partner.id,
+            "settle_date": date(2026, 8, 10),
+            "quantity": 1.0,
+            "price_unit": amount * 10,
+            "price_subtotal": amount * 10,
+            "commission_percent": 10.0,
+            "commission_amount": amount,
+        })
+
+    def _export_workbook(self, payslips, user):
+        import base64
+        import io
+        try:
+            from openpyxl import load_workbook
+        except ImportError:
+            raise SkipTest("openpyxl is not installed")
+
+        action = payslips.with_user(user).with_context(
+            allowed_company_ids=[self.company_a.id]
+        ).action_export_commission_xlsx_merged()
+        export = self.env["spa.staff.payroll.commission.export"].browse(action["res_id"])
+        self.assertTrue(export.file_name.endswith(".xlsx"))
+        return load_workbook(io.BytesIO(base64.b64decode(export.file_data)))
+
+    @staticmethod
+    def _cells(ws):
+        return [c for row in ws.iter_rows(values_only=True) for c in row if c not in (None, "")]
+
+    def _total_commission(self, ws):
+        for row in ws.iter_rows(values_only=True):
+            if row and row[0] == "TỔNG CỘNG":
+                return row[14]
+        return None
+
+    def test_session_pay_split_by_branch_no_double_count(self):
+        so_b = self.env["sale.order"].create({
+            "partner_id": self.partner.id,
+            "company_id": self.company_b.id,
+            "order_line": [(0, 0, {"product_id": self.product.id, "product_uom_qty": 1})],
+        })
+        card_b = self.env["spa.treatment.card"].create({
+            "partner_id": self.partner.id,
+            "product_id": self.product.id,
+            "total_sessions": 10,
+            "sale_order_line_id": so_b.order_line[:1].id,
+        })
+        card_no_so = self.env["spa.treatment.card"].create({
+            "partner_id": self.partner.id,
+            "product_id": self.product.id,
+            "total_sessions": 10,
+        })
+        Session = self.env["spa.treatment.session"]
+        for card in (card_b, card_no_so):
+            Session.create({
+                "card_id": card.id,
+                "date": fields.Datetime.to_datetime(date(2026, 8, 15)),
+                "therapist_id": self.user.id,
+                "therapist_ids": [(6, 0, [self.user.id])],
+                "duration_minutes": 60,
+                "state": "done",
+            })
+        pay_a = self._payroll(self.emp_a, self.company_a)
+        pay_b = self._payroll(self.emp_b, self.company_b)
+        (pay_a | pay_b).action_recompute_service_lines()
+        # Buổi thẻ có SO chi nhánh B → phiếu B; buổi không suy được → công ty mặc định user (A).
+        self.assertEqual(pay_a.service_line_ids.session_id.card_id, card_no_so)
+        self.assertEqual(pay_b.service_line_ids.session_id.card_id, card_b)
+
+    def _done_session(self, card):
+        return self.env["spa.treatment.session"].create({
+            "card_id": card.id,
+            "date": fields.Datetime.to_datetime(date(2026, 8, 15)),
+            "therapist_id": self.user.id,
+            "therapist_ids": [(6, 0, [self.user.id])],
+            "duration_minutes": 60,
+            "state": "done",
+        })
+
+    def _card_for_company(self, company):
+        so = self.env["sale.order"].create({
+            "partner_id": self.partner.id,
+            "company_id": company.id,
+            "order_line": [(0, 0, {"product_id": self.product.id, "product_uom_qty": 1})],
+        })
+        return self.env["spa.treatment.card"].create({
+            "partner_id": self.partner.id,
+            "product_id": self.product.id,
+            "total_sessions": 10,
+            "sale_order_line_id": so.order_line[:1].id,
+        })
+
+    def test_session_from_foreign_company_goes_to_fallback_not_lost(self):
+        company_c = self.env["res.company"].create({
+            "name": "Chi nhanh C (payroll test)",
+            "currency_id": self.company_a.currency_id.id,
+        })
+        card_c = self._card_for_company(company_c)
+        self._done_session(card_c)
+        pay_a = self._payroll(self.emp_a, self.company_a)
+        pay_b = self._payroll(self.emp_b, self.company_b)
+        (pay_a | pay_b).action_recompute_service_lines()
+        self.assertEqual(pay_a.service_line_ids.session_id.card_id, card_c)
+        self.assertFalse(pay_b.service_line_ids)
+
+    def test_single_branch_payslip_keeps_all_sessions(self):
+        """Chưa có phiếu chi nhánh B → phiếu A giữ mọi buổi (không để buổi B không ai trả)."""
+        self._done_session(self._card_for_company(self.company_b))
+        self._done_session(self._card_for_company(self.company_a))
+        pay_a = self._payroll(self.emp_a, self.company_a)
+        pay_a.action_recompute_service_lines()
+        self.assertEqual(len(pay_a.service_line_ids), 2)
+        # Tạo phiếu B rồi tính lại cả hai → chia đúng, không trùng.
+        pay_b = self._payroll(self.emp_b, self.company_b)
+        (pay_a | pay_b).action_recompute_service_lines()
+        self.assertEqual(len(pay_a.service_line_ids), 1)
+        self.assertEqual(len(pay_b.service_line_ids), 1)
+
+    def test_payslip_outside_employee_companies_keeps_old_behaviour(self):
+        company_c = self.env["res.company"].create({
+            "name": "Chi nhanh C2 (payroll test)",
+            "currency_id": self.company_a.currency_id.id,
+        })
+        self._done_session(self._card_for_company(self.company_b))
+        pay_c = self._payroll(self.emp_a, company_c)
+        pay_c.action_recompute_service_lines()
+        self.assertEqual(len(pay_c.service_line_ids), 1)
+
+    def test_export_merges_commission_of_both_branches(self):
+        pay_a = self._payroll(self.emp_a, self.company_a)
+        pay_b = self._payroll(self.emp_b, self.company_b)
+        self._comm_line(pay_a, 30000)
+        self._comm_line(pay_a, 5000, branch="clinic")
+        self._comm_line(pay_b, 70000)
+        # Chỉ chọn phiếu A, switcher chỉ bật A — vẫn phải kéo phiếu B cùng user/kỳ.
+        wb = self._export_workbook(pay_a, self.manager_both)
+        self.assertEqual(len(wb.worksheets), 1)
+        ws = wb.worksheets[0]
+        cells = self._cells(ws)
+        self.assertIn(self.company_a.name, cells)
+        self.assertIn(self.company_b.name, cells)
+        self.assertIn(pay_b.name, cells)
+        self.assertEqual(self._total_commission(ws), 105000)
+        self.assertFalse(any(isinstance(c, str) and c.startswith("Lưu ý") for c in cells))
+
+    def test_export_respects_company_access(self):
+        pay_a = self._payroll(self.emp_a, self.company_a)
+        pay_b = self._payroll(self.emp_b, self.company_b)
+        self._comm_line(pay_a, 30000)
+        self._comm_line(pay_b, 70000)
+        wb = self._export_workbook(pay_a, self.manager_a)
+        ws = wb.worksheets[0]
+        cells = self._cells(ws)
+        self.assertNotIn(self.company_b.name, cells)
+        self.assertEqual(self._total_commission(ws), 30000)
+        self.assertTrue(any(isinstance(c, str) and c.startswith("Lưu ý: có 1 phiếu") for c in cells))
+
+    def test_export_requires_payroll_manager(self):
+        pay_a = self._payroll(self.emp_a, self.company_a)
+        from odoo.exceptions import AccessError
+        with self.assertRaises(AccessError):
+            pay_a.with_user(self.user).action_export_commission_xlsx_merged()
+
+    def test_export_payslip_without_user_only_itself(self):
+        emp = self.env["hr.employee"].create({
+            "name": "No User [Emp]/Test:*?",
+            "company_id": self.company_a.id,
+        })
+        pay = self._payroll(emp, self.company_a)
+        self._comm_line(pay, 12000)
+        other = self._payroll(self.emp_a, self.company_a)
+        self._comm_line(other, 99000)
+        wb = self._export_workbook(pay | other, self.manager_both)
+        self.assertEqual(len(wb.worksheets), 2)
+        no_user_ws = [ws for ws in wb.worksheets if "No User" in ws.title]
+        self.assertEqual(len(no_user_ws), 1)
+        self.assertEqual(self._total_commission(no_user_ws[0]), 12000)

@@ -451,7 +451,7 @@ class SpaStaffPayroll(models.Model):
                 raise UserError(_("Nhân viên chưa gắn user — không thể khớp buổi trị liệu."))
             rec.service_line_ids.unlink()
             domain = rec._session_datetime_domain()
-            sessions = Session.search(domain)
+            sessions = rec._spa_filter_sessions_for_company(Session.search(domain))
             lines = []
             uid = rec.user_id.id
             for session in sessions:
@@ -912,6 +912,50 @@ class SpaStaffPayroll(models.Model):
             ("start_datetime", "<", end_exclusive),
         ]
 
+    def _spa_filter_sessions_for_company(self, sessions):
+        """Chỉ giữ buổi thuộc chi nhánh (company) của phiếu khi user có NV ở ≥2 công ty.
+
+        Buổi không có company; suy từ đơn bán của thẻ (card → SO.company). Buổi không
+        suy được (thẻ chưa gắn SO / không thẻ) tính cho công ty mặc định của user
+        (nếu không nằm trong các công ty NV thì lấy công ty NV có id nhỏ nhất).
+        User chỉ có NV ở 1 công ty, hoặc chưa có phiếu chồng kỳ ở chi nhánh kia: giữ nguyên
+        toàn bộ (hành vi cũ). PAY-DEC-2026-09-25-01.
+        """
+        self.ensure_one()
+        if not sessions or not self.user_id:
+            return sessions
+        emp_companies = self.env["hr.employee"].sudo().search([
+            ("user_id", "=", self.user_id.id),
+        ]).company_id
+        company = self.company_id
+        # Phiếu không thuộc công ty nào của NV (tạo tay lệch công ty): giữ hành vi cũ.
+        if len(emp_companies) <= 1 or company not in emp_companies:
+            return sessions
+        # Chỉ chia khi chi nhánh kia cũng có phiếu chồng kỳ — nếu không, buổi của chi
+        # nhánh kia không được trả ở đâu cả. Tạo phiếu chi nhánh kia sau → tính lại phiếu này.
+        has_sibling = self.sudo().search_count([
+            ("id", "!=", self.id),
+            ("user_id", "=", self.user_id.id),
+            ("company_id", "in", (emp_companies - company).ids),
+            ("date_from", "<=", self.date_to),
+            ("date_to", ">=", self.date_from),
+            ("state", "!=", "cancel"),
+        ])
+        if not has_sibling:
+            return sessions
+        fallback = self.user_id.company_id
+        if fallback not in emp_companies:
+            fallback = emp_companies.sorted("id")[:1]
+
+        def _belongs(ses):
+            so_company = ses.card_id.sale_order_id.company_id
+            # SO ở công ty NV không làm (vd. công ty con khác): dùng fallback để buổi không bị mất.
+            if so_company not in emp_companies:
+                so_company = fallback
+            return so_company == company
+
+        return sessions.filtered(_belongs)
+
     def _spa_price_per_session(self, tmpl):
         self.ensure_one()
         sessions = float(tmpl.spa_sessions_per_unit or 0.0)
@@ -944,6 +988,7 @@ class SpaStaffPayroll(models.Model):
                 ("date", "<", end_exclusive),
                 ("therapist_ids", "in", [uid]),
             ])
+            sessions = rec._spa_filter_sessions_for_company(sessions)
 
             detail_rows = []
             total_share = 0.0
@@ -1020,7 +1065,9 @@ class SpaStaffPayroll(models.Model):
                 ("date", "<", end_exclusive),
                 ("therapist_ids", "in", [uid]),
             ]
-            long_sessions = Session.search(ses_domain + [("spa_payroll_shift_kind", "=", "long")])
+            long_sessions = rec._spa_filter_sessions_for_company(
+                Session.search(ses_domain + [("spa_payroll_shift_kind", "=", "long")])
+            )
             long_count = len(long_sessions)
             req_count = len(long_sessions.filtered(lambda s: s.spa_payroll_customer_requested))
 
@@ -1218,6 +1265,7 @@ class SpaStaffPayroll(models.Model):
                 ("date", "<", end_exclusive),
                 ("therapist_ids", "in", [uid]),
             ])
+            sessions = rec._spa_filter_sessions_for_company(sessions)
             for ses in sessions:
                 if not ses.date:
                     continue
