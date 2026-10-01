@@ -1541,11 +1541,14 @@ class RentalContract(models.Model):
             })
         return tax
 
-    def _get_or_create_hstt_total_product(self, end_date):
-        """Service product 'Tổng thanh toán: mm-YYYY' with fixed 8% sale tax."""
+    def _get_or_create_hstt_total_product(self):
+        """Single shared 'Tổng thanh toán' service (price 0) with fixed 8% sale tax.
+
+        Period (mm-YYYY) is not part of the product name — it belongs on the
+        invoice line description so every month's invoice reuses this one product.
+        """
         self.ensure_one()
-        period = end_date.strftime("%m-%Y")
-        name = _("Tổng thanh toán: %s") % period
+        name = _("Tổng thanh toán")
         tax = self._get_or_create_hstt_sale_tax()
         Product = self.env["product.product"]
         product = Product.search([
@@ -1655,7 +1658,7 @@ class RentalContract(models.Model):
         """
         self.ensure_one()
         partner = self.a_party
-        product = self._get_or_create_hstt_total_product(end_date)
+        product = self._get_or_create_hstt_total_product()
 
         journal = self.env["account.journal"].search([
             ("type", "=", "sale"),
@@ -1691,7 +1694,7 @@ class RentalContract(models.Model):
             "journal_id": journal.id,
             "invoice_line_ids": [(0, 0, {
                 "product_id": product.id,
-                "name": product.display_name,
+                "name": _("Tổng thanh toán: %s") % end_date.strftime("%m-%Y"),
                 "quantity": 1,
                 "price_unit": subtotal,
                 "account_id": income_account.id,

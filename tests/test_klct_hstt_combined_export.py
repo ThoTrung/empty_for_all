@@ -407,7 +407,7 @@ class TestKlctHsttCombinedExport(TransactionCase):
         self.assertEqual(moves.state, "posted")
         lines = moves.invoice_line_ids
         self.assertEqual(len(lines), 1)
-        self.assertEqual(lines.product_id.name, "Tổng thanh toán: 04-2026")
+        self.assertEqual(lines.product_id.name, "Tổng thanh toán")
         self.assertIn("Tổng thanh toán: 04-2026", lines.name)
         self.assertEqual(lines.quantity, 1)
         self.assertAlmostEqual(lines.price_unit, expected, places=2)
@@ -424,6 +424,25 @@ class TestKlctHsttCombinedExport(TransactionCase):
         self.assertAlmostEqual(float(dccn.cell(17, 8).value or 0), moves.amount_total, places=2)
         self.assertAlmostEqual(float(dccn.cell(16, 8).value or 0), 0.0, places=2)
 
+    def test_hstt_total_invoice_reuses_single_product_across_periods(self):
+        """Each period's invoice must reuse the same 'Tổng thanh toán' product (no per-month dup)."""
+        move_march = self._contract._create_rental_invoice_from_hstt_total(
+            date(2026, 3, 1), date(2026, 3, 31), 1000.0, post=False
+        )
+        move_april = self._contract._create_rental_invoice_from_hstt_total(
+            date(2026, 4, 1), date(2026, 4, 30), 2000.0, post=False
+        )
+        product_march = move_march.invoice_line_ids.product_id
+        product_april = move_april.invoice_line_ids.product_id
+        self.assertEqual(product_march, product_april)
+        self.assertEqual(product_march.name, "Tổng thanh toán")
+        self.assertIn("03-2026", move_march.invoice_line_ids.name)
+        self.assertIn("04-2026", move_april.invoice_line_ids.name)
+        self.assertEqual(
+            self.env["product.product"].search_count([("name", "=", "Tổng thanh toán")]),
+            1,
+        )
+
     def test_hstt_total_product_replaces_stale_tax_with_eight_percent(self):
         tax_10 = self.env["account.tax"].search([
             ("company_id", "=", self.env.company.id),
@@ -439,10 +458,10 @@ class TestKlctHsttCombinedExport(TransactionCase):
                 "type_tax_use": "sale",
                 "company_id": self.env.company.id,
             })
-        product = self._contract._get_or_create_hstt_total_product(date(2026, 4, 30))
+        product = self._contract._get_or_create_hstt_total_product()
         product.taxes_id = [(6, 0, tax_10.ids)]
 
-        product = self._contract._get_or_create_hstt_total_product(date(2026, 4, 30))
+        product = self._contract._get_or_create_hstt_total_product()
 
         self.assertEqual(product.taxes_id.amount, 8.0)
 
