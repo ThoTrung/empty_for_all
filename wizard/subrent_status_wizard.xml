@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subrent_status_wizard_form" model="ir.ui.view">
+        <field name="name">subrent.status.wizard.form</field>
+        <field name="model">rental.subrent.status.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Tình trạng SP thuê ngoài">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_lots_wh" type="object" class="oe_stat_button" icon="fa-home">
+                            <field name="qty_at_subrent_wh" widget="statinfo" string="Kho TN"/>
+                        </button>
+                        <button name="action_open_lots_customer" type="object" class="oe_stat_button" icon="fa-building">
+                            <field name="qty_on_customer" widget="statinfo" string="Công trình"/>
+                        </button>
+                        <button name="action_open_lots_idle" type="object" class="oe_stat_button" icon="fa-warning">
+                            <field name="idle_lot_count" widget="statinfo" string="Idle"/>
+                        </button>
+                        <button name="action_open_lots_due" type="object" class="oe_stat_button" icon="fa-calendar">
+                            <field name="due_lot_count" widget="statinfo" string="Đến hạn"/>
+                        </button>
+                    </div>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="lot_count_open"/>
+                        <field name="cost_per_day_estimate" groups="rental_subrent.group_rental_subrent_manager"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_refresh" type="object" string="Làm mới" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_subrent_status_wizard" model="ir.actions.act_window">
+        <field name="name">Tình trạng SP thuê ngoài</field>
+        <field name="res_model">rental.subrent.status.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+</odoo>

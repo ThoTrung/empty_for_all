@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_res_partner_rental_suppliers" model="ir.actions.act_window">
+        <field name="name">NCC thuê ngoài</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">
+            [
+                ("is_company", "=", True),
+                ("is_rental_supplier", "=", True),
+                ("company_id", "in", allowed_company_ids),
+            ]
+        </field>
+        <field name="context" eval="{
+            'default_is_company': True,
+            'default_customer_type': 'company',
+            'default_is_rental_supplier': True,
+            'default_supplier_rank': 1,
+        }"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Tạo nhà cung cấp thuê ngoài (NCC)
+            </p>
+            <p>
+                Partner mới được đánh dấu «NCC»; có thể tick thêm «Khách thuê»
+                nếu NCC cũng thuê hàng (giá NCC↔NCC).
+            </p>
+        </field>
+    </record>
+
+    <!-- Phase 0: tab HĐ với NCC on company partner form (role-gated). -->
+    <record id="view_res_partner_form_subrent_contracts" model="ir.ui.view">
+        <field name="name">res.partner.form.subrent.contracts</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="rental.view_partner_form_inherit_rental"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='company_rental_contract_ids']" position="after">
+                <page name="company_subrent_contract_ids" string="Hợp đồng với NCC"
+                      invisible="not is_rental_supplier">
+                    <field name="subrent_contract_ids"
+                           context="{
+                               'default_supplier_id': id,
+                               'default_policy_code': 'simple',
+                           }">
+                        <tree>
+                            <field name="name"/>
+                            <field name="policy_code"/>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="qty_open_total"/>
+                            <field name="state"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

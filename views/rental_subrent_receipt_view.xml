@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_subrent_receipt_tree" model="ir.ui.view">
+        <field name="name">rental.subrent.receipt.tree</field>
+        <field name="model">rental.subrent.receipt</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="subrent_contract_id"/>
+                <field name="supplier_id"/>
+                <field name="date"/>
+                <field name="stock_flow"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_rental_subrent_receipt_form" model="ir.ui.view">
+        <field name="name">rental.subrent.receipt.form</field>
+        <field name="model">rental.subrent.receipt</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" string="Xác nhận nhận hàng" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_cancel" string="Hủy" type="object" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="subrent_contract_id"/>
+                            <field name="supplier_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="stock_flow"/>
+                        </group>
+                    </group>
+                    <field name="line_ids">
+                        <tree editable="bottom">
+                            <field name="product_id"/>
+                            <field name="qty"/>
+                            <field name="lot_id" readonly="1"/>
+                        </tree>
+                    </field>
+                    <field name="picking_ids" widget="many2many_tags" readonly="1"/>
+                    <field name="note"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_rental_subrent_receipt" model="ir.actions.act_window">
+        <field name="name">Nhận từ NCC</field>
+        <field name="res_model">rental.subrent.receipt</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Tạo phiếu nhận từ NCC
+            </p>
+            <p>
+                Ưu tiên tạo từ form <b>HĐ thuê ngoài</b> → tab <b>Nhập / Trả NCC</b>
+                (HĐ đã kích hoạt). Menu này vẫn dùng được để xem danh sách / tạo nhanh.
+            </p>
+        </field>
+    </record>
+</odoo>

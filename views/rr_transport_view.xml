@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rr_transport_form_subrent" model="ir.ui.view">
+        <field name="name">rr.transport.form.subrent</field>
+        <field name="model">rr.transport</field>
+        <field name="inherit_id" ref="rental.view_rr_transport_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='type']" position="after">
+                <field name="source_type" widget="radio" options="{'horizontal': true}"
+                       readonly="state in ['done', 'cancel']"
+                       groups="rental_subrent.group_rental_subrent_user"/>
+            </xpath>
+            <xpath expr="//field[@name='transport_line_ids']/tree/field[@name='product_id']" position="after">
+                <field name="subrent_lot_id"
+                       column_invisible="parent.source_type != 'subrent'"
+                       required="parent.source_type == 'subrent'"
+                       options="{'no_create': True}"
+                       groups="rental_subrent.group_rental_subrent_user"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

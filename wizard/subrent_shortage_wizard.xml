@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subrent_shortage_wizard_form" model="ir.ui.view">
+        <field name="name">subrent.shortage.wizard.form</field>
+        <field name="model">rental.subrent.shortage.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Thiếu hàng">
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="product_id"/>
+                    <field name="qty_needed"/>
+                </group>
+                <group>
+                    <field name="owned_qty"/>
+                    <field name="subrent_wh_qty"/>
+                    <field name="available_qty"/>
+                    <field name="shortage_qty"/>
+                </group>
+                <field name="advice"/>
+                <footer>
+                    <button name="action_compute" type="object" string="Tính" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_subrent_shortage_wizard" model="ir.actions.act_window">
+        <field name="name">Panel thiếu hàng</field>
+        <field name="res_model">rental.subrent.shortage.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

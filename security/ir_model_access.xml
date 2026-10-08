@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Contract -->
+        <record id="access_rental_subrent_contract_user" model="ir.model.access">
+            <field name="name">rental.subrent.contract user</field>
+            <field name="model_id" ref="model_rental_subrent_contract"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+        <record id="access_rental_subrent_contract_manager" model="ir.model.access">
+            <field name="name">rental.subrent.contract manager</field>
+            <field name="model_id" ref="model_rental_subrent_contract"/>
+            <field name="group_id" ref="group_rental_subrent_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_rental_subrent_contract_line_user" model="ir.model.access">
+            <field name="name">rental.subrent.contract.line user</field>
+            <field name="model_id" ref="model_rental_subrent_contract_line"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <!-- Lot / Ledger -->
+        <record id="access_rental_subrent_lot_user" model="ir.model.access">
+            <field name="name">rental.subrent.lot user</field>
+            <field name="model_id" ref="model_rental_subrent_lot"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+        <record id="access_rental_subrent_lot_manager" model="ir.model.access">
+            <field name="name">rental.subrent.lot manager</field>
+            <field name="model_id" ref="model_rental_subrent_lot"/>
+            <field name="group_id" ref="group_rental_subrent_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_rental_subrent_ledger_user" model="ir.model.access">
+            <field name="name">rental.subrent.ledger user</field>
+            <field name="model_id" ref="model_rental_subrent_ledger"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+        <!-- Receipt / Return -->
+        <record id="access_rental_subrent_receipt_user" model="ir.model.access">
+            <field name="name">rental.subrent.receipt user</field>
+            <field name="model_id" ref="model_rental_subrent_receipt"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+        <record id="access_rental_subrent_receipt_line_user" model="ir.model.access">
+            <field name="name">rental.subrent.receipt.line user</field>
+            <field name="model_id" ref="model_rental_subrent_receipt_line"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_rental_subrent_return_user" model="ir.model.access">
+            <field name="name">rental.subrent.return user</field>
+            <field name="model_id" ref="model_rental_subrent_return"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+        <record id="access_rental_subrent_return_line_user" model="ir.model.access">
+            <field name="name">rental.subrent.return.line user</field>
+            <field name="model_id" ref="model_rental_subrent_return_line"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <!-- Wizards -->
+        <record id="access_subrent_shortage_wizard" model="ir.model.access">
+            <field name="name">subrent shortage wizard</field>
+            <field name="model_id" ref="model_rental_subrent_shortage_wizard"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_subrent_direct_delivery_wizard" model="ir.model.access">
+            <field name="name">subrent direct delivery wizard</field>
+            <field name="model_id" ref="model_rental_subrent_direct_delivery_wizard"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_subrent_margin_wizard" model="ir.model.access">
+            <field name="name">subrent margin wizard</field>
+            <field name="model_id" ref="model_rental_subrent_margin_wizard"/>
+            <field name="group_id" ref="group_rental_subrent_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_subrent_margin_wizard_line" model="ir.model.access">
+            <field name="name">subrent margin wizard line</field>
+            <field name="model_id" ref="model_rental_subrent_margin_wizard_line"/>
+            <field name="group_id" ref="group_rental_subrent_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_subrent_reconcile_wizard" model="ir.model.access">
+            <field name="name">subrent reconcile wizard</field>
+            <field name="model_id" ref="model_rental_subrent_reconcile_wizard"/>
+            <field name="group_id" ref="group_rental_subrent_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_subrent_reconcile_wizard_line" model="ir.model.access">
+            <field name="name">subrent reconcile wizard line</field>
+            <field name="model_id" ref="model_rental_subrent_reconcile_wizard_line"/>
+            <field name="group_id" ref="group_rental_subrent_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_subrent_status_wizard" model="ir.model.access">
+            <field name="name">subrent status wizard</field>
+            <field name="model_id" ref="model_rental_subrent_status_wizard"/>
+            <field name="group_id" ref="group_rental_subrent_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_subrent_payable_wizard" model="ir.model.access">
+            <field name="name">subrent payable wizard</field>
+            <field name="model_id" ref="model_rental_subrent_payable_wizard"/>
+            <field name="group_id" ref="group_rental_subrent_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+        <record id="access_subrent_payable_wizard_line" model="ir.model.access">
+            <field name="name">subrent payable wizard line</field>
+            <field name="model_id" ref="model_rental_subrent_payable_wizard_line"/>
+            <field name="group_id" ref="group_rental_subrent_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+    </data>
+</odoo>

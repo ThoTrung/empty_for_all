@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_subrent_contract_tree" model="ir.ui.view">
+        <field name="name">rental.subrent.contract.tree</field>
+        <field name="model">rental.subrent.contract</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="supplier_id"/>
+                <field name="contract_number" optional="hide"/>
+                <field name="policy_code"/>
+                <field name="qty_open_total"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_rental_subrent_contract_form" model="ir.ui.view">
+        <field name="name">rental.subrent.contract.form</field>
+        <field name="model">rental.subrent.contract</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_activate" string="Kích hoạt" type="object" invisible="state != 'draft'" class="oe_highlight"/>
+                    <button name="action_done" string="Hoàn thành" type="object" invisible="state != 'active'"/>
+                    <button name="action_cancel" string="Hủy" type="object" invisible="state in ('done', 'cancel')"/>
+                    <button name="action_set_draft" string="Về nháp" type="object" invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_lots" type="object" class="oe_stat_button" icon="fa-cubes"
+                                invisible="not show_lot_ui">
+                            <field name="lot_count" widget="statinfo" string="Lô"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Mã HĐ"/>
+                        </h1>
+                        <group>
+                            <group>
+                                <field name="contract_date" placeholder="01/01/2026"/>
+                                <field name="contract_number" placeholder="01/HĐTN/NCC"/>
+                                <field name="policy_code" widget="radio"/>
+                            </group>
+                            <group>
+                                <field name="date_start"/>
+                                <field name="date_end"/>
+                                <field name="qty_open_total" invisible="not show_obligation_ui"/>
+                                <field name="amount_monthly_estimate" invisible="not show_obligation_ui"
+                                          groups="rental_subrent.group_rental_subrent_manager"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                        </group>
+                    </div>
+                    <field name="show_obligation_ui" invisible="1"/>
+                    <field name="show_lot_ui" invisible="1"/>
+                    <field name="require_transport_lot" invisible="1"/>
+                    <field name="company_partner_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <notebook>
+                        <page string="Thông tin cơ bản" name="subrent_info">
+                            <group>
+                                <group string="NCC">
+                                    <field name="supplier_id"
+                                           options="{'no_create': True}"
+                                           context="{'default_is_company': True, 'default_customer_type': 'company', 'default_is_rental_supplier': True}"/>
+                                    <field name="supplier_representative_id"
+                                           options="{'no_quick_create': True}"
+                                           context="{
+                                               'default_parent_id': supplier_id,
+                                               'default_type': 'contact',
+                                               'default_customer_type': 'other',
+                                           }"
+                                           readonly="not supplier_id"/>
+                                </group>
+                                <group string="Bên ta">
+                                    <field name="company_partner_id" string="Công ty" readonly="1"/>
+                                    <field name="our_representative_id"
+                                           options="{'no_quick_create': True}"
+                                           context="{
+                                               'default_parent_id': company_partner_id,
+                                               'default_type': 'contact',
+                                               'default_customer_type': 'other',
+                                           }"
+                                           readonly="not company_partner_id"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="note" placeholder="Ghi chú HĐ với NCC…"/>
+                            </group>
+                        </page>
+                        <page string="Sản phẩm / giá NCC" name="subrent_lines">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_tmpl_id"/>
+                                    <field name="cost_unit"
+                                           string="Đơn giá thuê NCC / tháng"
+                                           groups="rental_subrent.group_rental_subrent_manager"/>
+                                    <field name="minimum_rental_months" groups="rental_subrent.group_rental_subrent_manager"/>
+                                    <field name="qty_received" optional="show"/>
+                                    <field name="qty_returned" optional="show"/>
+                                    <field name="qty_open"/>
+                                    <field name="amount_monthly_estimate" groups="rental_subrent.group_rental_subrent_manager"/>
+                                    <field name="note"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Nhập / Trả NCC" name="subrent_moves">
+                            <p class="text-muted">
+                                Nhập tăng tồn kho và nợ NCC (SL đang thuê); giao khách không giảm nợ NCC;
+                                Trả NCC mới giảm. Xác nhận phiếu trên form chi tiết.
+                            </p>
+                            <separator string="Nhận từ NCC"/>
+                            <field name="receipt_ids"
+                                   context="{
+                                       'default_subrent_contract_id': id,
+                                       'default_company_id': company_id,
+                                   }">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="stock_flow"/>
+                                    <field name="state"/>
+                                    <field name="picking_ids" widget="many2many_tags" optional="show"/>
+                                </tree>
+                            </field>
+                            <separator string="Trả NCC"/>
+                            <field name="return_ids"
+                                   context="{
+                                       'default_subrent_contract_id': id,
+                                       'default_company_id': company_id,
+                                   }">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="state"/>
+                                    <field name="picking_ids" widget="many2many_tags" optional="show"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+    <record id="action_rental_subrent_contract" model="ir.actions.act_window">
+        <field name="name">HĐ thuê ngoài</field>
+        <field name="res_model">rental.subrent.contract</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

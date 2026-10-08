@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subrent_margin_wizard_form" model="ir.ui.view">
+        <field name="name">subrent.margin.wizard.form</field>
+        <field name="model">rental.subrent.margin.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Margin thuê ngoài">
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                </group>
+                <group>
+                    <field name="amount_revenue"/>
+                    <field name="amount_cost"/>
+                    <field name="amount_margin"/>
+                </group>
+                <field name="line_ids">
+                    <tree>
+                        <field name="lot_id"/>
+                        <field name="product_id"/>
+                        <field name="supplier_id"/>
+                        <field name="cost_days"/>
+                        <field name="amount_revenue"/>
+                        <field name="amount_cost"/>
+                        <field name="amount_margin"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_compute" type="object" string="Tính margin" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_subrent_margin_wizard" model="ir.actions.act_window">
+        <field name="name">Báo cáo margin</field>
+        <field name="res_model">rental.subrent.margin.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

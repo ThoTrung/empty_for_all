@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subrent_reconcile_wizard_form" model="ir.ui.view">
+        <field name="name">subrent.reconcile.wizard.form</field>
+        <field name="model">rental.subrent.reconcile.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Đối soát kho TN">
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="note"/>
+                </group>
+                <field name="line_ids">
+                    <tree>
+                        <field name="product_id"/>
+                        <field name="quant_qty"/>
+                        <field name="ledger_qty"/>
+                        <field name="difference"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_compute" type="object" string="Đối soát" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_subrent_reconcile_wizard" model="ir.actions.act_window">
+        <field name="name">Đối soát kho thuê ngoài</field>
+        <field name="res_model">rental.subrent.reconcile.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

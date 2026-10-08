@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subrent_payable_wizard_form" model="ir.ui.view">
+        <field name="name">subrent.payable.wizard.form</field>
+        <field name="model">rental.subrent.payable.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Công nợ thuê NCC">
+                <group>
+                    <field name="company_id"/>
+                    <field name="subrent_contract_id"/>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                    <field name="amount_total"/>
+                </group>
+                <field name="line_ids">
+                    <tree>
+                        <field name="subrent_contract_id"/>
+                        <field name="product_tmpl_id"/>
+                        <field name="qty_open"/>
+                        <field name="cost_unit"/>
+                        <field name="amount"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_compute" type="object" string="Tính" class="btn-primary"/>
+                    <button string="Đóng" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_subrent_payable_wizard" model="ir.actions.act_window">
+        <field name="name">Công nợ thuê NCC</field>
+        <field name="res_model">rental.subrent.payable.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

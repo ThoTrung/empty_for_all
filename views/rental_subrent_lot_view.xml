@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_subrent_lot_tree" model="ir.ui.view">
+        <field name="name">rental.subrent.lot.tree</field>
+        <field name="model">rental.subrent.lot</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="is_idle_warning or is_due_return" decoration-muted="state == 'closed'">
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="supplier_id"/>
+                <field name="stock_flow"/>
+                <field name="location_summary"/>
+                <field name="qty_at_subrent_wh"/>
+                <field name="qty_on_customer"/>
+                <field name="qty_returned_supplier"/>
+                <field name="date_start"/>
+                <field name="date_expected_return"/>
+                <field name="is_idle_warning" optional="hide"/>
+                <field name="is_due_return" optional="hide"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_rental_subrent_lot_kanban" model="ir.ui.view">
+        <field name="name">rental.subrent.lot.kanban</field>
+        <field name="model">rental.subrent.lot</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="location_summary"/>
+                <field name="supplier_id"/>
+                <field name="state"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <strong><field name="name"/></strong>
+                            <div><field name="product_id"/></div>
+                            <div><field name="location_summary"/></div>
+                            <div class="text-muted"><field name="supplier_id"/></div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+    <record id="view_rental_subrent_lot_form" model="ir.ui.view">
+        <field name="name">rental.subrent.lot.form</field>
+        <field name="model">rental.subrent.lot</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_ledger" type="object" class="oe_stat_button" icon="fa-book" string="Sổ cái"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="subrent_contract_id"/>
+                            <field name="supplier_id"/>
+                            <field name="product_id"/>
+                            <field name="stock_flow"/>
+                            <field name="receipt_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="date_start"/>
+                            <field name="date_expected_return"/>
+                            <field name="date_end"/>
+                            <field name="location_summary"/>
+                            <field name="current_construction_label"/>
+                            <field name="days_in_possession"/>
+                            <field name="days_idle"/>
+                            <field name="is_idle_warning"/>
+                            <field name="is_due_return"/>
+                            <field name="cost_unit" groups="rental_subrent.group_rental_subrent_manager"/>
+                            <field name="minimum_rental_months" groups="rental_subrent.group_rental_subrent_manager"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Xô số lượng">
+                        <field name="qty_received"/>
+                        <field name="qty_at_subrent_wh"/>
+                        <field name="qty_on_customer"/>
+                        <field name="qty_returned_supplier"/>
+                        <field name="qty_damaged"/>
+                    </group>
+                    <notebook>
+                        <page string="Sổ cái">
+                            <field name="ledger_ids" readonly="1">
+                                <tree>
+                                    <field name="date"/>
+                                    <field name="move_type"/>
+                                    <field name="qty"/>
+                                    <field name="transport_id"/>
+                                    <field name="receipt_id"/>
+                                    <field name="return_id"/>
+                                    <field name="note"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+    <record id="view_rental_subrent_lot_search" model="ir.ui.view">
+        <field name="name">rental.subrent.lot.search</field>
+        <field name="model">rental.subrent.lot</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="supplier_id"/>
+                <filter name="open" string="Đang mở" domain="[('state', '!=', 'closed')]"/>
+                <filter name="at_wh" string="Tại kho TN" domain="[('qty_at_subrent_wh', '&gt;', 0)]"/>
+                <filter name="on_customer" string="Ở công trình" domain="[('qty_on_customer', '&gt;', 0)]"/>
+                <separator/>
+                <filter name="groupby_supplier" string="NCC" context="{'group_by': 'supplier_id'}"/>
+                <filter name="groupby_product" string="Sản phẩm" context="{'group_by': 'product_id'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_rental_subrent_lot" model="ir.actions.act_window">
+        <field name="name">Sổ lô thuê ngoài</field>
+        <field name="res_model">rental.subrent.lot</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+    </record>
+</odoo>
