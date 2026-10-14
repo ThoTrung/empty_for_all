@@ -38,23 +38,24 @@ class Transport(models.Model):
                         % {"p": line.product_id.display_name, "lot": line.subrent_lot_id.name}
                     )
 
-    def action_create_pickings(self):
-        for rec in self:
-            if rec.source_type == "subrent":
-                if not rec.transport_line_ids:
-                    raise UserError(_("Thêm dòng sản phẩm."))
-                missing = rec.transport_line_ids.filtered(lambda l: not l.subrent_lot_id)
-                if missing:
-                    raise UserError(_("Nguồn Thuê ngoài: chọn lô trên mọi dòng trước khi tạo phiếu kho."))
-                for line in rec.transport_line_ids:
-                    if line.product_id != line.subrent_lot_id.product_id:
-                        raise UserError(
-                            _("Sản phẩm không khớp lô %(lot)s.") % {"lot": line.subrent_lot_id.name}
-                        )
-                flows = set(rec.transport_line_ids.mapped("subrent_lot_id.stock_flow"))
-                if len(flows) > 1:
-                    raise UserError(_("Không trộn kho tạm và giao thẳng trên cùng phiếu."))
-        return super().action_create_pickings()
+    def _rental_check_before_picking(self):
+        """Kiểm lô thuê ngoài trước khi tạo phiếu kho (hook của rental: Hoàn thành / tạo phiếu kho)."""
+        super()._rental_check_before_picking()
+        if self.source_type != "subrent":
+            return
+        if not self.transport_line_ids:
+            raise UserError(_("Thêm dòng sản phẩm."))
+        missing = self.transport_line_ids.filtered(lambda l: not l.subrent_lot_id)
+        if missing:
+            raise UserError(_("Nguồn Thuê ngoài: chọn lô trên mọi dòng trước khi tạo phiếu kho."))
+        for line in self.transport_line_ids:
+            if line.product_id != line.subrent_lot_id.product_id:
+                raise UserError(
+                    _("Sản phẩm không khớp lô %(lot)s.") % {"lot": line.subrent_lot_id.name}
+                )
+        flows = set(self.transport_line_ids.mapped("subrent_lot_id.stock_flow"))
+        if len(flows) > 1:
+            raise UserError(_("Không trộn kho tạm và giao thẳng trên cùng phiếu."))
 
     def _rental_picking_locations(self):
         self.ensure_one()

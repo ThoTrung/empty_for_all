@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Rental Subrent",
-    "version": "17.0.1.0.7",
+    "version": "17.0.1.0.8",
     "category": "Rental",
     "summary": "Thuê ngoài NCC — policy registry (simple / tracked / pass_through).",
     "author": "Nguyễn Trung Thọ",

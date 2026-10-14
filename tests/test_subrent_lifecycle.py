@@ -265,6 +265,8 @@ class TestSubrentLifecycle(TransactionCase):
         })
         with self.assertRaises(UserError):
             transport.action_create_pickings()
+        with self.assertRaises(UserError):
+            transport.action_complete_transport()
 
     def test_ledger_immutable(self):
         lot = self._receive(1)
