@@ -36,6 +36,16 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
+        <record id="rr_transport_complete_wizard_company_rule" model="ir.rule">
+            <field name="name">Transport complete wizard: multi-company</field>
+            <field name="model_id" ref="model_rr_transport_complete_wizard"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('rental.group_rental_staff'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
         <record id="rental_rented_qty_wizard_company_rule" model="ir.rule">
             <field name="name">Rented quantity wizard: multi-company</field>
             <field name="model_id" ref="model_rental_rented_qty_wizard"/>

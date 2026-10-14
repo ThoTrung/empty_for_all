@@ -32,5 +32,6 @@
 - DEC-28 — Extension point `_rental_picking_locations()` trên `rr.transport` (src/dest picking); `rental_subrent` override theo nguồn owned/subrent · `models/transport.py`
 - DEC-29 — Partner multi-role: `customer_type` = form mode (`company`/`driver`/`my_company_profile`/`other`); vai trò `is_rental_customer` + `is_rental_supplier` (cùng lúc được — NCC↔NCC). Domain menu/HĐ theo flag. Giá NCC↔NCC = follow-up · `models/res_partner.py`
 - DEC-29b — Harden: auto-align `is_company`+`customer_type=company` khi bật role; constrain; soft warn (onchange + chatter) khi tắt role còn HĐ active; UI block «Vai trò»; label «Kiểu form» · DEBT-04/05
+- DEC-30 — Phiếu giao nhận "Hoàn thành" 1 bước: tạo + xác nhận phiếu kho; thiếu hàng (so `qty_available` tồn vật lý tại kho nguồn nội bộ, không trừ giữ chỗ) → wizard cảnh báo, NV đồng ý thì cho tồn âm; có phiếu kho mở từ luồng cũ → UserError, NV tự xác nhận/hủy. Hook `_rental_check_before_picking` cho module con. Nút trong dialog tab HĐ dùng client action `rental_reload_and_open` (reload HĐ + mở lại phiếu) · `models/transport.py`, `wizard/rr_transport_complete_wizard.py`, `static/src/js/transport_reload_open.js`
 
 **New ADR:** thêm 1 dòng `DEC-NN`.

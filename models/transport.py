@@ -1,7 +1,9 @@
 # models/transport.py
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare
 import logging
+from collections import defaultdict
 from datetime import date
 
 _logger = logging.getLogger(__name__)
@@ -499,6 +501,7 @@ class Transport(models.Model):
 
     def action_create_pickings(self):
         self.ensure_one()
+        self._rental_check_before_picking()
         # Tạm thời: mỗi rr.transport chỉ 1 phiếu kho (không tính phiếu đã hủy).
         existing = self.picking_ids.filtered(lambda p: p.state != "cancel")
         if existing:
@@ -561,6 +564,40 @@ class Transport(models.Model):
                 model = model.with_company(company)
         return model
 
+    def _rental_prepare_picking_type_and_locations(self):
+        """Chọn loại phiếu kho theo type và đặt địa điểm nguồn/đích. Trả (company, work_self)."""
+        self.ensure_one()
+        company = self.company_id or self.rental_contract_id.company_id
+        work_self = self.with_company(company) if company else self
+        pt_id = work_self._default_picking_type_for_type(work_self.type, company=company)
+        if pt_id:
+            work_self.picking_type_id = pt_id
+        work_self._apply_picking_type_locations()
+        return company, work_self
+
+    def _rental_check_before_picking(self):
+        """Hook kiểm tra trước khi tạo phiếu kho (vd. rental_subrent kiểm lô thuê ngoài)."""
+        self.ensure_one()
+
+    def _rental_stock_shortages(self):
+        """Vật tư thiếu tồn tại kho nguồn: list (product, cần, tồn). Chỉ xét khi xuất từ kho nội bộ."""
+        self.ensure_one()
+        company, _work_self = self._rental_prepare_picking_type_and_locations()
+        src = self.location_id
+        if not src or src.usage != 'internal':
+            return []
+        needed = defaultdict(float)
+        for line in self.transport_line_ids:
+            if line.product_id and line.product_id.type == 'product' and line.qty > 0:
+                needed[line.product_id] += line.qty
+        shortages = []
+        for product, qty in needed.items():
+            product_ctx = product.with_company(company) if company else product
+            available = product_ctx.with_context(location=src.id).qty_available
+            if float_compare(available, qty, precision_rounding=product.uom_id.rounding) < 0:
+                shortages.append((product, qty, available))
+        return shortages
+
     def _rental_create_picking(self):
         """Create a stock picking for this draft transport. Returns the picking record."""
         self.ensure_one()
@@ -572,12 +609,7 @@ class Transport(models.Model):
             raise UserError(_("Thêm ít nhất một dòng vật tư trước khi tạo phiếu kho."))
 
         scheduled_date = self.start_rental_or_return_date or fields.Datetime.now()
-        company = self.company_id or self.rental_contract_id.company_id
-        work_self = self.with_company(company) if company else self
-        pt_id = work_self._default_picking_type_for_type(work_self.type, company=company)
-        if pt_id:
-            work_self.picking_type_id = pt_id
-        work_self._apply_picking_type_locations()
+        company, work_self = self._rental_prepare_picking_type_and_locations()
         picking_vals = {
             'picking_type_id': work_self.picking_type_id.id,
             'location_id': work_self.location_id.id,
@@ -657,10 +689,124 @@ class Transport(models.Model):
             'skip_sms': True,
         }
         result = picking.with_context(**validate_ctx).button_validate()
-        if isinstance(result, dict) and result.get('res_model'):
+        if isinstance(result, dict) and result.get('res_model') and picking.state != 'done':
             # No interactive wizard during import — force done (negative quants are allowed).
             picking.with_context(cancel_backorder=True)._action_done()
         return picking
+
+    def copy_data(self, default=None):
+        """Bản sao luôn ở Nháp, không mang dấu vết kho/phí; dòng vật tư copy qua copy_data của dòng."""
+        default = dict(default or {})
+        default.setdefault('state', 'draft')
+        default.setdefault('fee_actual', 0)
+        default.setdefault('fee_billed_date', False)
+        default.setdefault('external_invoice_code', False)
+        default.setdefault('vehicle_arrival_time', False)
+        res_list = super().copy_data(default)
+        if not res_list:
+            return res_list
+        if 'transport_line_ids' not in default:
+            for rec, vals in zip(self, res_list):
+                vals['transport_line_ids'] = [(0, 0, line._copy_line_vals()) for line in rec.transport_line_ids]
+        return res_list
+
+    def action_duplicate_transport(self):
+        """Nhân bản MỘT phiếu (kèm dòng vật tư) thành phiếu Nháp mới.
+
+        Từ tab hợp đồng (context ``rr_transport_from_contract``): bản sao đã ghi DB nhưng list
+        One2many cha không biết, nên báo thành công rồi soft_reload form hợp đồng để dòng mới hiện ngay.
+        Nơi khác (menu): mở form bản sao.
+        """
+        self.ensure_one()
+        new = self.copy()
+        if self.env.context.get('rr_transport_from_contract'):
+            return new._rental_action_reload_and_open(_("Đã tạo phiếu %s") % new.code)
+        return {
+            'type': 'ir.actions.act_window',
+            'name': new.code,
+            'res_model': 'rr.transport',
+            'res_id': new.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def _rental_action_reload_and_open(self, message=None):
+        """Reload form hợp đồng (list tab cập nhật) rồi mở lại phiếu này trong modal.
+
+        Client action ``rental_reload_and_open`` ở static/src/js/transport_reload_open.js.
+        """
+        self.ensure_one()
+        action = {
+            'type': 'ir.actions.client',
+            'tag': 'rental_reload_and_open',
+            'params': {
+                'next': {
+                    'type': 'ir.actions.act_window',
+                    'name': self.code,
+                    'res_model': 'rr.transport',
+                    'res_id': self.id,
+                    'view_mode': 'form',
+                    'views': [(False, 'form')],
+                    'target': 'new',
+                    'context': {'size_class': 'modal-xl', 'rr_transport_from_contract': True},
+                },
+            },
+        }
+        if not message:
+            return action
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {'message': message, 'type': 'success', 'next': action},
+        }
+
+    def action_complete_transport(self):
+        """Hoàn thành: tạo phiếu kho và xác nhận luôn.
+
+        Thiếu tồn tại kho nguồn → mở wizard cảnh báo; NV đồng ý (context
+        ``rr_transport_allow_negative``) thì xác nhận, cho phép tồn âm.
+        """
+        self.ensure_one()
+        if self.state != 'draft':
+            raise UserError(_("Chỉ hoàn thành được phiếu ở trạng thái Nháp."))
+        self._rental_check_before_picking()
+        if not self.transport_line_ids:
+            raise UserError(_("Thêm ít nhất một dòng vật tư trước khi hoàn thành phiếu."))
+        if self.picking_ids.filtered(lambda p: p.state == 'done' and not p.return_id):
+            raise UserError(_("Phiếu này đã có phiếu kho hoàn tất. Hãy làm mới trang hoặc liên hệ quản trị."))
+        open_pickings = self.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+        if open_pickings:
+            # Phiếu kho mở (luồng cũ) có thể lệch dòng vật tư / SL thực giao → không tự ép xác nhận.
+            raise UserError(_(
+                "Phiếu này đang có phiếu kho chưa xác nhận: %(names)s. "
+                "Hãy xác nhận hoặc hủy phiếu kho đó trong tab \"Phiếu kho\" rồi thử lại.",
+                names=", ".join(open_pickings.mapped("name")),
+            ))
+        message = _("Đã hoàn thành phiếu %s") % self.code
+        if self.type == 'compensation' and not self._compensation_lines_to_stock():
+            # Đền bù hỏng/mất 100%: không nhập lại kho, chỉ đóng phiếu.
+            self.write({'state': 'done'})
+            return self._rental_action_after_complete(message)
+        if not self.env.context.get('rr_transport_allow_negative'):
+            shortages = self._rental_stock_shortages()
+            if shortages:
+                return self.env['rr.transport.complete.wizard']._action_open(self, shortages)
+        picking = self._rental_create_picking()
+        self._rental_validate_picking(picking)
+        return self._rental_action_after_complete(message)
+
+    def _rental_action_after_complete(self, message):
+        if self.env.context.get('rr_transport_from_contract'):
+            return self._rental_action_reload_and_open(message)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': message,
+                'type': 'success',
+                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
+            },
+        }
 
     def action_cancel_transport(self):
         """Hủy phiếu: nháp → hủy/xóa phiếu kho gắn kèm; hoàn thành → tạo phiếu kho đảo (stock.return.picking)."""
@@ -802,6 +948,25 @@ class TransportLine(models.Model):
     name = fields.Char(string="Mô tả")
 
     # No contract lock enforcement here; only rental.contract base info is locked.
+
+    @api.depends('transport_id.code', 'product_id', 'name')
+    def _compute_display_name(self):
+        # `name` is usually empty; mail tracking of rental.contract.rr_transport_line_ids
+        # joins display names and crashes on False.
+        for line in self:
+            label = line.name or line.product_id.display_name or ''
+            code = line.transport_id.code
+            if code and label:
+                line.display_name = "%s - %s" % (code, label)
+            else:
+                line.display_name = code or label or _("Dòng vật tư")
+
+    def _copy_line_vals(self):
+        """Giá trị tạo dòng mới khi nhân bản phiếu (không trỏ về phiếu gốc)."""
+        self.ensure_one()
+        vals = self.copy_data()[0]
+        vals.pop('transport_id', None)
+        return vals
 
     @api.depends("qty", "non_billable_qty")
     def _compute_billable_qty(self):

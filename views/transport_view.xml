@@ -73,16 +73,30 @@
                 <sheet>
                     <header>
                         <field name="state" widget="statusbar"/>
-                        <button name="action_view_pickings"
+                        <button name="action_duplicate_transport"
                                 type="object"
-                                string="Phiếu kho"
+                                string="Nhân bản"
                                 class="btn-secondary"
-                                icon="fa-truck"
+                                icon="fa-copy"
+                                invisible="not id"
+                                groups="rental.group_rental_staff"
+                                confirm="Tạo bản sao phiếu này ở trạng thái Nháp? Hợp đồng đang mở sẽ được lưu."/>
+                        <button name="action_export_equipment_delivery_receipt"
+                                type="object"
+                                string="Xuất biên bản giao nhận thiết bị"
+                                class="btn-success"
+                                invisible="not id"/>
+                        <button name="action_complete_transport"
+                                type="object"
+                                string="Hoàn thành"
+                                class="btn-info"
+                                confirm="Xác nhận xuất/nhập kho và hoàn thành phiếu? Hợp đồng đang mở sẽ được lưu."
+                                invisible="state != 'draft' or not id"
                                 groups="rental.group_rental_staff"/>
                         <button name="action_cancel_transport"
                                 type="object"
                                 string="Hủy phiếu"
-                                class="btn-secondary"
+                                class="btn-danger"
                                 invisible="state == 'cancel'"
                                 confirm="Hủy phiếu xuất nhập kho này? Với trạng thái Hoàn thành, hệ thống sẽ tạo phiếu kho đảo để cân tồn."
                                 groups="rental.group_rental_staff"/>
@@ -231,16 +245,6 @@
                             </field>
                         </page>
                     </notebook>
-                    <footer>
-                        <button name="action_export_equipment_delivery_receipt"
-                                type="object"
-                                string="Xuất biên bản giao nhận thiết bị"
-                                class="btn-success"
-                        />
-                        <button special="save" string="Lưu" class="btn-primary" data-hotkey="s" invisible="state == 'cancel'" groups="rental.group_rental_staff"/>
-                        <button name="action_create_pickings" type="object" string="Tạo phiếu kho" invisible="state != 'draft'" groups="rental.group_rental_staff"/>
-                        <button special="cancel" string="Hủy" class="btn-secondary" data-hotkey="x"/>
-                    </footer>
                 </sheet>
             </form>
         </field>

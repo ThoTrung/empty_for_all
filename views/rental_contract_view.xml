@@ -308,7 +308,7 @@
                                             class="btn-secondary"
                                             icon="fa-upload"/>
                                 </div>
-                                <field name="rr_transport_ids" context="{'size_class': 'modal-xl'}">
+                                <field name="rr_transport_ids" widget="rental_transport_one2many" context="{'size_class': 'modal-xl', 'rr_transport_from_contract': True}">
                                     <tree>
                                         <field name="code"/>
                                         <field name="start_rental_or_return_date"/>

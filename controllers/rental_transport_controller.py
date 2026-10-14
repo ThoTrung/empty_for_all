@@ -14,7 +14,7 @@ from openpyxl import load_workbook
 from odoo.modules.module import get_module_resource
 from datetime import datetime, date
 from ..helper.export_excel_template import insert_rows_below
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from docxtpl import DocxTemplate
 from ..services import rental_contract_services as rcs
 from docx2pdf import convert
@@ -28,9 +28,15 @@ class TransportController(http.Controller):
     @http.route('/rental/transport/equipment-delivery-receipt/<int:transport_id>/download', type='http', auth='user')
     def download_equipment_delivery_receipt_xlsx(self, transport_id):
         """Generate Excel file based on template"""
-        transport = request.env['rr.transport'].sudo().browse(transport_id)
+        transport = request.env['rr.transport'].browse(transport_id)
         if not transport.exists():
             return request.not_found()
+        try:
+            transport.check_access_rights('read')
+            transport.check_access_rule('read')
+        except AccessError:
+            return request.not_found()
+        transport = transport.sudo()
 
         user = request.env.user
         is_internal = user.has_group('base.group_user')

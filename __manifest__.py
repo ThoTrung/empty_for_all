@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Rental',
-    'version': '17.0.1.0.86',
+    'version': '17.0.1.0.88',
     'category': 'Rental',
     'summary': 'Rental service module.',
     'author': "Nguyễn Trung Thọ",
@@ -28,6 +28,7 @@
         'wizard/rental_transport_import_wizard.xml',
         'wizard/rental_rented_qty_wizard.xml',
         'wizard/rental_stock_xnt_wizard.xml',
+        'wizard/rr_transport_complete_wizard.xml',
 
         'data/sequence.xml',
         'data/rental_analytics_cron.xml',
@@ -72,6 +73,8 @@
             'rental/static/src/scss/style.scss',
             'rental/static/src/scss/rental_modal.scss',
             'rental/static/src/js/big_modal_dialog.js',
+            'rental/static/src/js/transport_reload_open.js',
+            'rental/static/src/js/transport_one2many_field.js',
             'rental/static/src/js/download_and_close.js',
             'rental/static/src/js/domain_selector_field_domain.js',
             'rental/static/src/analytics_dashboard/analytics_dashboard.js',
